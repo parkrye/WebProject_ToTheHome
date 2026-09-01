@@ -1,0 +1,19 @@
+{
+  "name": "to-the-home",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "2D platformer - a dog follows its owner's scent home",
+  "scripts": {
+    "assets": "node scripts/build-manifest.mjs",
+    "dev": "npm run assets && vite",
+    "build": "npm run assets && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.88.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
