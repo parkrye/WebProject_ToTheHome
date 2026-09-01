@@ -1,0 +1,77 @@
+/**
+ * 진행 저장. localStorage 하나에 전부 담는다.
+ * 저장 실패(프라이빗 모드 등)는 조용히 무시하고 메모리 상태만 유지한다.
+ */
+
+import { SAVE_KEY } from '../config.js';
+
+const DEFAULT_SAVE = {
+  version: 1,
+  stage: 0, // 0 = 프롤로그 전
+  checkpoint: null, // 스테이지 내 세이브포인트 id
+  prologueSeen: false,
+  clearedStages: [],
+  customSprites: false,
+  muted: false,
+};
+
+export class SaveSystem {
+  constructor() {
+    this.data = this.load();
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return { ...DEFAULT_SAVE };
+      const parsed = JSON.parse(raw);
+      if (parsed.version !== DEFAULT_SAVE.version) return { ...DEFAULT_SAVE };
+      return { ...DEFAULT_SAVE, ...parsed };
+    } catch {
+      return { ...DEFAULT_SAVE };
+    }
+  }
+
+  persist() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(this.data));
+    } catch {
+      /* 저장할 수 없는 환경이면 이번 세션 동안만 유지된다 */
+    }
+  }
+
+  get hasProgress() {
+    return this.data.stage > 0 || this.data.prologueSeen;
+  }
+
+  set(patch) {
+    Object.assign(this.data, patch);
+    this.persist();
+  }
+
+  markPrologueSeen() {
+    this.set({ prologueSeen: true });
+  }
+
+  /** 세이브 포인트 저장. 이미 같은 지점이면 false 를 돌려준다(모션만 재생) */
+  saveCheckpoint(stage, checkpointId) {
+    const isNew = !(this.data.stage === stage && this.data.checkpoint === checkpointId);
+    this.set({ stage, checkpoint: checkpointId });
+    return isNew;
+  }
+
+  enterStage(stage) {
+    if (this.data.stage !== stage) this.set({ stage, checkpoint: null });
+  }
+
+  clearStage(stage) {
+    const cleared = new Set(this.data.clearedStages);
+    cleared.add(stage);
+    this.set({ clearedStages: [...cleared].sort(), checkpoint: null });
+  }
+
+  reset() {
+    this.data = { ...DEFAULT_SAVE, muted: this.data.muted };
+    this.persist();
+  }
+}
