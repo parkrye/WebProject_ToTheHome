@@ -1,0 +1,95 @@
+# To The Home
+
+> 죽은 강아지가 주인의 냄새를 쫓아 집으로 돌아가는 꿈 이야기.
+> 웹/모바일 겸용 2D 사이드스크롤 플랫포머. **대사도 문자도 없다.**
+
+---
+
+## 실행
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # dist/ 로 정적 빌드
+npm run preview  # 빌드 결과 확인
+```
+
+**AI 에셋이 하나도 없어도 바로 플레이된다.** 실제 그림/소리가 없는 자리는 코드로 그린
+플레이스홀더가 대신 채운다. `public/assets/` 에 규정된 이름으로 파일을 넣고 `npm run dev` 를
+다시 실행하면 코드 수정 없이 교체된다.
+
+## 조작
+
+| 입력 | 동작 |
+|---|---|
+| `←` `→` / `A` `D` | 이동 |
+| `Space` / `↑` / `W` | 점프 (누른 시간만큼 높이 조절) |
+| `Shift` | 도움닫기 (한 방향을 0.45초 유지해도 자동 진입) |
+| `↓` / `S` | 냄새 맡기 — 길을 알려주는 냄새 입자가 3초간 밝아진다 |
+| `E` / `Enter` | 상호작용 (세이브 포인트) |
+| `Esc` | 일시정지 |
+
+모바일에서는 좌하단 방향 버튼과 우하단 점프·상호작용 버튼이 나타난다.
+
+## 구성
+
+```
+게임 시작 ─┬─ 발자국: 그냥 시작
+           ├─ 뼈다귀: 스프라이트 추가해서 시작
+           └─ 집    : 이어하기 (저장이 있을 때만)
+                 ↓
+프롤로그(4컷) → 스테이지 1 도시 → 2 해안가 → 3 산 → 4 들판 → 엔딩
+```
+
+| 스테이지 | 컨셉 | 세이브 포인트 모션 |
+|---|---|---|
+| 1 도시 | 납골당에서 나와 길을 찾는 첫 여정. 기초 조작을 배운다 | 모래 놀이터에서 **땅파기** |
+| 2 해안가 | 주인이 차로 오가던 길. 파도와 좁은 도로 | 포장마차 그늘에서 **낮잠** |
+| 3 산 | 집은 산 너머. 가장 어렵다 | 계곡 연못에서 **물장구** |
+| 4 들판 | 함께 살던 곳. 위험이 없다 | 공을 **코로 툭툭** |
+
+이미 저장한 지점에서 다시 상호작용해도 모션은 그대로 재생된다 — 강아지는 그냥 거기서 노는 것.
+
+## 언어를 쓰지 않는다
+
+강아지의 시점이므로 화면 어디에도 문자가 없다.
+
+- 메뉴·UI는 전부 픽토그램 (발자국 / 뼈다귀 / 집 / 코)
+- 튜토리얼은 월드에 박힌 안내판 그림. 지나가면 뒤에 남고, 돌아오면 다시 볼 수 있다
+- 길 안내는 **냄새 입자**가 대신한다
+- 체력·점수·타이머 같은 숫자 표시가 없다
+
+## 문서
+
+| 문서 | 내용 |
+|---|---|
+| [.docs/game-design.md](.docs/game-design.md) | 기획서 — 조작 수치, 스테이지 설계, 세이브·연출 규칙 |
+| [.docs/assets-sprites.md](.docs/assets-sprites.md) | 8프레임 스프라이트 28종. 동작마다 한 줄짜리 영어 프롬프트 |
+| [.docs/assets-images.md](.docs/assets-images.md) | 배경·타일셋·소품·GUI. 항목마다 한 문단 프롬프트 |
+| [.docs/assets-audio.md](.docs/assets-audio.md) | BGM·앰비언스·SFX. 항목마다 1000자 이내 프롬프트 |
+| [public/assets/README.md](public/assets/README.md) | 에셋 넣는 방법과 파일명 규칙 |
+
+## 구조
+
+```
+src/
+├─ main.js              Phaser 부트스트랩
+├─ config.js            조작 수치 · 팔레트 · 테마
+├─ scenes/              Boot · Preload · Title · SpriteImport
+│                       Prologue · Stage · Ending · Hud
+├─ objects/             Dog · SavePoint · Hazards · Platforms · Decor
+├─ systems/             AssetLoader · PlaceholderArt · PlaceholderScenery
+│                       Input · Save · Audio
+└─ data/                stage1~4 레벨 데이터
+```
+
+- 레벨은 전부 `src/data/stage*.js` 의 **데이터**다. 지형·위험·소품을 이 파일들에서 조정한다.
+- `PlaceholderArt` / `PlaceholderScenery` 는 캔버스로 임시 그림을 그린다. 실제 에셋이
+  들어오면 호출되지 않으므로, 에셋을 다 채운 뒤 지워도 된다.
+- 진행은 `localStorage` 의 `tothehome.save.v1` 하나에 저장된다.
+
+## 직접 만든 스프라이트로 플레이하기
+
+타이틀에서 **뼈다귀** 아이콘을 고르면 로컬 PNG를 그 자리에서 넣어볼 수 있다.
+파일명이 에셋 이름과 같아야 하고(`dog_walk.png` → `dog_walk`), 가로 8프레임 시트여야 한다.
+이 주입은 저장되지 않는다. 영구 적용은 `public/assets/sprites/` 에 넣으면 된다.
