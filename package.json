@@ -1,9 +1,9 @@
 {
-  "name": "to-the-home",
+  "name": "tothehome",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "2D platformer - a dog follows its owner's scent home",
+  "description": "ToTheHome - 2D platformer, a dog follows its owner scent home",
   "scripts": {
     "assets:prepare": "python scripts/prepare_assets.py",
     "assets": "node scripts/build-manifest.mjs",
