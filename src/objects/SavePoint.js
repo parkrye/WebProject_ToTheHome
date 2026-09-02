@@ -7,6 +7,7 @@
 
 import Phaser from 'phaser';
 import { PALETTE } from '../config.js';
+import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 export class SavePoint extends Phaser.GameObjects.Container {
   /**
@@ -25,17 +26,20 @@ export class SavePoint extends Phaser.GameObjects.Container {
     // 소품 본체
     if (def.prop && scene.textures.exists(def.prop)) {
       this.prop = scene.add.image(0, 0, def.prop).setOrigin(0.5, 1);
+      sizeTo(this.prop, { height: def.propHeight ?? 150 });
       if (def.propScale) this.prop.setScale(def.propScale);
       this.add(this.prop);
     }
 
     // 바닥 오라
     this.glow = scene.add.sprite(0, 6, 'savepoint_glow').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD);
+    sizeTo(this.glow, { height: 90 });
     this.glow.play('savepoint_glow');
     this.add(this.glow);
 
     // 상호작용 프롬프트
-    this.prompt = scene.add.image(0, -110, 'ui_prompt_interact').setOrigin(0.5, 1).setAlpha(0).setScale(0.8);
+    this.prompt = scene.add.image(0, -110, 'ui_prompt_interact').setOrigin(0.5, 1).setAlpha(0);
+    sizeTo(this.prompt, { height: UI_SIZE.prompt });
     this.add(this.prompt);
 
     this.setDepth(15);
@@ -63,12 +67,13 @@ export class SavePoint extends Phaser.GameObjects.Container {
       .image(this.x, this.y - 20, 'ui_save_burst')
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(30)
-      .setScale(0.4)
       .setAlpha(0.9);
+    sizeTo(burst, { height: 150 });
+    const burstScale = burst.scaleX;
 
     this.scene.tweens.add({
       targets: burst,
-      scale: 1.5,
+      scale: burstScale * 3.2,
       alpha: 0,
       duration: 900,
       ease: 'Cubic.easeOut',
@@ -79,8 +84,8 @@ export class SavePoint extends Phaser.GameObjects.Container {
       const mote = this.scene.add
         .sprite(this.x + Phaser.Math.Between(-40, 40), this.y - 10, 'scent_wisp')
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(30)
-        .setScale(0.7);
+        .setDepth(30);
+      sizeTo(mote, { height: 34 });
       mote.play('scent_wisp');
       this.scene.tweens.add({
         targets: mote,

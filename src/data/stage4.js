@@ -1,3 +1,5 @@
+import { PROP } from '../systems/AssetManifest.js';
+
 /**
  * 스테이지 4 — 들판 (해방)
  *
@@ -52,7 +54,7 @@ export default {
     x: 1900,
     y: GY - 20,
     prop: 'prop_ball',
-    propScale: 1,
+    propHeight: 46,
     motion: 'dog_ball_nudge',
     motionDuration: 2600,
     sfx: 'sfx_ball',
@@ -61,13 +63,19 @@ export default {
   props: [
     { x: 420, y: GY, texture: 'grass_sway', scale: 1.1, depth: 7 },
     { x: 700, y: 330, texture: 'butterfly', scale: 1.1, depth: 9, drift: 180, driftDuration: 5200, bob: 26 },
-    { x: 1500, y: GY - 20, texture: 'prop_tree', scale: 0.9, depth: 6 },
+    { x: 1200, y: GY - 20, atlas: 'props_field', frame: PROP.A, height: 90, depth: 7 },
+    { x: 1500, y: GY - 20, atlas: 'props_field', frame: PROP.TREE, height: 280, depth: 6 },
+    { x: 1660, y: GY - 20, atlas: 'props_field', frame: PROP.C, height: 70, depth: 7 },
     { x: 1740, y: 300, texture: 'butterfly', scale: 0.9, depth: 9, drift: -160, driftDuration: 6200, bob: 20 },
     { x: 2400, y: GY, texture: 'grass_sway', scale: 1.2, depth: 7 },
+    { x: 2200, y: GY, atlas: 'props_field', frame: PROP.B, height: 110, depth: 7 },
+    { x: 2620, y: GY, atlas: 'props_field', frame: PROP.E, height: 90, depth: 7 },
+    { x: 3000, y: GY - 40, atlas: 'props_field', frame: PROP.G, height: 130, depth: 7 },
     { x: 3060, y: 290, texture: 'butterfly', scale: 1, depth: 9, drift: 200, driftDuration: 5800, bob: 24 },
     { x: 3300, y: GY - 40, texture: 'grass_sway', scale: 1.1, depth: 7 },
+    { x: 3700, y: GY - 70, atlas: 'props_field', frame: PROP.TREE, height: 260, depth: 6 },
     // 마지막 언덕 너머로 보이는 집 — 프롤로그와 같은 곳
-    { x: 4080, y: GY - 70, texture: 'prop_house', scale: 0.95, depth: 5 },
+    { x: 4080, y: GY - 70, atlas: 'props_field', frame: PROP.LANDMARK, height: 330, depth: 5 },
   ],
 
   /** 프롤로그 회상 — 지나가면 반투명 실루엣이 잠깐 나타난다 */

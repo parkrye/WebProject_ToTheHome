@@ -1,3 +1,5 @@
+import { PROP } from '../systems/AssetManifest.js';
+
 /**
  * 스테이지 3 — 산 (최고 난이도)
  *
@@ -94,20 +96,29 @@ export default {
     x: 3260,
     y: 520,
     prop: 'prop_valley_pond',
-    propScale: 0.9,
+    propHeight: 120,
     motion: 'dog_splash',
     motionDuration: 2600,
     sfx: 'sfx_splash',
   },
 
   props: [
-    { x: 300, y: 700, texture: 'prop_tree', scale: 0.9, depth: 6 },
-    { x: 900, y: 640, texture: 'prop_tree', scale: 0.7, depth: 6, flip: true },
+    { x: 300, y: 700, atlas: 'props_mountain', frame: PROP.TREE, height: 280, depth: 6 },
+    { x: 480, y: 700, atlas: 'props_mountain', frame: PROP.B, height: 70, depth: 7 },
+    { x: 900, y: 640, atlas: 'props_mountain', frame: PROP.TREE, height: 220, depth: 6, flip: true },
+    { x: 1260, y: 580, atlas: 'props_mountain', frame: PROP.A, height: 80, depth: 7 },
     { x: 1700, y: 520, texture: 'owl_watch', scale: 0.9, depth: 7, originY: 1 },
-    { x: 2100, y: 520, texture: 'prop_tree', scale: 0.8, depth: 6 },
-    { x: 3900, y: 500, texture: 'prop_tree', scale: 0.75, depth: 6, flip: true },
+    { x: 2100, y: 520, atlas: 'props_mountain', frame: PROP.TREE, height: 250, depth: 6 },
+    { x: 2260, y: 520, atlas: 'props_mountain', frame: PROP.C, height: 60, depth: 7 },
+    { x: 3040, y: 520, atlas: 'props_mountain', frame: PROP.H, height: 90, depth: 7 },
+    { x: 3520, y: 520, atlas: 'props_mountain', frame: PROP.F, height: 120, depth: 7 },
+    { x: 3900, y: 500, atlas: 'props_mountain', frame: PROP.TREE, height: 230, depth: 6, flip: true },
+    { x: 4880, y: 460, atlas: 'props_mountain', frame: PROP.G, height: 90, depth: 7 },
+    { x: 5700, y: 420, atlas: 'props_mountain', frame: PROP.J, height: 80, depth: 7 },
     { x: 4900, y: 300, texture: 'owl_watch', scale: 0.7, depth: 7, originY: 1, alpha: 0.9 },
-    { x: 6400, y: 380, texture: 'prop_tree', scale: 0.85, depth: 6 },
+    { x: 6400, y: 380, atlas: 'props_mountain', frame: PROP.TREE, height: 260, depth: 6 },
+    // 능선의 부엉이 — 여기까지 온 것을 지켜본다
+    { x: 6720, y: 380, atlas: 'props_mountain', frame: PROP.LANDMARK, height: 240, depth: 6 },
     { x: 6900, y: 380, texture: 'grass_sway', scale: 1.2, depth: 7 },
   ],
 

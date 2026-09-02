@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
  * 화면 위 UI — 터치 컨트롤, 일시정지, 세로 화면 회전 안내.
@@ -30,22 +31,21 @@ export default class HudScene extends Phaser.Scene {
     this.updateRotateNotice();
   }
 
-  makeButton(x, y, texture, scale, name) {
-    const button = this.add
-      .image(x, y, texture)
-      .setScrollFactor(0)
-      .setDepth(100)
-      .setScale(scale)
-      .setAlpha(0.55)
-      .setInteractive({ useHandCursor: true });
+  makeButton(x, y, texture, size, name) {
+    const button = this.add.image(x, y, texture).setScrollFactor(0).setDepth(100).setAlpha(0.55);
+    sizeTo(button, { height: size });
+    button.setInteractive({ useHandCursor: true });
+
+    const baseW = button.displayWidth;
+    const baseH = button.displayHeight;
 
     const press = () => {
       this.inputSystem.setTouch(name, true);
-      button.setAlpha(0.9).setScale(scale * 0.92);
+      button.setAlpha(0.9).setDisplaySize(baseW * 0.92, baseH * 0.92);
     };
     const release = () => {
       this.inputSystem.setTouch(name, false);
-      button.setAlpha(0.55).setScale(scale);
+      button.setAlpha(0.55).setDisplaySize(baseW, baseH);
     };
 
     button.on('pointerdown', press);
@@ -58,13 +58,13 @@ export default class HudScene extends Phaser.Scene {
   }
 
   buildTouchControls() {
-    const bottom = GAME_HEIGHT - 78;
-    this.makeButton(96, bottom, 'ui_btn_left', 0.62, 'left');
-    this.makeButton(208, bottom, 'ui_btn_right', 0.62, 'right');
-    this.makeButton(152, bottom - 96, 'ui_btn_down', 0.5, 'down');
+    const bottom = GAME_HEIGHT - 68;
+    this.makeButton(84, bottom, 'ui_btn_left', UI_SIZE.touchButton, 'left');
+    this.makeButton(186, bottom, 'ui_btn_right', UI_SIZE.touchButton, 'right');
+    this.makeButton(135, bottom - 86, 'ui_btn_down', UI_SIZE.touchButton * 0.8, 'down');
 
-    this.makeButton(GAME_WIDTH - 100, bottom, 'ui_btn_jump', 0.62, 'jump');
-    this.makeButton(GAME_WIDTH - 216, bottom - 44, 'ui_btn_interact', 0.52, 'interact');
+    this.makeButton(GAME_WIDTH - 88, bottom, 'ui_btn_jump', UI_SIZE.jumpButton, 'jump');
+    this.makeButton(GAME_WIDTH - 194, bottom - 46, 'ui_btn_interact', UI_SIZE.touchButton * 0.85, 'interact');
   }
 
   showTouch(show) {
@@ -75,29 +75,25 @@ export default class HudScene extends Phaser.Scene {
 
   buildPauseButton() {
     this.pauseButton = this.add
-      .image(GAME_WIDTH - 48, 48, 'ui_pause_icon')
+      .image(GAME_WIDTH - 42, 42, 'ui_pause_icon')
       .setScrollFactor(0)
       .setDepth(100)
-      .setScale(0.5)
-      .setAlpha(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.togglePause());
+      .setAlpha(0.5);
+    sizeTo(this.pauseButton, { height: UI_SIZE.pauseIcon });
+    this.pauseButton.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.togglePause());
 
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
 
     this.pausePanel = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(110).setVisible(false);
     const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0d0b12, 0.72);
-    const resume = this.add
-      .image(-110, 0, 'ui_icon_paw')
-      .setScale(0.6)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.togglePause());
-    const home = this.add
-      .image(110, 0, 'ui_icon_house')
-      .setScale(0.6)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.quitToTitle());
-    this.pausePanel.add([shade, resume, home]);
+    const panel = this.textures.exists('ui_pause_panel')
+      ? sizeTo(this.add.image(0, 0, 'ui_pause_panel'), { height: UI_SIZE.pausePanel })
+      : null;
+    const resume = sizeTo(this.add.image(-96, 6, 'ui_icon_paw'), { height: UI_SIZE.menuIcon * 0.72 });
+    resume.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.togglePause());
+    const home = sizeTo(this.add.image(96, 6, 'ui_icon_house'), { height: UI_SIZE.menuIcon * 0.72 });
+    home.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.quitToTitle());
+    this.pausePanel.add([shade, panel, resume, home].filter(Boolean));
   }
 
   togglePause() {
@@ -131,7 +127,7 @@ export default class HudScene extends Phaser.Scene {
   buildRotateNotice() {
     this.rotateNotice = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(120).setVisible(false);
     const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0d0b12, 0.92);
-    const icon = this.add.image(0, 0, 'ui_rotate_device').setScale(0.9);
+    const icon = sizeTo(this.add.image(0, 0, 'ui_rotate_device'), { height: UI_SIZE.rotateNotice });
     this.rotateNotice.add([shade, icon]);
     this.tweens.add({ targets: icon, angle: -12, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }

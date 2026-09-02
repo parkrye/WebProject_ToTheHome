@@ -6,10 +6,17 @@
  */
 
 import Phaser from 'phaser';
+import { TILE } from '../systems/AssetManifest.js';
+
+/** 타일 한 칸이 화면에서 차지할 크기 (아틀라스 프레임은 128px) */
+const TILE_SCALE = 0.5;
 
 /** 정적 지면. group 에 넣어 한 번에 충돌시킨다 */
 export function createGround(scene, group, def, tileKey) {
-  const body = scene.add.tileSprite(def.x + def.w / 2, def.y + def.h / 2, def.w, def.h, def.tile || tileKey);
+  const key = def.tile || tileKey;
+  const frame = def.frame ?? TILE.TOP;
+  const body = scene.add.tileSprite(def.x + def.w / 2, def.y + def.h / 2, def.w, def.h, key, frame);
+  body.setTileScale(TILE_SCALE, TILE_SCALE);
   body.setDepth(def.depth ?? 10);
   scene.physics.add.existing(body, true);
   body.body.setSize(def.w, def.h);
@@ -20,7 +27,7 @@ export function createGround(scene, group, def, tileKey) {
 
 /** 위에서만 밟히는 얇은 발판 */
 export function createLedge(scene, group, def, tileKey) {
-  const ledge = createGround(scene, group, { ...def, h: def.h ?? 18 }, tileKey);
+  const ledge = createGround(scene, group, { frame: TILE.LEDGE, ...def, h: def.h ?? 18 }, tileKey);
   ledge.body.checkCollision.down = false;
   ledge.body.checkCollision.left = false;
   ledge.body.checkCollision.right = false;
@@ -30,7 +37,8 @@ export function createLedge(scene, group, def, tileKey) {
 /** 왕복하는 발판 */
 export class MovingPlatform extends Phaser.GameObjects.TileSprite {
   constructor(scene, def, tileKey) {
-    super(scene, def.x, def.y, def.w, def.h ?? 24, def.tile || tileKey);
+    super(scene, def.x, def.y, def.w, def.h ?? 24, def.tile || tileKey, def.frame ?? TILE.LEDGE);
+    this.setTileScale(TILE_SCALE, TILE_SCALE);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setAllowGravity(false);
@@ -63,7 +71,8 @@ export class MovingPlatform extends Phaser.GameObjects.TileSprite {
 /** 밟으면 흔들리다 무너지고, 잠시 뒤 되돌아오는 발판 */
 export class CrumblePlatform extends Phaser.GameObjects.TileSprite {
   constructor(scene, def, tileKey) {
-    super(scene, def.x, def.y, def.w, def.h ?? 24, def.tile || tileKey);
+    super(scene, def.x, def.y, def.w, def.h ?? 24, def.tile || tileKey, def.frame ?? TILE.TOP_A);
+    this.setTileScale(TILE_SCALE, TILE_SCALE);
     scene.add.existing(this);
     scene.physics.add.existing(this, true);
     this.setDepth(def.depth ?? 11);

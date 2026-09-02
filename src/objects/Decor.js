@@ -6,6 +6,7 @@
  */
 
 import Phaser from 'phaser';
+import { sizeTo } from '../systems/Layout.js';
 
 export class ScentTrail {
   /**
@@ -19,8 +20,8 @@ export class ScentTrail {
         .sprite(p.x, p.y, 'scent_wisp')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(14)
-        .setAlpha(0.22)
-        .setScale(p.scale ?? 0.9);
+        .setAlpha(0.22);
+      sizeTo(mote, { height: (p.scale ?? 1) * 42 });
       mote.play({ key: 'scent_wisp', startFrame: i % 8 });
       scene.tweens.add({
         targets: mote,
@@ -63,7 +64,9 @@ export class SignBoard extends Phaser.GameObjects.Image {
     scene.add.existing(this);
     this.setOrigin(0.5, 1);
     this.setDepth(def.depth ?? 12);
-    this.setScale(def.scale ?? 1);
+    // 실제 에셋은 원본 크기가 제각각이라 높이를 픽셀로 못박는다
+    sizeTo(this, { height: def.height ?? 170 });
+    if (def.scale) this.setScale(def.scale);
     this.baseY = def.y;
 
     // 가까이 가면 살짝 떠오르며 또렷해진다
@@ -84,17 +87,29 @@ export class SignBoard extends Phaser.GameObjects.Image {
   }
 }
 
-/** 단순 배치용 소품 (충돌 없음) */
+/**
+ * 단순 배치용 소품 (충돌 없음).
+ *
+ * 아틀라스에서 꺼낼 때는 { atlas, frame } 을, 낱장을 쓸 때는 { texture } 를 준다.
+ * height 를 주면 그 높이에 맞춰 크기를 조절한다 — 아틀라스 소품은 원본 크기가
+ * 제각각이므로 스케일보다 높이로 지정하는 편이 안정적이다.
+ */
 export function placeProp(scene, def) {
-  const key = def.texture;
-  if (!scene.textures.exists(key)) return null;
+  const key = def.atlas || def.texture;
+  if (!key || !scene.textures.exists(key)) return null;
 
-  const prop = scene.anims.exists(key)
-    ? scene.add.sprite(def.x, def.y, key).play(key)
-    : scene.add.image(def.x, def.y, key);
+  let prop;
+  if (def.atlas) {
+    prop = scene.add.image(def.x, def.y, def.atlas, def.frame ?? 0);
+  } else if (scene.anims.exists(key)) {
+    prop = scene.add.sprite(def.x, def.y, key).play(key);
+  } else {
+    prop = scene.add.image(def.x, def.y, key);
+  }
 
   prop.setOrigin(def.originX ?? 0.5, def.originY ?? 1);
   prop.setDepth(def.depth ?? 8);
+  if (def.height) prop.setScale(def.height / prop.height);
   if (def.scale) prop.setScale(def.scale);
   if (def.alpha != null) prop.setAlpha(def.alpha);
   if (def.flip) prop.setFlipX(true);

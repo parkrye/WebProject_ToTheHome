@@ -1,3 +1,5 @@
+import { PROP } from '../systems/AssetManifest.js';
+
 /**
  * 스테이지 2 — 해안가
  *
@@ -71,19 +73,27 @@ export default {
     x: 2320,
     y: GY,
     prop: 'prop_food_stall',
-    propScale: 0.85,
+    propHeight: 190,
     motion: 'dog_sleep',
     motionDuration: 2800,
     sfx: null,
   },
 
   props: [
-    { x: 420, y: GY, texture: 'prop_lamp', depth: 7, alpha: 0.8 },
+    { x: 420, y: GY, atlas: 'props_coast', frame: PROP.B, height: 130, depth: 7 },
+    { x: 640, y: GY, atlas: 'props_coast', frame: PROP.J, height: 110, depth: 7 },
     { x: 1240, y: 190, texture: 'seagull_fly', scale: 0.9, depth: 7, drift: 320, driftDuration: 8000 },
     { x: 2860, y: 160, texture: 'seagull_fly', scale: 0.7, depth: 7, drift: -280, driftDuration: 10000 },
-    { x: 3180, y: GY, texture: 'prop_lamp', depth: 7 },
+    { x: 2000, y: GY, atlas: 'props_coast', frame: PROP.A, height: 90, depth: 7 },
+    { x: 2760, y: GY, atlas: 'props_coast', frame: PROP.A, height: 90, depth: 7 },
+    { x: 3180, y: GY, atlas: 'props_coast', frame: PROP.H, height: 200, depth: 7 },
+    { x: 3620, y: GY, atlas: 'props_coast', frame: PROP.I, height: 150, depth: 7 },
+    { x: 4200, y: GY, atlas: 'props_coast', frame: PROP.E, height: 100, depth: 7 },
+    { x: 5100, y: GY + 30, atlas: 'props_coast', frame: PROP.C, height: 90, depth: 7 },
     { x: 4980, y: 200, texture: 'seagull_fly', scale: 0.8, depth: 7, drift: 240, driftDuration: 7000 },
-    { x: 6120, y: GY + 30, texture: 'prop_tree', scale: 0.7, depth: 6, alpha: 0.9 },
+    { x: 6120, y: GY + 30, atlas: 'props_coast', frame: PROP.TREE, height: 230, depth: 6 },
+    // 절벽 위 등대 — 다음 목적지인 산을 향하는 이정표
+    { x: 5900, y: GY + 30, atlas: 'props_coast', frame: PROP.LANDMARK, height: 300, depth: 5, alpha: 0.95 },
   ],
 
   /** 연출 이벤트 — 존에 들어가면 한 번만 발생 */

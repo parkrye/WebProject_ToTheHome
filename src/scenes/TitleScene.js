@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PALETTE } from '../config.js';
+import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
  * 타이틀. 문자를 쓰지 않으므로 메뉴는 픽토그램 세 개다.
@@ -19,10 +20,9 @@ export default class TitleScene extends Phaser.Scene {
 
     this.buildBackdrop();
 
-    this.add
-      .image(GAME_WIDTH / 2, 178, 'ui_title_logo')
-      .setScale(0.78)
-      .setDepth(10);
+    sizeTo(this.add.image(GAME_WIDTH / 2, 168, 'ui_title_logo').setDepth(10), {
+      height: UI_SIZE.titleLogo,
+    });
 
     // 메뉴 구성
     this.items = [
@@ -37,11 +37,9 @@ export default class TitleScene extends Phaser.Scene {
     const startX = GAME_WIDTH / 2 - ((this.items.length - 1) * spacing) / 2;
 
     this.items.forEach((item, i) => {
-      const icon = this.add
-        .image(startX + i * spacing, 386, item.key)
-        .setScale(0.72)
-        .setDepth(10)
-        .setInteractive({ useHandCursor: true });
+      const icon = this.add.image(startX + i * spacing, 386, item.key).setDepth(10);
+      sizeTo(icon, { height: UI_SIZE.menuIcon });
+      icon.setInteractive({ useHandCursor: true });
 
       icon.on('pointerover', () => this.select(i));
       icon.on('pointerdown', () => {
@@ -64,7 +62,8 @@ export default class TitleScene extends Phaser.Scene {
     this.select(0);
 
     // 선택 표시 — 커서 대신 강아지가 그 앞에 앉는다
-    this.marker = this.add.sprite(startX, 452, 'dog_idle').setDepth(11).setScale(0.62);
+    this.marker = this.add.sprite(startX, 470, 'dog_idle').setDepth(11);
+    sizeTo(this.marker, { height: UI_SIZE.markerDog });
     this.marker.play('dog_idle');
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -87,7 +86,7 @@ export default class TitleScene extends Phaser.Scene {
       layer.setAlpha(0.95);
     });
 
-    this.add.image(0, 0, 'ui_vignette').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(9).setAlpha(0.7);
+    this.add.image(0, 0, 'ui_vignette').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(9).setAlpha(0.3);
 
     // 떠다니는 냄새 입자
     for (let i = 0; i < 7; i++) {
@@ -116,7 +115,7 @@ export default class TitleScene extends Phaser.Scene {
 
     this.items.forEach((item, i) => {
       const on = i === this.index;
-      item.icon.setScale(on ? 0.86 : 0.72);
+      sizeTo(item.icon, { height: on ? UI_SIZE.menuIcon * 1.16 : UI_SIZE.menuIcon });
       item.icon.setAlpha(on ? 1 : 0.72);
     });
 

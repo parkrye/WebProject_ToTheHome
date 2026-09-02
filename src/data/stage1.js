@@ -1,3 +1,5 @@
+import { PROP } from '../systems/AssetManifest.js';
+
 /**
  * 스테이지 1 — 도시 (튜토리얼)
  *
@@ -69,9 +71,9 @@ export default {
   ],
 
   signs: [
-    { x: 320, y: GY, texture: 'prop_sign_move', scale: 0.9 },
-    { x: 700, y: GY, texture: 'prop_sign_jump', scale: 0.9 },
-    { x: 1380, y: GY, texture: 'prop_sign_run', scale: 0.9 },
+    { x: 320, y: GY, texture: 'prop_sign_move', height: 165 },
+    { x: 700, y: GY, texture: 'prop_sign_jump', height: 165 },
+    { x: 1380, y: GY, texture: 'prop_sign_run', height: 165 },
   ],
 
   savePoint: {
@@ -79,20 +81,27 @@ export default {
     x: 1980,
     y: GY,
     prop: 'prop_sandbox',
-    propScale: 0.9,
+    propHeight: 110,
     motion: 'dog_dig',
     motionDuration: 2400,
     sfx: 'sfx_dig',
   },
 
   props: [
-    { x: 60, y: GY, texture: 'prop_niche_wall', scale: 0.8, originY: 1, depth: 6, alpha: 0.9 },
-    { x: 520, y: GY, texture: 'prop_lamp', depth: 7 },
-    { x: 1180, y: GY, texture: 'prop_lamp', depth: 7 },
-    { x: 2260, y: GY, texture: 'prop_lamp', depth: 7 },
-    { x: 3020, y: GY, texture: 'prop_tree', scale: 0.8, depth: 6 },
-    { x: 4460, y: GY, texture: 'prop_lamp', depth: 7 },
-    { x: 5320, y: GY, texture: 'prop_lamp', depth: 7 },
+    // 납골당 유골함 벽 — 출발 지점의 상징물
+    { x: 60, y: GY, atlas: 'props_city', frame: PROP.LANDMARK, height: 300, depth: 6, alpha: 0.95 },
+    { x: 520, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
+    { x: 900, y: GY, atlas: 'props_city', frame: PROP.E, height: 90, depth: 7 },
+    { x: 1180, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
+    { x: 1330, y: GY, atlas: 'props_city', frame: PROP.F, height: 95, depth: 7 },
+    { x: 2260, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
+    { x: 2350, y: GY, atlas: 'props_city', frame: PROP.D, height: 80, depth: 7 },
+    { x: 3020, y: GY, atlas: 'props_city', frame: PROP.TREE, height: 250, depth: 6 },
+    { x: 3120, y: GY, atlas: 'props_city', frame: PROP.J, height: 110, depth: 7 },
+    { x: 3980, y: GY, atlas: 'props_city', frame: PROP.G, height: 100, depth: 7 },
+    { x: 4460, y: GY, atlas: 'props_city', frame: PROP.B, height: 230, depth: 7 },
+    { x: 5060, y: GY, atlas: 'props_city', frame: PROP.H, height: 190, depth: 6 },
+    { x: 5320, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
     { x: 4980, y: 210, texture: 'seagull_fly', scale: 0.8, depth: 7, drift: 260, driftDuration: 9000 },
   ],
 

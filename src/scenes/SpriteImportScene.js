@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PALETTE } from '../config.js';
 import { injectUserSprites } from '../systems/AssetLoader.js';
 import { SPRITE_SHEETS } from '../systems/AssetManifest.js';
+import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
  * "직접 스프라이트 추가해서 시작".
@@ -21,7 +22,7 @@ export default class SpriteImportScene extends Phaser.Scene {
     input.attach(this);
 
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x1a1620).setOrigin(0);
-    this.add.image(GAME_WIDTH / 2, 92, 'ui_icon_bone').setScale(0.6).setAlpha(0.9);
+    sizeTo(this.add.image(GAME_WIDTH / 2, 92, 'ui_icon_bone').setAlpha(0.9), { height: UI_SIZE.menuIcon * 0.8 });
 
     this.drawFrameGuide(GAME_WIDTH / 2, 200);
 
@@ -32,17 +33,15 @@ export default class SpriteImportScene extends Phaser.Scene {
     this.acceptedIcons = [];
 
     // 파일 선택 버튼 (뼈다귀) / 시작 버튼 (발자국)
-    this.pickButton = this.add
-      .image(GAME_WIDTH / 2 - 110, 452, 'ui_icon_bone')
-      .setScale(0.6)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.openPicker());
+    this.pickButton = sizeTo(this.add.image(GAME_WIDTH / 2 - 110, 452, 'ui_icon_bone'), {
+      height: UI_SIZE.menuIcon * 0.8,
+    });
+    this.pickButton.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.openPicker());
 
-    this.startButton = this.add
-      .image(GAME_WIDTH / 2 + 110, 452, 'ui_icon_paw')
-      .setScale(0.6)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.begin());
+    this.startButton = sizeTo(this.add.image(GAME_WIDTH / 2 + 110, 452, 'ui_icon_paw'), {
+      height: UI_SIZE.menuIcon * 0.8,
+    });
+    this.startButton.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.begin());
 
     this.tweens.add({
       targets: [this.pickButton, this.startButton],
@@ -113,10 +112,9 @@ export default class SpriteImportScene extends Phaser.Scene {
     // 적용된 개수만큼 발바닥 도장을 찍는다 (문자 없이 결과 표시)
     this.acceptedIcons.forEach((icon) => icon.destroy());
     this.acceptedIcons = appliedKeys.map((key, i) =>
-      this.add
-        .image(120 + (i % 12) * 60, 506 + Math.floor(i / 12) * 26, 'ui_icon_paw')
-        .setScale(0.2)
-        .setAlpha(0.9)
+      sizeTo(this.add.image(120 + (i % 12) * 60, 506 + Math.floor(i / 12) * 26, 'ui_icon_paw').setAlpha(0.9), {
+        height: 26,
+      })
     );
 
     if (appliedKeys.length) {

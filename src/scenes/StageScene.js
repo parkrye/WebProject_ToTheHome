@@ -85,7 +85,7 @@ export default class StageScene extends Phaser.Scene {
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setScrollFactor(0)
       .setDepth(40)
-      .setAlpha(0.55);
+      .setAlpha(0.22);
   }
 
   buildTerrain() {

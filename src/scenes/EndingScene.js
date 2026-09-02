@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PALETTE } from '../config.js';
+import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
  * 엔딩 — 대사 없음.
@@ -24,7 +25,7 @@ export default class EndingScene extends Phaser.Scene {
       .setOrigin(0)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setDepth(40)
-      .setAlpha(0.85);
+      .setAlpha(0.45);
 
     this.cameras.main.fadeIn(2000, 0, 0, 0);
     this.audio.playAmbience(this, 'amb_room_night');
@@ -104,11 +105,13 @@ export default class EndingScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x12131a);
     await this.fadeIn(1200);
 
-    this.add.image(GAME_WIDTH / 2, 200, 'ui_title_logo').setScale(0.62).setAlpha(0.95);
-    const marks = this.add.image(GAME_WIDTH / 2, 356, 'ui_credits_marks').setScale(0.8).setAlpha(0);
+    sizeTo(this.add.image(GAME_WIDTH / 2, 190, 'ui_title_logo').setAlpha(0.95), { height: UI_SIZE.titleLogo * 0.9 });
+    const marks = sizeTo(this.add.image(GAME_WIDTH / 2, 372, 'ui_credits_marks').setAlpha(0), {
+      height: UI_SIZE.creditsMarks,
+    });
     this.tweens.add({ targets: marks, alpha: 0.9, duration: 1600 });
 
-    const paw = this.add.image(GAME_WIDTH / 2, 452, 'ui_icon_paw').setScale(0.5).setAlpha(0);
+    const paw = sizeTo(this.add.image(GAME_WIDTH / 2, 456, 'ui_icon_paw').setAlpha(0), { height: 72 });
     this.tweens.add({ targets: paw, alpha: 1, duration: 900, delay: 2400 });
     this.tweens.add({ targets: paw, y: 446, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 2400 });
 
