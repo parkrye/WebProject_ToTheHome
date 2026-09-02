@@ -395,22 +395,131 @@ export function buildBackground(scene, def) {
 /* 지형 타일 (32×32, tileSprite 로 반복)                                */
 /* ------------------------------------------------------------------ */
 
-export function buildTileset(scene, def) {
+/** 지형 타일 한 칸 */
+function drawTileCell(ctx, theme, index, size, seed) {
+  const ground = hex(theme.ground);
+  const isLedge = index === 6;
+  const isWall = index === 7;
+  const isFill = index === 4 || index === 5;
+
+  if (isLedge) {
+    const h = Math.round(size / 3);
+    ctx.fillStyle = hex(theme.near);
+    ctx.fillRect(0, 0, size, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(0, 0, size, Math.max(2, h * 0.18));
+    return;
+  }
+
+  ctx.fillStyle = isWall ? hex(theme.mid) : ground;
+  ctx.fillRect(0, 0, size, size);
+
+  if (!isFill && !isWall) {
+    // 윗면 — 밝은 띠와 결이 있는 표면
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.fillRect(0, 0, size, Math.max(3, size * 0.12));
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillRect(0, size - Math.max(3, size * 0.1), size, size);
+  }
+
+  for (let i = 0; i < 14; i++) {
+    const r = rnd(seed + i * 7.3);
+    ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.07)';
+    ctx.fillRect(r * (size - 6), size * 0.18 + rnd(seed + i * 3.1) * size * 0.7, 4, 4);
+  }
+}
+
+/** 소품 한 칸 — 칸 바닥에 세운다 */
+function drawPropCell(ctx, theme, index, size, seed) {
+  const base = size - 6;
+  const body = hex(theme.mid);
+  const accent = hex(theme.near);
+
+  ctx.save();
+  ctx.translate(size / 2, 0);
+
+  if (index === 10) {
+    // 나무
+    ctx.fillStyle = '#7a5c3f';
+    ctx.fillRect(-size * 0.045, base - size * 0.42, size * 0.09, size * 0.42);
+    ellipse(ctx, 0, base - size * 0.55, size * 0.3, size * 0.24, accent);
+    ellipse(ctx, -size * 0.16, base - size * 0.44, size * 0.17, size * 0.13, body);
+    ctx.restore();
+    return;
+  }
+
+  if (index === 11) {
+    // 상징물 — 집 모양으로 대신한다
+    const w = size * 0.46;
+    const h = size * 0.36;
+    ctx.fillStyle = '#efe3cd';
+    ctx.fillRect(-w / 2, base - h, w, h);
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 - 8, base - h);
+    ctx.lineTo(0, base - h - size * 0.2);
+    ctx.lineTo(w / 2 + 8, base - h);
+    ctx.closePath();
+    ctx.fillStyle = '#b4574c';
+    ctx.fill();
+    ctx.fillStyle = '#ffe6ac';
+    ctx.fillRect(-size * 0.06, base - h * 0.6, size * 0.12, h * 0.5);
+    ctx.restore();
+    return;
+  }
+
+  // 나머지는 스테이지 색을 쓴 단순 실루엣 — 높이와 폭만 칸마다 다르게
+  const h = size * (0.24 + rnd(seed + index) * 0.4);
+  const w = size * (0.16 + rnd(seed + index * 2.7) * 0.34);
+  const round = index % 3 === 0;
+
+  ctx.fillStyle = index % 2 ? body : accent;
+  if (round) {
+    ellipse(ctx, 0, base - h / 2, w / 2, h / 2, ctx.fillStyle);
+  } else {
+    ctx.beginPath();
+    ctx.roundRect(-w / 2, base - h, w, h, Math.min(10, w * 0.2));
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.fillRect(-w / 2, base - h, w, Math.max(2, h * 0.12));
+  ctx.restore();
+}
+
+/**
+ * 균등 격자 아틀라스를 만든다.
+ * 실제 시트가 들어오면 이 함수는 호출되지 않는다.
+ */
+export function buildAtlas(scene, def) {
   const theme = STAGE_THEME[def.theme] || STAGE_THEME.field;
-  createImage(scene, def.key, 32, 32, (ctx) => {
-    ctx.fillStyle = hex(theme.ground);
-    ctx.fillRect(0, 0, 32, 32);
-    // 윗면 하이라이트
-    ctx.fillStyle = 'rgba(255,255,255,0.14)';
-    ctx.fillRect(0, 0, 32, 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.16)';
-    ctx.fillRect(0, 26, 32, 6);
-    // 질감
-    for (let i = 0; i < 10; i++) {
-      ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.08)';
-      ctx.fillRect(rnd(i + def.key.length) * 30, 6 + rnd(i * 3) * 20, 3, 3);
+  const key = def.key;
+  if (scene.textures.exists(key)) return;
+
+  const total = def.cols * def.rows;
+  const tex = scene.textures.createCanvas(key, def.w * def.cols, def.h * def.rows);
+  const ctx = tex.getContext();
+  const seed = key.length * 3.7;
+
+  for (let i = 0; i < total; i++) {
+    const cx = (i % def.cols) * def.w;
+    const cy = Math.floor(i / def.cols) * def.h;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.rect(0, 0, def.w, def.h);
+    ctx.clip();
+    if (def.kind === 'tile') {
+      drawTileCell(ctx, theme, i, def.w, seed + i);
+    } else {
+      drawPropCell(ctx, theme, i, def.w, seed + i);
     }
-  });
+    ctx.restore();
+  }
+
+  tex.refresh();
+  // 프레임 번호로 꺼내 쓸 수 있도록 격자를 등록한다
+  for (let i = 0; i < total; i++) {
+    tex.add(i, 0, (i % def.cols) * def.w, Math.floor(i / def.cols) * def.h, def.w, def.h);
+  }
 }
 
 /* ------------------------------------------------------------------ */

@@ -69,6 +69,7 @@ export const BACKGROUNDS = [
   { key: 'bg_coast_sky_sunset', file: 'bg_coast_sky_sunset.png', kind: 'sky', theme: 'coast_sunset' },
   { key: 'bg_coast_far', file: 'bg_coast_far.png', kind: 'far', theme: 'coast' },
   { key: 'bg_coast_mid', file: 'bg_coast_mid.png', kind: 'mid', theme: 'coast' },
+  { key: 'bg_coast_near', file: 'bg_coast_near.png', kind: 'near', theme: 'coast' },
 
   { key: 'bg_mountain_sky_night', file: 'bg_mountain_sky_night.png', kind: 'sky', theme: 'mountain' },
   { key: 'bg_mountain_sky_dawn', file: 'bg_mountain_sky_dawn.png', kind: 'sky', theme: 'mountain_dawn' },
@@ -81,13 +82,50 @@ export const BACKGROUNDS = [
   { key: 'bg_home_exterior', file: 'bg_home_exterior.png', kind: 'interior', theme: 'field' },
 ];
 
-/** 지형 타일 텍스처. 8×8 단색 타일을 tileSprite 로 늘려 쓴다 */
-export const TILESETS = [
-  { key: 'tiles_city', file: 'tiles_city.png', theme: 'city' },
-  { key: 'tiles_coast', file: 'tiles_coast.png', theme: 'coast' },
-  { key: 'tiles_mountain', file: 'tiles_mountain.png', theme: 'mountain' },
-  { key: 'tiles_field', file: 'tiles_field.png', theme: 'field' },
+/** 정적 컷 일러스트 — 없으면 씬이 알아서 건너뛴다 */
+export const CUTSCENES = [
+  { key: 'cut_prologue_night', file: 'assets/cutscene/cut_prologue_night.png' },
+  { key: 'cut_ending_door', file: 'assets/cutscene/cut_ending_door.png' },
 ];
+
+/**
+ * 균등 격자 아틀라스.
+ *
+ * 소품과 지형 타일은 낱장이 아니라 시트 한 장으로 받고, 프레임 번호로 꺼내 쓴다.
+ * 칸 배치와 번호는 .docs/assets-images2.md 와 일치해야 한다.
+ */
+export const ATLASES = [
+  { key: 'props_city', file: PROP_DIR + 'props_city.png', w: 384, h: 384, cols: 4, rows: 3, kind: 'prop', theme: 'city' },
+  { key: 'props_coast', file: PROP_DIR + 'props_coast.png', w: 384, h: 384, cols: 4, rows: 3, kind: 'prop', theme: 'coast' },
+  { key: 'props_mountain', file: PROP_DIR + 'props_mountain.png', w: 384, h: 384, cols: 4, rows: 3, kind: 'prop', theme: 'mountain' },
+  { key: 'props_field', file: PROP_DIR + 'props_field.png', w: 384, h: 384, cols: 4, rows: 3, kind: 'prop', theme: 'field' },
+
+  { key: 'tiles_city', file: 'assets/tiles/tiles_city.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'city' },
+  { key: 'tiles_coast', file: 'assets/tiles/tiles_coast.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'coast' },
+  { key: 'tiles_mountain', file: 'assets/tiles/tiles_mountain.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'mountain' },
+  { key: 'tiles_field', file: 'assets/tiles/tiles_field.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'field' },
+];
+
+/** 소품 아틀라스 칸 번호 — 네 스테이지가 같은 자리에 같은 역할을 둔다 */
+export const PROP = {
+  A: 0, B: 1, C: 2, D: 3,
+  E: 4, F: 5, G: 6, H: 7,
+  I: 8, J: 9,
+  TREE: 10, // 10번은 항상 그 스테이지의 큰 나무
+  LANDMARK: 11, // 11번은 그 스테이지의 상징물 (유골함 벽 / 등대 / 부엉이 가지 / 집)
+};
+
+/** 지형 타일 칸 번호 */
+export const TILE = {
+  TOP: 0,
+  TOP_A: 1,
+  TOP_B: 2,
+  TOP_C: 3,
+  FILL: 4,
+  FILL_B: 5,
+  LEDGE: 6,
+  WALL: 7,
+};
 
 /** 단일 이미지 소품 / UI */
 export const IMAGES = [
@@ -99,12 +137,6 @@ export const IMAGES = [
   { key: 'prop_valley_pond', file: PROP_DIR + 'prop_valley_pond.png', placeholder: 'pond', w: 384, h: 160 },
   { key: 'prop_ball', file: PROP_DIR + 'prop_ball.png', placeholder: 'ball', w: 64, h: 64 },
   { key: 'prop_owner_car', file: PROP_DIR + 'prop_owner_car.png', placeholder: 'ownerCar', w: 256, h: 128 },
-  { key: 'prop_tree', file: PROP_DIR + 'prop_tree.png', placeholder: 'tree', w: 192, h: 256 },
-  { key: 'prop_lamp', file: PROP_DIR + 'prop_lamp.png', placeholder: 'lamp', w: 96, h: 224 },
-  { key: 'prop_house', file: PROP_DIR + 'prop_house.png', placeholder: 'house', w: 384, h: 320 },
-  { key: 'prop_door', file: PROP_DIR + 'prop_door.png', placeholder: 'door', w: 128, h: 224 },
-  { key: 'prop_bed', file: PROP_DIR + 'prop_bed.png', placeholder: 'bed', w: 256, h: 128 },
-  { key: 'prop_niche_wall', file: PROP_DIR + 'prop_niche_wall.png', placeholder: 'nicheWall', w: 320, h: 320 },
 
   { key: 'ui_title_logo', file: UI_DIR + 'ui_title_logo.png', placeholder: 'logo', w: 512, h: 256 },
   { key: 'ui_icon_paw', file: UI_DIR + 'ui_icon_paw.png', placeholder: 'iconPaw', w: 128, h: 128 },

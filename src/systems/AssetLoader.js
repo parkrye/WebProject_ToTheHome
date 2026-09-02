@@ -9,11 +9,11 @@
  * 4) 애니메이션은 실제/플레이스홀더 구분 없이 동일하게 등록된다.
  */
 
-import { SPRITE_SHEETS, BACKGROUNDS, TILESETS, IMAGES, AUDIO, DIRS } from './AssetManifest.js';
+import { SPRITE_SHEETS, BACKGROUNDS, ATLASES, CUTSCENES, IMAGES, AUDIO, DIRS } from './AssetManifest.js';
 import { buildSpriteSheet } from './PlaceholderArt.js';
-import { buildBackground, buildTileset, buildImage } from './PlaceholderScenery.js';
+import { buildBackground, buildAtlas, buildImage } from './PlaceholderScenery.js';
 
-const AUDIO_EXTS = ['ogg', 'mp3'];
+const AUDIO_EXTS = ['ogg', 'mp3', 'wav'];
 
 /** 실제로 존재하는 에셋 경로 집합 (assets/ 기준 상대경로) */
 let available = new Set();
@@ -27,9 +27,7 @@ function bgPath(def) {
   return DIRS.BG_DIR + def.file;
 }
 
-function tilePath(def) {
-  return 'assets/tiles/' + def.file;
-}
+
 
 async function head(path) {
   try {
@@ -60,7 +58,8 @@ export async function discoverAssets() {
   const candidates = [
     ...SPRITE_SHEETS.map(spritePath),
     ...BACKGROUNDS.map(bgPath),
-    ...TILESETS.map(tilePath),
+    ...ATLASES.map((d) => d.file),
+    ...CUTSCENES.map((d) => d.file),
     ...IMAGES.map((d) => d.file),
   ];
   AUDIO.forEach((d) => AUDIO_EXTS.forEach((ext) => candidates.push(`${DIRS.AUDIO_DIR}${d.file}.${ext}`)));
@@ -90,9 +89,12 @@ export function queueRealAssets(scene) {
     if (has(path)) scene.load.image(def.key, path);
   });
 
-  TILESETS.forEach((def) => {
-    const path = tilePath(def);
-    if (has(path)) scene.load.image(def.key, path);
+  ATLASES.forEach((def) => {
+    if (has(def.file)) scene.load.spritesheet(def.key, def.file, { frameWidth: def.w, frameHeight: def.h });
+  });
+
+  CUTSCENES.forEach((def) => {
+    if (has(def.file)) scene.load.image(def.key, def.file);
   });
 
   IMAGES.forEach((def) => {
@@ -113,8 +115,8 @@ export function buildMissingTextures(scene) {
   BACKGROUNDS.forEach((def) => {
     if (!scene.textures.exists(def.key)) buildBackground(scene, def);
   });
-  TILESETS.forEach((def) => {
-    if (!scene.textures.exists(def.key)) buildTileset(scene, def);
+  ATLASES.forEach((def) => {
+    if (!scene.textures.exists(def.key)) buildAtlas(scene, def);
   });
   IMAGES.forEach((def) => {
     if (!scene.textures.exists(def.key)) buildImage(scene, def);
