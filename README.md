@@ -88,7 +88,7 @@ AI 생성 에셋은 크기가 제각각이고 "투명 배경"을 체커보드나
 | 문서 | 내용 |
 |---|---|
 | [.docs/game-design.md](.docs/game-design.md) | 기획서 — 조작 수치, 스테이지 설계, 세이브·연출 규칙 |
-| [.docs/assets-sprites.md](.docs/assets-sprites.md) | 8프레임 스프라이트 28종. 동작마다 한 줄짜리 영어 프롬프트 |
+| [.docs/assets-sprites.md](.docs/assets-sprites.md) | 8프레임 스프라이트 15종. 레퍼런스 그림 + 8줄 프롬프트로 만드는 법 |
 | [.docs/assets-images.md](.docs/assets-images.md) | 배경·타일셋·소품·GUI. 항목마다 한 문단 프롬프트 |
 | [.docs/assets-audio.md](.docs/assets-audio.md) | BGM·앰비언스·SFX. 항목마다 1000자 이내 프롬프트 |
 | [.docs/assets-images2.md](.docs/assets-images2.md) | **2차 프롬프트** — 소품·타일을 균등 격자 아틀라스로 |

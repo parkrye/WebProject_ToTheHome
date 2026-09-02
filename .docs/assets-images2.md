@@ -159,7 +159,71 @@ Soft hand-painted pixel art platformer tileset, warm pastel palette with muted s
 
 ---
 
-## 4. 배경 레이어 — 다시 뽑을 때만
+## 4. 움직이는 것들 — 4열 × 1행 (4칸)
+
+자동차·돌·파도처럼 **모양은 그대로고 위치나 각도만 바뀌는 것들**이다.
+전에는 8프레임 애니메이션으로 잡아 두었지만 그럴 필요가 없어서, 그림 한 장을 두고
+코드가 옮기고 돌리고 늘린다.
+
+- 저장 경로: `assets-src/props/actors_<스테이지>.png`
+- 비율 **4 : 1** (권장 2048×512). 전처리가 1280×320(칸당 320px)으로 맞춘다
+- 소품과 마찬가지로 칸 바닥에 세우고, 배경은 단색 마젠타
+
+| 칸 | 역할 | 도시 | 해안 | 산 | 들판 |
+|---|---|---|---|---|---|
+| 0 | 큰 이동체 | 자동차 | 자동차 | 멧돼지 | 큰 새 |
+| 1 | 떨어지거나 밀려오는 것 | 화분 | 파도 | 낙석 | 민들레 홀씨 |
+| 2 | 피어오르는 것 | 하수구 증기 | 물보라 | 골짜기 안개 | 나비 |
+| 3 | 나는 것 | 참새 | 갈매기 | 부엉이 | 잠자리 |
+
+> 0번 자동차와 1번 파도는 가로로 길다. 칸을 벗어나지만 않으면 되고, 게임에서 높이를
+> 지정해 쓰므로 칸 안에서 작아 보여도 괜찮다.
+
+### 4.1 `actors_city.png`
+
+```
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city sheet arranged in a strict grid of exactly 4 columns and 1 row, four equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right the cells contain: a small boxy compact car seen from the side with a completely blank license plate, a terracotta flower pot tipped as if falling with a little loose soil, a tall plume of white steam rising from a round metal drain grate, and a small gray city sparrow with its wings spread in flight. Muted palette of concrete gray, rust orange and dull teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+### 4.2 `actors_coast.png`
+
+```
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A sunny coastal sheet arranged in a strict grid of exactly 4 columns and 1 row, four equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right the cells contain: a small pale hatchback car seen from the side with a completely blank license plate, a low curling wave of seawater with white foam along its lip seen from the side, a burst of fine white sea spray rising off wet rock, and a white seagull gliding with both wings spread wide. Sun-bleached palette of pale sand, sea green, rust and warm gray. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+### 4.3 `actors_mountain.png`
+
+```
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A night mountain sheet arranged in a strict grid of exactly 4 columns and 1 row, four equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right the cells contain: a bristly brown wild boar standing in side view with its head lowered, a jagged gray rock with a crack across it as if just broken loose, a low bank of pale valley mist drifting close to the ground, and a small round gray owl perched facing the viewer with both eyes wide open. Deep forest palette of dark green, damp brown and cool gray with faint moonlit rim light. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+### 4.4 `actors_field.png`
+
+```
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A sunlit meadow sheet arranged in a strict grid of exactly 4 columns and 1 row, four equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right the cells contain: a small brown songbird with its wings spread in flight, a drifting dandelion seed puff, a pale yellow butterfly with both wings fully open, and a slender blue dragonfly with clear wings. Warm pastel palette of fresh green, honey brown and cream in soft morning light. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+---
+
+## 5. 빛 두 장 — 낱장 GUI
+
+냄새 입자와 세이브 오라도 애니메이션에서 뺐다. 밝기와 크기 변화는 코드가 준다.
+
+### 5.1 `ui_scent_mote.png` (저장: `assets-src/ui/`)
+
+```
+A single soft glowing mote of warm golden light on a completely transparent background, painted as a smooth round radial glow that is bright cream white at the very center and fades to fully transparent at the edges, with no hard outline, no sparkle spikes and no lens flare. Nothing else in the image. No text, no watermark.
+```
+
+### 5.2 `ui_save_glow.png` (저장: `assets-src/ui/`)
+
+```
+A soft warm ring of golden light lying flat on the ground, seen from a low side angle so it reads as a wide flattened ellipse, glowing brightest along the ring itself and fading to fully transparent outward, with a few tiny motes drifting upward from it. Completely transparent background, no hard outline, no ground texture, nothing else in the image. No text, no watermark.
+```
+
+---
+
+## 6. 배경 레이어 — 다시 뽑을 때만
 
 1차 배경은 전처리로 살려 놓았으니 **다시 뽑을 필요는 없다.**
 새로 뽑는다면 아래 조건만 바꾸면 된다.
@@ -181,15 +245,15 @@ The sky area is a completely flat solid magenta #FF00FF fill with no gradient an
 
 ---
 
-## 5. 아직 없는 것
+## 7. 아직 없는 것
 
-`assets-sprites.md` 의 **8프레임 캐릭터 스프라이트 28종**이 비어 있다.
-강아지·주인·자동차·파도 같은 움직이는 것은 전부 코드로 그린 임시 그림이 나온다.
-게임의 인상을 가장 크게 바꾸는 부분이니 다음 차례로 권한다.
+강아지 10종은 들어왔다. 남은 것은 프롤로그·엔딩 연출용 5종이다 —
+`dog_puppy_run`, `owner_child_run`, `owner_walk_silhouette`, `owner_adult_wake`, `owner_dog_hug`.
+만드는 법과 프롬프트는 `.docs/assets-sprites.md` 3절에 있다.
 
 ---
 
-## 6. 넣는 법
+## 8. 넣는 법
 
 ```bash
 # 1. assets-src/ 아래 규정된 경로에 원본을 넣는다
@@ -203,7 +267,7 @@ npm run dev
 
 `public/assets/` 는 **전처리 결과물**이라 직접 손대지 않는다. 원본은 항상 `assets-src/` 에 둔다.
 
-## 7. 체크리스트
+## 9. 체크리스트
 
 1. 배경이 **단색 마젠타**인가 (그라데이션·후광·그림자 없음)
 2. 칸 수가 정확한가 — 소품 12칸(4×3), 타일 8칸(4×2)
