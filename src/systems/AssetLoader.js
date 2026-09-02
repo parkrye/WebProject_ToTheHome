@@ -43,6 +43,17 @@ export async function discoverAssets() {
   if (discovered) return available;
   discovered = true;
 
+  // ?placeholder=1 로 열면 실제 에셋을 전부 무시하고 임시 그림으로만 돌린다.
+  // "에셋이 하나도 없어도 게임이 도는가"를 언제든 확인하기 위한 스위치다.
+  try {
+    if (new URLSearchParams(location.search).has('placeholder')) {
+      console.info('[assets] placeholder 모드 — 실제 에셋을 쓰지 않는다');
+      return available;
+    }
+  } catch {
+    /* location 이 없는 환경이면 그냥 넘어간다 */
+  }
+
   let manifest = { autodetect: true, files: [] };
   try {
     const res = await fetch('assets/manifest.json', { cache: 'no-store' });
