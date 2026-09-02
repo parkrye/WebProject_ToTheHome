@@ -121,7 +121,7 @@ export default class StageScene extends Phaser.Scene {
     (this.def.hazards || []).forEach((h) => {
       const Type = HAZARD_TYPES[h.type];
       if (!Type) return;
-      const hazard = new Type(this, h);
+      const hazard = new Type(this, { actors: this.def.actors, ...h });
       this.hazards.push(hazard);
       if (h.type === 'static') {
         this.staticHazardGroup.add(hazard);

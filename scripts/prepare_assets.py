@@ -278,6 +278,14 @@ OPAQUE_BG = [
     'bg_columbarium_interior', 'bg_home_interior_night', 'bg_home_exterior',
 ]
 
+# 8프레임 스프라이트의 프레임 한 칸 크기.
+# 화면에 96px 안팎으로 그려지므로 160px 이면 충분히 선명하다.
+SPRITE_FRAME = {
+    '_default': 160,
+    'owner_adult_wake': 224,
+    'owner_dog_hug': 224,
+}
+
 # 낱개 소품 — 가장자리 배경을 지운다
 SOLO_PROPS = {
     'prop_ball': 260,
@@ -299,6 +307,11 @@ ATLASES = {
     'props/props_coast': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_mountain': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_field': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
+    # 움직이는 것들 — 4열 1행 (4칸)
+    'props/actors_city': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
+    'props/actors_coast': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
+    'props/actors_mountain': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
+    'props/actors_field': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
     # 지형 타일 — 4열 2행 (8칸). 타일은 칸을 꽉 채워야 하므로 여백을 자르지 않는다
     'tiles/tiles_city': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
     'tiles/tiles_coast': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
@@ -321,6 +334,8 @@ UI_SOLO = {
     'ui_pause_panel': (560, 380),
     'ui_credits_marks': (760, 200),
     'ui_vignette': (960, 540),
+    'ui_scent_mote': (96, 96),
+    'ui_save_glow': (192, 192),
 }
 
 def do_backgrounds():
@@ -362,6 +377,43 @@ def do_backgrounds():
             ensure(os.path.dirname(dest))
             im.quantize(colors=220, method=Image.Quantize.MEDIANCUT).save(dest, optimize=True)
             log('컷신 %s' % fn)
+
+
+def do_sprites():
+    """
+    8프레임 애니메이션 시트를 정리한다.
+
+    원본 프레임 크기가 얼마든 게임이 쓰는 크기(SPRITE_FRAME)로 맞춰 다시 이어 붙인다.
+    프레임마다 배경을 지우되, 발이 붙어 있는 바닥선은 건드리지 않는다.
+    """
+    src = os.path.join(SRC, 'sprites')
+    if not os.path.isdir(src):
+        return
+
+    for fn in sorted(os.listdir(src)):
+        if not fn.lower().endswith(('.png', '.webp')):
+            continue
+        stem = os.path.splitext(fn)[0]
+        im = load(os.path.join(src, fn))
+
+        if im.width % 8 != 0:
+            log('스프라이트 %s 건너뜀 — 가로가 8로 나뉘지 않는다 (%dx%d)' % (stem, im.width, im.height))
+            continue
+
+        fw = im.width // 8
+        cell = SPRITE_FRAME.get(stem, SPRITE_FRAME['_default'])
+        out = Image.new('RGBA', (cell * 8, cell), (0, 0, 0, 0))
+
+        for i in range(8):
+            piece = im.crop((i * fw, 0, (i + 1) * fw, im.height))
+            if looks_magenta(piece):
+                piece = strip_chroma(piece)
+            # 프레임 안에서의 위치를 유지해야 애니메이션이 떨지 않는다 — trim 하지 않는다
+            piece = piece.resize((cell, cell), Image.LANCZOS)
+            out.paste(piece, (i * cell, 0))
+
+        save(out, 'sprites/%s.png' % stem)
+        log('스프라이트 %-20s 8 x %dpx' % (stem, cell))
 
 
 def do_props():
@@ -543,6 +595,7 @@ def main():
         return
 
     if only in (None, 'images'):
+        do_sprites()
         do_backgrounds()
         do_props()
         do_atlases()

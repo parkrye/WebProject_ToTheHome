@@ -84,13 +84,10 @@ export default class EndingScene extends Phaser.Scene {
     await this.wait(3200);
 
     // 6. 문 쪽을 바라본다 — 바닥에 냄새 입자 하나
-    const mote = this.add
-      .sprite(196, GAME_HEIGHT - 128, 'scent_wisp')
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(30)
-      .setAlpha(0)
-      .setScale(1.1);
-    mote.play('scent_wisp');
+    const mote = sizeTo(
+      this.add.image(196, GAME_HEIGHT - 128, 'ui_scent_mote').setBlendMode(Phaser.BlendModes.ADD).setDepth(30).setAlpha(0),
+      { height: 44 }
+    );
     this.tweens.add({ targets: mote, alpha: 0.85, duration: 2400, ease: 'Sine.easeInOut' });
 
     await this.wait(4200);

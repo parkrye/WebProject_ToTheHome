@@ -91,12 +91,11 @@ export default class TitleScene extends Phaser.Scene {
     // 떠다니는 냄새 입자
     for (let i = 0; i < 7; i++) {
       const mote = this.add
-        .sprite(Phaser.Math.Between(60, GAME_WIDTH - 60), Phaser.Math.Between(220, 460), 'scent_wisp')
+        .image(Phaser.Math.Between(60, GAME_WIDTH - 60), Phaser.Math.Between(220, 460), 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(8)
-        .setAlpha(0.35)
-        .setScale(Phaser.Math.FloatBetween(0.6, 1.1));
-      mote.play({ key: 'scent_wisp', startFrame: i });
+        .setAlpha(0.35);
+      sizeTo(mote, { height: Phaser.Math.Between(22, 40) });
       this.tweens.add({
         targets: mote,
         y: mote.y - Phaser.Math.Between(50, 110),

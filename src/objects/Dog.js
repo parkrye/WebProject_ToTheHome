@@ -21,9 +21,15 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
+    // 충돌 박스는 "화면에서 몇 px 인지"로 정한다.
+    // 스프라이트 프레임 크기는 에셋마다 다를 수 있으므로 실제 프레임에서 역산한다.
     this.setDisplaySize(DOG.displaySize, DOG.displaySize);
-    this.body.setSize(DOG.bodyWidth, DOG.bodyHeight);
-    this.body.setOffset((128 - DOG.bodyWidth) / 2, 128 - DOG.bodyHeight - 22);
+    const frameSize = this.frame.realWidth || this.frame.width || DOG.displaySize;
+    const toFrame = frameSize / DOG.displaySize; // 화면 px → 프레임 px
+    const bw = DOG.bodyWidth * toFrame;
+    const bh = DOG.bodyHeight * toFrame;
+    this.body.setSize(bw, bh);
+    this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame);
     this.body.setMaxVelocity(DOG.runSpeed * 1.6, 1200);
     // 중력은 월드(main.js 의 arcade.gravity)에서만 받는다.
     // 여기서 setGravityY 를 또 걸면 두 배가 되어 점프 높이가 절반으로 줄어든다.

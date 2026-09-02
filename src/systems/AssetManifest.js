@@ -13,39 +13,33 @@ const PROP_DIR = 'assets/props/';
 const UI_DIR = 'assets/ui/';
 const AUDIO_DIR = 'assets/audio/';
 
-/** 8프레임 스프라이트 시트. placeholder: PlaceholderArt 의 포즈 생성기 이름 */
+/**
+ * 8프레임 애니메이션 시트.
+ *
+ * 레퍼런스 이미지 한 장과 8줄짜리 프롬프트로 프레임을 각각 만들어 이어 붙인 것이다.
+ * 자세한 만드는 법은 .docs/assets-sprites.md 참고.
+ *
+ * 정말로 프레임마다 형태가 달라지는 것만 여기 둔다. 자동차나 돌처럼 모양은 그대로고
+ * 위치나 각도만 바뀌는 것은 정적 그림 하나로 두고 코드가 움직인다 (ACTORS).
+ */
 export const SPRITE_SHEETS = [
-  { key: 'dog_idle', file: 'dog_idle.png', w: 128, h: 128, fps: 8, loop: true, placeholder: 'dogIdle' },
-  { key: 'dog_walk', file: 'dog_walk.png', w: 128, h: 128, fps: 10, loop: true, placeholder: 'dogWalk' },
-  { key: 'dog_run', file: 'dog_run.png', w: 128, h: 128, fps: 14, loop: true, placeholder: 'dogRun' },
-  { key: 'dog_jump', file: 'dog_jump.png', w: 128, h: 128, fps: 12, loop: false, placeholder: 'dogJump' },
-  { key: 'dog_sniff', file: 'dog_sniff.png', w: 128, h: 128, fps: 8, loop: true, placeholder: 'dogSniff' },
-  { key: 'dog_dispel', file: 'dog_dispel.png', w: 128, h: 128, fps: 10, loop: false, placeholder: 'dogDispel' },
-  { key: 'dog_dig', file: 'dog_dig.png', w: 128, h: 128, fps: 12, loop: true, placeholder: 'dogDig' },
-  { key: 'dog_sleep', file: 'dog_sleep.png', w: 128, h: 128, fps: 6, loop: true, placeholder: 'dogSleep' },
-  { key: 'dog_splash', file: 'dog_splash.png', w: 128, h: 128, fps: 12, loop: true, placeholder: 'dogSplash' },
-  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 128, h: 128, fps: 10, loop: true, placeholder: 'dogBall' },
+  { key: 'dog_idle', file: 'dog_idle.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogIdle' },
+  { key: 'dog_walk', file: 'dog_walk.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogWalk' },
+  { key: 'dog_run', file: 'dog_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'dogRun' },
+  { key: 'dog_jump', file: 'dog_jump.png', w: 160, h: 160, fps: 12, loop: false, placeholder: 'dogJump' },
+  { key: 'dog_sniff', file: 'dog_sniff.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogSniff' },
+  { key: 'dog_dispel', file: 'dog_dispel.png', w: 160, h: 160, fps: 10, loop: false, placeholder: 'dogDispel' },
+  { key: 'dog_dig', file: 'dog_dig.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogDig' },
+  { key: 'dog_sleep', file: 'dog_sleep.png', w: 160, h: 160, fps: 6, loop: true, placeholder: 'dogSleep' },
+  { key: 'dog_splash', file: 'dog_splash.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogSplash' },
+  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogBall' },
 
-  { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 128, h: 128, fps: 14, loop: true, placeholder: 'puppyRun' },
-  { key: 'owner_child_run', file: 'owner_child_run.png', w: 128, h: 128, fps: 12, loop: true, placeholder: 'childRun' },
-  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 128, h: 128, fps: 8, loop: false, placeholder: 'ownerWalk' },
-  { key: 'owner_adult_wake', file: 'owner_adult_wake.png', w: 256, h: 192, fps: 8, loop: false, placeholder: 'ownerWake' },
-  { key: 'owner_dog_hug', file: 'owner_dog_hug.png', w: 256, h: 192, fps: 8, loop: false, placeholder: 'ownerHug' },
-
-  { key: 'car_pass', file: 'car_pass.png', w: 256, h: 192, fps: 10, loop: true, placeholder: 'car' },
-  { key: 'wave_loop', file: 'wave_loop.png', w: 256, h: 192, fps: 8, loop: true, placeholder: 'wave' },
-  { key: 'boar_charge', file: 'boar_charge.png', w: 256, h: 192, fps: 12, loop: false, placeholder: 'boar' },
-  { key: 'rock_fall', file: 'rock_fall.png', w: 64, h: 64, fps: 12, loop: false, placeholder: 'rock' },
-  { key: 'platform_crumble', file: 'platform_crumble.png', w: 256, h: 192, fps: 10, loop: false, placeholder: 'crumble' },
-  { key: 'steam_vent', file: 'steam_vent.png', w: 128, h: 128, fps: 10, loop: true, placeholder: 'steam' },
-  { key: 'seagull_fly', file: 'seagull_fly.png', w: 128, h: 128, fps: 12, loop: true, placeholder: 'bird' },
-
-  { key: 'butterfly', file: 'butterfly.png', w: 64, h: 64, fps: 10, loop: true, placeholder: 'butterfly' },
-  { key: 'scent_wisp', file: 'scent_wisp.png', w: 64, h: 64, fps: 10, loop: true, placeholder: 'scent' },
-  { key: 'savepoint_glow', file: 'savepoint_glow.png', w: 128, h: 128, fps: 8, loop: true, placeholder: 'saveGlow' },
-  { key: 'stream_water', file: 'stream_water.png', w: 128, h: 128, fps: 10, loop: true, placeholder: 'water' },
-  { key: 'owl_watch', file: 'owl_watch.png', w: 128, h: 128, fps: 6, loop: true, placeholder: 'owl' },
-  { key: 'grass_sway', file: 'grass_sway.png', w: 128, h: 128, fps: 8, loop: true, placeholder: 'grass' },
+  // 프롤로그 · 엔딩 연출
+  { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'puppyRun' },
+  { key: 'owner_child_run', file: 'owner_child_run.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'childRun' },
+  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 160, h: 160, fps: 8, loop: false, placeholder: 'ownerWalk' },
+  { key: 'owner_adult_wake', file: 'owner_adult_wake.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerWake' },
+  { key: 'owner_dog_hug', file: 'owner_dog_hug.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerHug' },
 ];
 
 /**
@@ -104,6 +98,11 @@ export const ATLASES = [
   { key: 'tiles_coast', file: 'assets/tiles/tiles_coast.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'coast' },
   { key: 'tiles_mountain', file: 'assets/tiles/tiles_mountain.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'mountain' },
   { key: 'tiles_field', file: 'assets/tiles/tiles_field.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'field' },
+
+  { key: 'actors_city', file: PROP_DIR + 'actors_city.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'city' },
+  { key: 'actors_coast', file: PROP_DIR + 'actors_coast.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'coast' },
+  { key: 'actors_mountain', file: PROP_DIR + 'actors_mountain.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'mountain' },
+  { key: 'actors_field', file: PROP_DIR + 'actors_field.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'field' },
 ];
 
 /** 소품 아틀라스 칸 번호 — 네 스테이지가 같은 자리에 같은 역할을 둔다 */
@@ -113,6 +112,19 @@ export const PROP = {
   I: 8, J: 9,
   TREE: 10, // 10번은 항상 그 스테이지의 큰 나무
   LANDMARK: 11, // 11번은 그 스테이지의 상징물 (유골함 벽 / 등대 / 부엉이 가지 / 집)
+};
+
+/**
+ * 움직이는 것들 — 스테이지마다 한 줄짜리 시트(4열 × 1행).
+ *
+ * 모양이 변하지 않고 위치·각도만 바뀌는 것들이라 애니메이션이 필요 없다.
+ * 이동·회전·명멸은 전부 코드가 준다.
+ */
+export const ACTOR = {
+  MOVER: 0, // 큰 이동체  — 자동차 / 자동차 / 멧돼지 / 큰 새
+  FALLER: 1, // 떨어지거나 밀려오는 것 — 화분 / 파도 / 낙석 / 홀씨
+  PUFF: 2, // 피어오르는 것 — 증기 / 물보라 / 안개 / 나비
+  FLYER: 3, // 나는 것 — 참새 / 갈매기 / 부엉이 / 잠자리
 };
 
 /** 지형 타일 칸 번호 */
@@ -148,6 +160,8 @@ export const IMAGES = [
   { key: 'ui_btn_jump', file: UI_DIR + 'ui_btn_jump.png', placeholder: 'btnJump', w: 160, h: 160 },
   { key: 'ui_btn_interact', file: UI_DIR + 'ui_btn_interact.png', placeholder: 'btnInteract', w: 128, h: 128 },
   { key: 'ui_prompt_interact', file: UI_DIR + 'ui_prompt_interact.png', placeholder: 'promptInteract', w: 96, h: 96 },
+  { key: 'ui_scent_mote', file: UI_DIR + 'ui_scent_mote.png', placeholder: 'scentMote', w: 96, h: 96 },
+  { key: 'ui_save_glow', file: UI_DIR + 'ui_save_glow.png', placeholder: 'saveGlow', w: 192, h: 192 },
   { key: 'ui_save_burst', file: UI_DIR + 'ui_save_burst.png', placeholder: 'saveBurst', w: 256, h: 256 },
   { key: 'ui_rotate_device', file: UI_DIR + 'ui_rotate_device.png', placeholder: 'rotate', w: 256, h: 256 },
   { key: 'ui_pause_icon', file: UI_DIR + 'ui_pause_icon.png', placeholder: 'iconPause', w: 96, h: 96 },

@@ -17,16 +17,25 @@ export class ScentTrail {
     this.scene = scene;
     this.motes = points.map((p, i) => {
       const mote = scene.add
-        .sprite(p.x, p.y, 'scent_wisp')
+        .image(p.x, p.y, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(14)
         .setAlpha(0.22);
-      sizeTo(mote, { height: (p.scale ?? 1) * 42 });
-      mote.play({ key: 'scent_wisp', startFrame: i % 8 });
+      sizeTo(mote, { height: (p.scale ?? 1) * 40 });
+
+      // 그림은 한 장이고, 떠오르는 것과 깜박이는 것은 코드가 준다
       scene.tweens.add({
         targets: mote,
         y: p.y - 10,
         duration: 1800 + (i % 5) * 220,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+      scene.tweens.add({
+        targets: mote,
+        alpha: 0.34,
+        duration: 900 + (i % 7) * 130,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -40,15 +49,20 @@ export class ScentTrail {
   boost(time) {
     this.boostUntil = time + 3000;
     this.motes.forEach((mote, i) => {
+      const base = mote.scaleX;
       this.scene.tweens.add({
         targets: mote,
         alpha: 0.95,
-        scale: (mote.scaleX ?? 1) * 1.25,
+        scaleX: base * 1.3,
+        scaleY: base * 1.3,
         duration: 220,
         delay: i * 18,
         yoyo: true,
         hold: 2400,
-        onComplete: () => mote.setAlpha(0.22),
+        onComplete: () => {
+          mote.setAlpha(0.22);
+          mote.setScale(base);
+        },
       });
     });
   }

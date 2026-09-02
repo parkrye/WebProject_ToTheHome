@@ -981,6 +981,39 @@ const IMAGE_DRAWERS = {
     ctx.restore();
   },
 
+  scentMote: (ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2);
+    g.addColorStop(0, 'rgba(255,242,205,0.98)');
+    g.addColorStop(0.35, 'rgba(255,217,138,0.6)');
+    g.addColorStop(1, 'rgba(255,217,138,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  },
+
+  saveGlow: (ctx, w, h) => {
+    // 바닥에 깔리는 납작한 빛 고리
+    ctx.save();
+    ctx.translate(w / 2, h * 0.72);
+    ctx.scale(1, 0.36);
+    const g = ctx.createRadialGradient(0, 0, w * 0.06, 0, 0, w * 0.46);
+    g.addColorStop(0, 'rgba(255,230,170,0.85)');
+    g.addColorStop(0.55, 'rgba(255,200,97,0.35)');
+    g.addColorStop(1, 'rgba(255,200,97,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.46, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    // 위로 떠오르는 잔광
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    for (let i = 0; i < 5; i++) {
+      const p = i / 5;
+      ellipse(ctx, w / 2 + Math.sin(i * 2.1) * w * 0.16, h * 0.66 - p * h * 0.5, 3.4 - p * 1.6, 3.4 - p * 1.6, '#ffe6aa');
+    }
+    ctx.restore();
+  },
+
   saveBurst: (ctx, w, h) => {
     const g = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
     g.addColorStop(0, 'rgba(255,225,160,0.95)');

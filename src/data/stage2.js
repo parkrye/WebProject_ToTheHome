@@ -1,4 +1,4 @@
-import { PROP } from '../systems/AssetManifest.js';
+import { PROP, ACTOR } from '../systems/AssetManifest.js';
 
 /**
  * 스테이지 2 — 해안가
@@ -14,6 +14,7 @@ export default {
   id: 2,
   theme: 'coast',
   tile: 'tiles_coast',
+  actors: 'actors_coast',
   surface: 'soft',
   width: 6300,
   height: 560,
@@ -82,15 +83,15 @@ export default {
   props: [
     { x: 420, y: GY, atlas: 'props_coast', frame: PROP.B, height: 130, depth: 7 },
     { x: 640, y: GY, atlas: 'props_coast', frame: PROP.J, height: 110, depth: 7 },
-    { x: 1240, y: 190, texture: 'seagull_fly', scale: 0.9, depth: 7, drift: 320, driftDuration: 8000 },
-    { x: 2860, y: 160, texture: 'seagull_fly', scale: 0.7, depth: 7, drift: -280, driftDuration: 10000 },
+    { x: 1240, y: 190, atlas: 'actors_coast', frame: ACTOR.FLYER, height: 52, depth: 7, drift: 320, driftDuration: 8000, bob: 18 },
+    { x: 2860, y: 160, atlas: 'actors_coast', frame: ACTOR.FLYER, height: 40, depth: 7, drift: -280, driftDuration: 10000, bob: 14 },
     { x: 2000, y: GY, atlas: 'props_coast', frame: PROP.A, height: 90, depth: 7 },
     { x: 2760, y: GY, atlas: 'props_coast', frame: PROP.A, height: 90, depth: 7 },
     { x: 3180, y: GY, atlas: 'props_coast', frame: PROP.H, height: 200, depth: 7 },
     { x: 3620, y: GY, atlas: 'props_coast', frame: PROP.I, height: 150, depth: 7 },
     { x: 4200, y: GY, atlas: 'props_coast', frame: PROP.E, height: 100, depth: 7 },
     { x: 5100, y: GY + 30, atlas: 'props_coast', frame: PROP.C, height: 90, depth: 7 },
-    { x: 4980, y: 200, texture: 'seagull_fly', scale: 0.8, depth: 7, drift: 240, driftDuration: 7000 },
+    { x: 4980, y: 200, atlas: 'actors_coast', frame: ACTOR.FLYER, height: 46, depth: 7, drift: 240, driftDuration: 7000, bob: 16 },
     { x: 6120, y: GY + 30, atlas: 'props_coast', frame: PROP.TREE, height: 230, depth: 6 },
     // 절벽 위 등대 — 다음 목적지인 산을 향하는 이정표
     { x: 5900, y: GY + 30, atlas: 'props_coast', frame: PROP.LANDMARK, height: 300, depth: 5, alpha: 0.95 },

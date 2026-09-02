@@ -1,4 +1,4 @@
-import { PROP } from '../systems/AssetManifest.js';
+import { PROP, ACTOR } from '../systems/AssetManifest.js';
 
 /**
  * 스테이지 1 — 도시 (튜토리얼)
@@ -16,6 +16,7 @@ export default {
   id: 1,
   theme: 'city',
   tile: 'tiles_city',
+  actors: 'actors_city',
   surface: 'hard',
   width: 5700,
   height: 560,
@@ -102,7 +103,7 @@ export default {
     { x: 4460, y: GY, atlas: 'props_city', frame: PROP.B, height: 230, depth: 7 },
     { x: 5060, y: GY, atlas: 'props_city', frame: PROP.H, height: 190, depth: 6 },
     { x: 5320, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
-    { x: 4980, y: 210, texture: 'seagull_fly', scale: 0.8, depth: 7, drift: 260, driftDuration: 9000 },
+    { x: 4980, y: 210, atlas: 'actors_city', frame: ACTOR.FLYER, height: 44, depth: 7, drift: 260, driftDuration: 9000, bob: 16 },
   ],
 
   scent: [

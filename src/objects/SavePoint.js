@@ -32,10 +32,18 @@ export class SavePoint extends Phaser.GameObjects.Container {
     }
 
     // 바닥 오라
-    this.glow = scene.add.sprite(0, 6, 'savepoint_glow').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD);
+    this.glow = scene.add.image(0, 6, 'ui_save_glow').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD);
     sizeTo(this.glow, { height: 90 });
-    this.glow.play('savepoint_glow');
     this.add(this.glow);
+    // 천천히 숨 쉬듯 밝아졌다 어두워진다
+    scene.tweens.add({
+      targets: this.glow,
+      alpha: 0.55,
+      duration: 1600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     // 상호작용 프롬프트
     this.prompt = scene.add.image(0, -110, 'ui_prompt_interact').setOrigin(0.5, 1).setAlpha(0);
@@ -82,11 +90,10 @@ export class SavePoint extends Phaser.GameObjects.Container {
 
     for (let i = 0; i < 10; i++) {
       const mote = this.scene.add
-        .sprite(this.x + Phaser.Math.Between(-40, 40), this.y - 10, 'scent_wisp')
+        .image(this.x + Phaser.Math.Between(-40, 40), this.y - 10, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(30);
       sizeTo(mote, { height: 34 });
-      mote.play('scent_wisp');
       this.scene.tweens.add({
         targets: mote,
         y: this.y - Phaser.Math.Between(90, 180),
