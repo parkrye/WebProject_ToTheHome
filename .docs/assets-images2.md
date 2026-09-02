@@ -170,6 +170,10 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 전에는 8프레임 애니메이션으로 잡아 두었지만 그럴 필요가 없어서, 그림 한 장을 두고
 코드가 옮기고 돌리고 늘린다.
 
+> **이 절은 아래 프롬프트로 시트를 받는 데까지다.** 받아 놓고 보니 바퀴가 안 돌고
+> 날개가 안 움직여서 결국 8프레임으로 다시 굽기로 했다. 쪼개 놓은 낱장 레퍼런스와
+> 16종 8프레임 프롬프트는 [assets-actors.md](assets-actors.md) 에 있다.
+
 - 저장 경로: `assets-src/props/actors_<스테이지>.png`
 - 비율 **4 : 1** (권장 2048×512). 전처리가 1280×320(칸당 320px)으로 맞춘다
 - 소품과 마찬가지로 칸 바닥에 세우고, 배경은 단색 마젠타
@@ -318,7 +322,7 @@ The sky area is a completely flat solid magenta #FF00FF fill with no gradient an
 |---|---|---|---|
 | 소품 아틀라스 | 4 | 4×3 (12칸) | **2절** |
 | 지형 타일 | 4 | 4×2 (8칸) | **3절** |
-| 움직이는 것들 | 4 | 4×1 (4칸) | **4절** |
+| 움직이는 것들 | 4 | 4×1 (4칸) | **4절** → 8프레임은 [assets-actors.md](assets-actors.md) |
 | 집 안 부품 | 1 | 4×2 (8칸) | **5절** |
 | 빛 | 2 | 낱장 | **6절** |
 

@@ -46,7 +46,8 @@ pip install pillow numpy
 
 AI 생성 에셋은 크기가 제각각이고 "투명 배경"을 체커보드나 검은 그라데이션으로 그려 주는
 일이 잦다. 전처리가 그걸 정리한다 — 자세한 내용과 재생성용 프롬프트는
-[.docs/assets-images2.md](.docs/assets-images2.md), 1차 결과 리뷰는
+[.docs/assets-images2.md](.docs/assets-images2.md), 움직이는 것들을 8프레임으로 굽는
+프롬프트는 [.docs/assets-actors.md](.docs/assets-actors.md), 1차 결과 리뷰는
 [.docs/asset-review.md](.docs/asset-review.md) 참고.
 
 ## 조작
