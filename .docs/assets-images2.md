@@ -236,6 +236,8 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 | 6 | 작은 스탠드 램프 | 따뜻한 불빛 |
 | 7 | 빈 액자 | 벽 장식 (그림은 비워 둔다) |
 
+### 5.1 `props_home.png`
+
 ```
 Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A cosy bedroom interior part sheet arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a closed wooden door set in its frame seen straight on, the same door frame completely empty with the doorway opening hollow and see-through, a soft rectangular shaft of warm golden light shaped like a doorway with no frame around it, a low single bed with a rumpled quilt seen from the side, a round padded dog cushion, a small square window with cool moonlight in it, a short bedside lamp with a warm glowing shade, and an empty picture frame with a blank face. Warm palette of amber lamplight, deep brown wood and dusty blue shadow. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
@@ -307,13 +309,23 @@ The sky area is a completely flat solid magenta #FF00FF fill with no gradient an
 
 ---
 
-## 8. 아직 없는 것
+## 8. 아직 없는 것 — 남은 전부
 
-강아지 10종은 들어왔다. 남은 것은 프롤로그·엔딩 연출용 5종이다 —
-`dog_puppy_run`, `owner_child_run`, `owner_walk_silhouette`, `owner_adult_wake`, `owner_dog_hug`.
-만드는 법과 프롬프트는 `.docs/assets-sprites.md` 3절에 있다.
+애니메이션 스프라이트 16종은 다 들어왔다. 이미지로 남은 것은 아래가 **전부**이며,
+모두 이 문서 안에 프롬프트가 있다.
 
----
+| 무엇 | 몇 장 | 격자 | 어디에 |
+|---|---|---|---|
+| 소품 아틀라스 | 4 | 4×3 (12칸) | **2절** |
+| 지형 타일 | 4 | 4×2 (8칸) | **3절** |
+| 움직이는 것들 | 4 | 4×1 (4칸) | **4절** |
+| 집 안 부품 | 1 | 4×2 (8칸) | **5절** |
+| 빛 | 2 | 낱장 | **6절** |
+
+합쳐서 **15장**이다. 배경(7절)은 이미 들어와 있어 다시 뽑지 않아도 된다.
+
+> 화면에서 가장 티가 나는 건 **지형 타일**이다. 지금 지면이 밋밋한 회색 막대라
+> 이것부터 채우면 인상이 크게 달라진다.
 
 ## 9. 넣는 법
 
