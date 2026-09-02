@@ -5,6 +5,7 @@
   "type": "module",
   "description": "2D platformer - a dog follows its owner's scent home",
   "scripts": {
+    "assets:prepare": "python scripts/prepare_assets.py",
     "assets": "node scripts/build-manifest.mjs",
     "dev": "npm run assets && vite",
     "build": "npm run assets && vite build",

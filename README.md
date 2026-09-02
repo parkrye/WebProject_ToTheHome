@@ -15,8 +15,32 @@ npm run preview  # 빌드 결과 확인
 ```
 
 **AI 에셋이 하나도 없어도 바로 플레이된다.** 실제 그림/소리가 없는 자리는 코드로 그린
-플레이스홀더가 대신 채운다. `public/assets/` 에 규정된 이름으로 파일을 넣고 `npm run dev` 를
-다시 실행하면 코드 수정 없이 교체된다.
+플레이스홀더가 대신 채운다.
+
+## 에셋 넣기
+
+```
+assets-src/   ← 원본을 여기에 넣는다 (git 에 올리지 않음)
+     ↓  npm run assets:prepare
+public/assets/  ← 게임이 읽는 것 (배경 제거 · 격자 정렬 · 축소 · ogg 변환)
+```
+
+```bash
+npm run assets:prepare   # 이미지 + 오디오 전처리
+npm run assets:prepare -- --only images
+npm run dev
+```
+
+전처리에는 Python(Pillow, numpy)과 ffmpeg 가 필요하다.
+
+```bash
+pip install pillow numpy
+```
+
+AI 생성 에셋은 크기가 제각각이고 "투명 배경"을 체커보드나 검은 그라데이션으로 그려 주는
+일이 잦다. 전처리가 그걸 정리한다 — 자세한 내용과 재생성용 프롬프트는
+[.docs/assets-images2.md](.docs/assets-images2.md), 1차 결과 리뷰는
+[.docs/asset-review.md](.docs/asset-review.md) 참고.
 
 ## 조작
 
@@ -67,6 +91,8 @@ npm run preview  # 빌드 결과 확인
 | [.docs/assets-sprites.md](.docs/assets-sprites.md) | 8프레임 스프라이트 28종. 동작마다 한 줄짜리 영어 프롬프트 |
 | [.docs/assets-images.md](.docs/assets-images.md) | 배경·타일셋·소품·GUI. 항목마다 한 문단 프롬프트 |
 | [.docs/assets-audio.md](.docs/assets-audio.md) | BGM·앰비언스·SFX. 항목마다 1000자 이내 프롬프트 |
+| [.docs/assets-images2.md](.docs/assets-images2.md) | **2차 프롬프트** — 소품·타일을 균등 격자 아틀라스로 |
+| [.docs/asset-review.md](.docs/asset-review.md) | 1차 에셋 리뷰 — 무엇이 문제였고 어떻게 처리했는지 |
 | [public/assets/README.md](public/assets/README.md) | 에셋 넣는 방법과 파일명 규칙 |
 
 ## 구조
@@ -79,7 +105,7 @@ src/
 │                       Prologue · Stage · Ending · Hud
 ├─ objects/             Dog · SavePoint · Hazards · Platforms · Decor
 ├─ systems/             AssetLoader · PlaceholderArt · PlaceholderScenery
-│                       Input · Save · Audio
+│                       Input · Save · Audio · Layout
 └─ data/                stage1~4 레벨 데이터
 ```
 
