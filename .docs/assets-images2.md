@@ -24,17 +24,19 @@
 
 ---
 
-## 1. 공통 프롬프트 조각
+## 1. 모든 프롬프트에 들어 있는 공통 조각
 
-모든 프롬프트 앞뒤에 이 두 덩어리를 붙인다.
+아래 2~6절의 프롬프트에는 이 두 덩어리가 **이미 앞뒤로 붙어 있다.**
+따로 이어 붙일 필요 없이 **코드블록을 통째로 복사해서 그대로 넣으면 된다.**
+여기 적어 두는 건 무엇이 왜 들어가 있는지 알아 두라는 뜻이다.
 
-**앞에 붙일 것 (스타일)**
+**앞 (스타일 고정)**
 
 ```
 Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image.
 ```
 
-**뒤에 붙일 것 (기술 조건 — 절대 빼지 말 것)**
+**뒤 (기술 조건)**
 
 ```
 The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
@@ -42,6 +44,8 @@ The background is a completely flat solid magenta #FF00FF fill with absolutely n
 
 > **그림자 금지**가 중요하다. 바닥 그림자가 있으면 오려낼 때 소품 밑에 시커먼 얼룩이 남는다.
 > 그림자는 게임 안에서 코드로 그린다.
+>
+> 지형 타일(3절)만 "서로 떨어뜨리라"는 문장을 빼고 쓴다. 타일은 칸을 꽉 채워야 하기 때문이다.
 
 ---
 
@@ -126,25 +130,25 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 ### 3.1 `tiles_city.png`
 
 ```
-Soft hand-painted pixel art platformer tileset, warm pastel palette with muted saturation, storybook atmosphere, consistent art style. A foggy-morning city tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a clean cracked concrete sidewalk surface seen from the side with a worn top edge, the same sidewalk surface with a few weeds growing from the cracks, the same sidewalk surface with a metal drain slot, the same sidewalk surface with a patch of loose broken paving, a solid concrete fill block for underground mass, a dull faded red brick fill block, a thin dark metal grate platform only one third as tall as the cell, and a low painted concrete curb block. The top four tiles must tile seamlessly when repeated side by side horizontally. Muted palette of concrete gray, dull brick red and cold teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow and no drop shadow. Absolutely no text, no letters, no numbers, no watermark.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a clean cracked concrete sidewalk surface seen from the side with a worn top edge, the same sidewalk surface with a few weeds growing from the cracks, the same sidewalk surface with a metal drain slot, the same sidewalk surface with a patch of loose broken paving, a solid concrete fill block for underground mass, a dull faded red brick fill block, a thin dark metal grate platform only one third as tall as the cell, and a low painted concrete curb block. The top four tiles must tile seamlessly when repeated side by side horizontally. Muted palette of concrete gray, dull brick red and cold teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 ### 3.2 `tiles_coast.png`
 
 ```
-Soft hand-painted pixel art platformer tileset, warm pastel palette with muted saturation, storybook atmosphere, consistent art style. A sunny coastal tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a damp packed sand surface seen from the side with a soft top edge, the same sand surface scattered with small shells and pebbles, a worn asphalt road surface with a faded painted stripe, the same asphalt surface with cracks and patched repairs, a dry pale sand fill block, a barnacled dark rock fill block, a weathered wooden boardwalk plank platform only one third as tall as the cell, and a gray concrete seawall block. The top four tiles must tile seamlessly when repeated side by side horizontally. Sun-bleached palette of pale sand, sea green, rust and warm gray. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow and no drop shadow. Absolutely no text, no letters, no numbers, no watermark.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A sunny coastal tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a damp packed sand surface seen from the side with a soft top edge, the same sand surface scattered with small shells and pebbles, a worn asphalt road surface with a faded painted stripe, the same asphalt surface with cracks and patched repairs, a dry pale sand fill block, a barnacled dark rock fill block, a weathered wooden boardwalk plank platform only one third as tall as the cell, and a gray concrete seawall block. The top four tiles must tile seamlessly when repeated side by side horizontally. Sun-bleached palette of pale sand, sea green, rust and warm gray. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 ### 3.3 `tiles_mountain.png`
 
 ```
-Soft hand-painted pixel art platformer tileset, warm pastel palette with muted saturation, storybook atmosphere, consistent art style. A night mountain tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a mossy dirt surface seen from the side with a grass fringe along the top edge, the same dirt surface with exposed tree roots, a bare rocky surface with a jagged top edge, a wet stone surface beside a stream with a slick top edge, a dark packed earth fill block, a jagged gray rock fill block, a mossy fallen log platform only one third as tall as the cell, and a rope and plank bridge segment only one third as tall as the cell. The top four tiles must tile seamlessly when repeated side by side horizontally. Deep forest palette of dark green, damp brown, cool gray and faint moonlit silver. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow and no drop shadow. Absolutely no text, no letters, no numbers, no watermark.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A night mountain tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a mossy dirt surface seen from the side with a grass fringe along the top edge, the same dirt surface with exposed tree roots, a bare rocky surface with a jagged top edge, a wet stone surface beside a stream with a slick top edge, a dark packed earth fill block, a jagged gray rock fill block, a mossy fallen log platform only one third as tall as the cell, and a rope and plank bridge segment only one third as tall as the cell. The top four tiles must tile seamlessly when repeated side by side horizontally. Deep forest palette of dark green, damp brown, cool gray and faint moonlit silver. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 ### 3.4 `tiles_field.png`
 
 ```
-Soft hand-painted pixel art platformer tileset, warm pastel palette with muted saturation, storybook atmosphere, consistent art style. A sunlit meadow tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a lush grass surface seen from the side with a soft blade fringe along the top edge, the same grass surface dotted with tiny wildflowers, a bare dirt footpath surface with a soft top edge, the same grass surface with a few small stones set into it, a warm brown soil fill block, a paler dry earth fill block, a weathered wooden fence rail platform only one third as tall as the cell, and a low mossy stone step block. The top four tiles must tile seamlessly when repeated side by side horizontally. Warm pastel palette of fresh green, honey brown and cream. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow and no drop shadow. Absolutely no text, no letters, no numbers, no watermark.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A sunlit meadow tileset arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square tiles of identical size, each tile filling its cell completely edge to edge with no padding and no gap. Reading left to right, top to bottom the tiles are: a lush grass surface seen from the side with a soft blade fringe along the top edge, the same grass surface dotted with tiny wildflowers, a bare dirt footpath surface with a soft top edge, the same grass surface with a few small stones set into it, a warm brown soil fill block, a paler dry earth fill block, a weathered wooden fence rail platform only one third as tall as the cell, and a low mossy stone step block. The top four tiles must tile seamlessly when repeated side by side horizontally. Warm pastel palette of fresh green, honey brown and cream. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 | 칸 | 쓰임 |
@@ -264,17 +268,20 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 
 냄새 입자와 세이브 오라도 애니메이션에서 뺐다. 밝기와 크기 변화는 코드가 준다.
 
-### 5.1 `ui_scent_mote.png` (저장: `assets-src/ui/`)
+### 6.1 `ui_scent_mote.png` (저장: `assets-src/ui/`)
 
 ```
-A single soft glowing mote of warm golden light on a completely transparent background, painted as a smooth round radial glow that is bright cream white at the very center and fades to fully transparent at the edges, with no hard outline, no sparkle spikes and no lens flare. Nothing else in the image. No text, no watermark.
+Soft hand-painted pixel art game asset, warm pastel palette, storybook dream atmosphere, a single soft glowing mote of warm golden light centered in the image, painted as a smooth round radial glow that is bright cream white at the very center and fades out toward the edges, with no hard outline, no sparkle spikes, no lens flare and no rays. Nothing else is in the image. The background is completely solid pure black so the glow can be added onto the scene. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
-### 5.2 `ui_save_glow.png` (저장: `assets-src/ui/`)
+### 6.2 `ui_save_glow.png` (저장: `assets-src/ui/`)
 
 ```
-A soft warm ring of golden light lying flat on the ground, seen from a low side angle so it reads as a wide flattened ellipse, glowing brightest along the ring itself and fading to fully transparent outward, with a few tiny motes drifting upward from it. Completely transparent background, no hard outline, no ground texture, nothing else in the image. No text, no watermark.
+Soft hand-painted pixel art game asset, warm pastel palette, storybook dream atmosphere, a soft warm ring of golden light lying flat on the ground seen from a low side angle so it reads as a wide flattened ellipse, glowing brightest along the ring itself and fading out toward the edges, with a few tiny motes drifting upward from it, no hard outline and no ground texture. Nothing else is in the image. The background is completely solid pure black so the glow can be added onto the scene. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
+
+> 이 둘만 배경이 **검정**이다. 게임에서 가산 합성으로 얹기 때문에 검정은 저절로 사라진다.
+> 마젠타로 받으면 빛 가장자리에 자주색이 번져 지우기 어렵다.
 
 ---
 
