@@ -24,7 +24,7 @@ export const DOG = {
   // 화면에 보이는 크기 기준. 스프라이트 프레임이 몇 px 이든 이 값이 유지된다
   bodyWidth: 46,
   bodyHeight: 40,
-  footPadding: 14, // 프레임 아래쪽 여백 — 발바닥이 바닥에 닿게 맞춘다
+  footPadding: 2, // 전처리가 발을 칸 바닥에 붙여 주므로 여백이 거의 없다
   displaySize: 96,
 };
 

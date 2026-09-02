@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { sizeTo } from '../systems/Layout.js';
 
 /**
  * 프롤로그 — 대사 없는 4컷.
@@ -12,7 +13,9 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
  * 컷 1~3 의 들판은 스테이지 4 와 같은 장소다.
  */
 
-const GROUND_Y = 452;
+// 배경 그림에 이미 들판이 그려져 있으므로 지면을 따로 깔지 않는다.
+// 이 값은 인물이 풀 사이에 서 보이는 높이다.
+const GROUND_Y = 478;
 
 const CUTS = [
   { id: 'p1', sky: 'bg_field_sky_morning', dogX: 560, ownerX: 430, duration: 6200, tint: 0xffffff },
@@ -75,19 +78,15 @@ export default class PrologueScene extends Phaser.Scene {
       this.scrollers.push({ tile, speed });
     });
 
-    // 지면
-    const ground = this.add.tileSprite(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, 'tiles_field').setOrigin(0);
-    ground.setTint(cut.tint);
-    this.layerGroup.add(ground);
-    this.scrollers.push({ tile: ground, speed: 220 });
-
     // 달리는 둘 — 앞서는 쪽이 컷마다 바뀐다.
     // 강아지는 아직 어리므로 아이보다 확실히 작아야 한다.
-    const owner = this.add.sprite(cut.ownerX, GROUND_Y + 10, 'owner_child_run').setOrigin(0.5, 1).setScale(1.5);
+    const owner = this.add.sprite(cut.ownerX, GROUND_Y + 10, 'owner_child_run').setOrigin(0.5, 1);
+    sizeTo(owner, { height: 190 });
     owner.play('owner_child_run');
     owner.setTint(cut.tint);
 
-    const dog = this.add.sprite(cut.dogX, GROUND_Y + 10, 'dog_puppy_run').setOrigin(0.5, 1).setScale(0.78);
+    const dog = this.add.sprite(cut.dogX, GROUND_Y + 10, 'dog_puppy_run').setOrigin(0.5, 1);
+    sizeTo(dog, { height: 84 });
     dog.play('dog_puppy_run');
     dog.setTint(cut.tint);
 
@@ -124,11 +123,13 @@ export default class PrologueScene extends Phaser.Scene {
     const room = this.add.image(0, 0, 'bg_home_interior_night').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
     this.layerGroup.add(room);
 
-    const dog = this.add.sprite(640, 452, 'dog_sleep').setOrigin(0.5, 1).setScale(1.2);
+    const dog = this.add.sprite(640, 452, 'dog_sleep').setOrigin(0.5, 1);
+    sizeTo(dog, { height: 96 });
     dog.play('dog_sleep');
     this.layerGroup.add(dog);
 
-    const owner = this.add.sprite(150, 462, 'owner_walk_silhouette').setOrigin(0.5, 1).setScale(1.35).setAlpha(0);
+    const owner = this.add.sprite(150, 462, 'owner_walk_silhouette').setOrigin(0.5, 1).setAlpha(0);
+    sizeTo(owner, { height: 210 });
     this.layerGroup.add(owner);
 
     this.layerGroup.add(

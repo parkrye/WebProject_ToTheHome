@@ -36,8 +36,8 @@ export const SPRITE_SHEETS = [
 
   // 프롤로그 · 엔딩 연출
   { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'puppyRun' },
-  { key: 'owner_child_run', file: 'owner_child_run.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'childRun' },
-  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'ownerWalk' },
+  { key: 'owner_child_run', file: 'owner_child_run.png', w: 224, h: 224, fps: 12, loop: true, placeholder: 'childRun' },
+  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 224, h: 224, fps: 8, loop: true, placeholder: 'ownerWalk' },
   { key: 'owner_adult_wake', file: 'owner_adult_wake.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerWake' },
   { key: 'owner_adult_walk', file: 'owner_adult_walk.png', w: 224, h: 224, fps: 10, loop: true, placeholder: 'ownerWalkAdult' },
   { key: 'owner_adult_kneel', file: 'owner_adult_kneel.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerKneel' },

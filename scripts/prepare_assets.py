@@ -282,8 +282,12 @@ OPAQUE_BG = [
 # 화면에 96px 안팎으로 그려지므로 160px 이면 충분히 선명하다.
 SPRITE_FRAME = {
     '_default': 160,
+    # 사람은 세로로 길어서 같은 칸에 담으면 작아진다. 조금 큰 칸을 쓴다
+    'owner_child_run': 224,
+    'owner_walk_silhouette': 224,
     'owner_adult_wake': 224,
-    'owner_dog_hug': 224,
+    'owner_adult_walk': 224,
+    'owner_adult_kneel': 224,
 }
 
 # 낱개 소품 — 가장자리 배경을 지운다
@@ -403,15 +407,27 @@ def do_sprites():
 
         fw = im.width // 8
         cell = SPRITE_FRAME.get(stem, SPRITE_FRAME['_default'])
+
+        # 마젠타로 그려 왔으면 먼저 지운다 (시트 전체를 한 번에)
+        if looks_magenta(im):
+            im = strip_chroma(im)
+
+        # 시트 전체 기준으로 아래 여백을 잘라 낸다.
+        # 프레임마다 자르면 위치가 흔들리므로 8장을 통째로 본다.
+        alpha = np.asarray(im)[:, :, 3]
+        rows = np.where(alpha.max(axis=1) > 8)[0]
+        if len(rows):
+            im = im.crop((0, 0, im.width, min(im.height, int(rows[-1]) + 2)))
+
         out = Image.new('RGBA', (cell * 8, cell), (0, 0, 0, 0))
+        scale = cell / float(fw)
+        ph = max(1, min(cell, int(round(im.height * scale))))
 
         for i in range(8):
             piece = im.crop((i * fw, 0, (i + 1) * fw, im.height))
-            if looks_magenta(piece):
-                piece = strip_chroma(piece)
-            # 프레임 안에서의 위치를 유지해야 애니메이션이 떨지 않는다 — trim 하지 않는다
-            piece = piece.resize((cell, cell), Image.LANCZOS)
-            out.paste(piece, (i * cell, 0))
+            piece = piece.resize((cell, ph), Image.LANCZOS)
+            # 발이 칸 바닥에 닿도록 아래로 붙인다
+            out.paste(piece, (i * cell, cell - ph))
 
         save(out, 'sprites/%s.png' % stem)
         log('스프라이트 %-20s 8 x %dpx' % (stem, cell))

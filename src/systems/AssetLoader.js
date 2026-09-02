@@ -77,6 +77,19 @@ export function has(path) {
   return available.has(path);
 }
 
+/**
+ * 그 키가 실제 에셋으로 채워졌는지 (플레이스홀더가 아닌지) 알려준다.
+ * 연출이 실제 그림을 전제로 할 때 쓴다 — 임시 도형으로 하면 오히려 어색한 경우.
+ */
+export function isReal(key) {
+  const all = [...SPRITE_SHEETS.map((d) => [d.key, spritePath(d)]), ...BACKGROUNDS.map((d) => [d.key, bgPath(d)])];
+  const found = all.find(([k]) => k === key);
+  if (found) return has(found[1]);
+
+  const direct = [...ATLASES, ...CUTSCENES, ...IMAGES].find((d) => d.key === key);
+  return direct ? has(direct.file) : false;
+}
+
 /** PreloadScene 에서 호출 — 존재하는 파일만 로드 큐에 넣는다 */
 export function queueRealAssets(scene) {
   SPRITE_SHEETS.forEach((def) => {
