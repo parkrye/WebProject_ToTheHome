@@ -37,9 +37,10 @@ export const SPRITE_SHEETS = [
   // 프롤로그 · 엔딩 연출
   { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'puppyRun' },
   { key: 'owner_child_run', file: 'owner_child_run.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'childRun' },
-  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 160, h: 160, fps: 8, loop: false, placeholder: 'ownerWalk' },
+  { key: 'owner_walk_silhouette', file: 'owner_walk_silhouette.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'ownerWalk' },
   { key: 'owner_adult_wake', file: 'owner_adult_wake.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerWake' },
-  { key: 'owner_dog_hug', file: 'owner_dog_hug.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerHug' },
+  { key: 'owner_adult_walk', file: 'owner_adult_walk.png', w: 224, h: 224, fps: 10, loop: true, placeholder: 'ownerWalkAdult' },
+  { key: 'owner_adult_kneel', file: 'owner_adult_kneel.png', w: 224, h: 224, fps: 8, loop: false, placeholder: 'ownerKneel' },
 ];
 
 /**
@@ -103,6 +104,8 @@ export const ATLASES = [
   { key: 'actors_coast', file: PROP_DIR + 'actors_coast.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'coast' },
   { key: 'actors_mountain', file: PROP_DIR + 'actors_mountain.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'mountain' },
   { key: 'actors_field', file: PROP_DIR + 'actors_field.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'field' },
+
+  { key: 'props_home', file: PROP_DIR + 'props_home.png', w: 384, h: 384, cols: 4, rows: 2, kind: 'prop', theme: 'home' },
 ];
 
 /** 소품 아틀라스 칸 번호 — 네 스테이지가 같은 자리에 같은 역할을 둔다 */
@@ -125,6 +128,23 @@ export const ACTOR = {
   FALLER: 1, // 떨어지거나 밀려오는 것 — 화분 / 파도 / 낙석 / 홀씨
   PUFF: 2, // 피어오르는 것 — 증기 / 물보라 / 안개 / 나비
   FLYER: 3, // 나는 것 — 참새 / 갈매기 / 부엉이 / 잠자리
+};
+
+/**
+ * 집 안 부품 칸 번호.
+ *
+ * 문이 열리는 장면을 한 장으로 그리지 않는다. 닫힌 문을 치우고 그 자리에 빛과 빈 문틀을
+ * 깐 뒤, 문틀 구멍 뒤에 평소 쓰던 강아지 스프라이트를 세우면 "문 너머의 강아지"가 된다.
+ */
+export const HOME = {
+  DOOR: 0, // 닫힌 문
+  DOORWAY: 1, // 빈 문틀 — 안쪽이 뚫려 있다
+  LIGHT: 2, // 문에서 쏟아지는 빛
+  BED: 3,
+  CUSHION: 4,
+  WINDOW: 5,
+  LAMP: 6,
+  FRAME: 7,
 };
 
 /** 지형 타일 칸 번호 */

@@ -135,7 +135,7 @@ export default class PrologueScene extends Phaser.Scene {
       this.add.image(0, 0, 'ui_vignette').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.9)
     );
 
-    // 문이 열리고 → 걸어와서 → 곁에 앉는다
+    // 걸어와서 강아지 곁에 멈춘다. 걷는 모션은 루프고, 어디서 멈출지는 여기서 정한다
     this.tweens.add({ targets: owner, alpha: 1, duration: 900, delay: 700 });
     this.tweens.add({
       targets: owner,
@@ -144,6 +144,7 @@ export default class PrologueScene extends Phaser.Scene {
       delay: 1200,
       ease: 'Sine.easeInOut',
       onStart: () => owner.play('owner_walk_silhouette'),
+      onComplete: () => owner.anims.stop(),
     });
 
     this.audio.play('sfx_whine', { volume: 0.25 });

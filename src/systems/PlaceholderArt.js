@@ -444,108 +444,74 @@ const otherPoses = {
     });
   },
 
-  ownerWalk(ctx, t, i) {
-    const step = Math.min(i, 4);
-    const crouch = i >= 5 ? (i - 4) * 6 : 0;
-    ctx.save();
-    ctx.globalAlpha = i === 7 ? 0.35 : 1;
+  ownerWalk(ctx, t) {
+    // 걷기 루프 — 어디로 걸어가는지는 코드가 정한다
+    const stride = t * TAU;
     drawPerson(ctx, {
-      x: 34 + step * 8,
+      x: 64,
       y: 118,
       s: 1.05,
       silhouette: true,
-      stride: i < 5 ? i * 0.9 : 0,
-      armSwing: i < 5 ? i * 0.9 + Math.PI : 0.6,
-      bodyY: crouch,
-      lean: i >= 5 ? 0.25 : 0,
+      stride,
+      armSwing: stride + Math.PI,
+      bodyY: -Math.abs(Math.sin(stride)) * 3,
     });
-    ctx.restore();
+  },
+
+  ownerWalkAdult(ctx, t, i, w, h) {
+    const stride = t * TAU;
+    drawPerson(ctx, {
+      x: w / 2,
+      y: h - 16,
+      s: 1.5,
+      color: PALETTE.ownerAdult,
+      stride,
+      armSwing: stride + Math.PI,
+      bodyY: -Math.abs(Math.sin(stride)) * 4,
+    });
+  },
+
+  ownerKneel(ctx, t, i, w, h) {
+    // 서 있다가 무릎 꿇고 두 팔을 벌리기까지
+    const drop = Math.min(i, 4) / 4;
+    const open = Math.max(0, i - 4) / 3;
+    drawPerson(ctx, {
+      x: w / 2,
+      y: h - 16 + drop * 26,
+      s: 1.5 - drop * 0.22,
+      color: PALETTE.ownerAdult,
+      stride: drop * 0.5,
+      armSwing: -0.4 - open * 1.1,
+      lean: drop * 0.18,
+    });
   },
 
   ownerWake(ctx, t, i, w, h) {
-    // 침대에서 일어나 문으로 걸어가 문을 여는 8단계
-    const bedCol = hex(0x6b5442);
-    ctx.fillStyle = hex(0x2c2436);
-    ctx.fillRect(0, 0, w, h);
-    ctx.beginPath();
-    ctx.roundRect(18, 120, 110, 44, 6);
-    ctx.fillStyle = bedCol;
-    ctx.fill();
-
-    const stages = [
-      { x: 60, y: 130, lean: 1.4, s: 0.85 },
-      { x: 60, y: 130, lean: 1.3, s: 0.85 },
-      { x: 66, y: 128, lean: 0.9, s: 0.9 },
-      { x: 74, y: 150, lean: 0.1, s: 0.95 },
-      { x: 92, y: 156, lean: 0, s: 1 },
-      { x: 132, y: 156, lean: -0.05, s: 1 },
-      { x: 176, y: 156, lean: -0.05, s: 1 },
-      { x: 190, y: 156, lean: 0, s: 1 },
+    // 누운 자세에서 두 발로 서기까지. 침대도 문도 그리지 않는다 — 사람만.
+    const lying = [
+      { lean: 1.5, s: 1.5, y: h - 30, bodyY: 34, stride: 0.9 },
+      { lean: 1.45, s: 1.5, y: h - 30, bodyY: 32, stride: 0.9 },
+      { lean: 1.1, s: 1.5, y: h - 28, bodyY: 24, stride: 0.7 },
+      { lean: 0.6, s: 1.5, y: h - 26, bodyY: 14, stride: 0.5 },
+      { lean: 0.25, s: 1.5, y: h - 22, bodyY: 8, stride: 0.35 },
+      { lean: 0.12, s: 1.5, y: h - 18, bodyY: 3, stride: 0.2 },
+      { lean: 0.06, s: 1.5, y: h - 16, bodyY: 1, stride: 0.1 },
+      { lean: 0, s: 1.5, y: h - 16, bodyY: 0, stride: 0 },
     ];
-    const st = stages[i];
-    drawPerson(ctx, { ...st, color: PALETTE.ownerAdult, silhouette: true });
-
-    // 문 — 마지막 두 프레임에서 열리며 빛이 쏟아진다
-    const open = i >= 6 ? (i - 5) / 2 : 0;
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = hex(0x4a3b2c);
-    ctx.fillRect(214, 60, 30, 100);
-    if (open > 0) {
-      const g = ctx.createLinearGradient(214, 0, 214 - 120 * open, 0);
-      g.addColorStop(0, 'rgba(255,230,170,0.95)');
-      g.addColorStop(1, 'rgba(255,230,170,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(214 - 120 * open, 55, 120 * open + 30, 110);
-    }
-    ctx.restore();
-  },
-
-  ownerHug(ctx, t, i, w, h) {
-    ctx.fillStyle = hex(0x2c2436);
-    ctx.fillRect(0, 0, w, h);
-    // 문에서 쏟아지는 빛
-    const g = ctx.createLinearGradient(w, 0, 0, 0);
-    g.addColorStop(0, `rgba(255,232,180,${0.5 + i * 0.06})`);
-    g.addColorStop(1, 'rgba(255,232,180,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-
-    const kneel = Math.min(i, 4) / 4;
+    const st = lying[i];
     drawPerson(ctx, {
-      x: 96,
-      y: 168 - 0 + kneel * 22,
-      s: 1 - kneel * 0.18,
-      silhouette: true,
-      stride: 0.3,
-      armSwing: -0.9 - kneel * 0.6,
-      lean: kneel * 0.25,
+      x: w / 2,
+      y: st.y,
+      s: st.s,
+      color: PALETTE.ownerAdult,
+      stride: st.stride,
+      armSwing: 0.3,
+      bodyY: st.bodyY,
+      lean: st.lean,
     });
-
-    const dogX = 176 - Math.min(i, 5) * 12;
-    const hop = i >= 3 && i <= 5 ? -14 : 0;
-    ctx.save();
-    ctx.translate(0, 60);
-    drawDog(ctx, {
-      x: dogX,
-      y: 108,
-      s: 0.85,
-      bodyY: hop,
-      tailAngle: 1.5,
-      legSwing: 0.6,
-      legPhase: t,
-      tilt: hop ? -0.25 : 0,
-    });
-    ctx.restore();
-
-    if (i >= 6) {
-      ctx.save();
-      ctx.globalAlpha = (i - 5) / 2.2;
-      ctx.fillStyle = '#fff3d8';
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-    }
   },
+
+
 };
 
 /* ------------------------------------------------------------------ */
