@@ -14,6 +14,7 @@
 | 낱개 소품에 어두운 배경 + 후광이 깔려 나왔다 | 배경에 그림자·후광·비네트를 넣지 말라고 못 박는다 |
 | 해상도가 1536×1024, 2172×724 등 제각각이었다 | 비율만 맞추면 된다. 전처리가 규격에 맞춰 다시 앉힌다 |
 | 타일셋 9열 격자가 행마다 높이가 달랐다 | 칸 수를 8칸으로 줄여 성공률을 올린다 |
+| "문이 열리고 그 너머에 강아지" 같은 **장면**을 한 장으로 받으려 했다 | 장면을 그리지 않는다. 닫힌 문 / 빈 문틀 / 빛을 **부품으로 나눠** 받고 코드가 겹친다 |
 
 ### 마젠타 배경을 쓰는 이유
 
@@ -205,7 +206,61 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 
 ---
 
-## 5. 빛 두 장 — 낱장 GUI
+## 5. 집 안 부품 — 4열 × 2행 (8칸)
+
+프롤로그 마지막 컷과 엔딩에 쓴다. 저장 경로 `assets-src/props/props_home.png`, 비율 **4 : 2**.
+
+> **장면을 통째로 그리지 않는다.**
+> "문이 열리고 그 너머에 강아지가 서 있다" 같은 그림을 한 장으로 받으면 그 장면에서만
+> 쓸 수 있고, 강아지 모습이 스프라이트와 어긋난다. 대신 **닫힌 문 / 빈 문틀 / 쏟아지는 빛**을
+> 따로 받아서 코드가 겹친다. 문이 열리면 닫힌 문이 사라지고 빈 문틀 뒤로 빛이 깔리며,
+> 그 앞에 평소 쓰던 강아지 스프라이트가 그대로 선다.
+
+```
+0  1  2  3
+4  5  6  7
+```
+
+| 칸 | 내용 | 쓰임 |
+|---|---|---|
+| 0 | 닫힌 나무문 (문틀 포함) | 평소 상태 |
+| 1 | **빈 문틀** — 문짝이 없고 안쪽이 뚫려 있다 | 문이 열린 뒤. 이 구멍 뒤에 강아지를 세운다 |
+| 2 | 문에서 쏟아지는 따뜻한 빛 | 1번 뒤에 깔아 역광을 만든다 |
+| 3 | 낮은 1인용 침대 | 주인이 자고 있는 곳 |
+| 4 | 둥근 강아지 방석 | 침대 옆 |
+| 5 | 창문 (달빛) | 벽 장식 |
+| 6 | 작은 스탠드 램프 | 따뜻한 불빛 |
+| 7 | 빈 액자 | 벽 장식 (그림은 비워 둔다) |
+
+```
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A cosy bedroom interior part sheet arranged in a strict grid of exactly 4 columns and 2 rows, eight equal square cells of identical size, one object centered in each cell and resting on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a closed wooden door set in its frame seen straight on, the same door frame completely empty with the doorway opening hollow and see-through, a soft rectangular shaft of warm golden light shaped like a doorway with no frame around it, a low single bed with a rumpled quilt seen from the side, a round padded dog cushion, a small square window with cool moonlight in it, a short bedside lamp with a warm glowing shade, and an empty picture frame with a blank face. Warm palette of amber lamplight, deep brown wood and dusty blue shadow. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+> 1번 칸이 핵심이다. **문짝 없이 문틀만** 있어야 하고, 문틀 안쪽은 배경(마젠타)이 그대로
+> 보여야 한다. 그래야 전처리가 그 구멍을 투명하게 만들고, 뒤에 둔 빛과 강아지가 비친다.
+
+### 코드가 엔딩을 조립하는 순서
+
+```
+방 배경          bg_home_interior_night
+  + 침대(3)  + 방석(4)  + 램프(6)
+  + 닫힌 문(0)                       ← 처음
+       ↓ 문 밖에서 소리
+  주인이 일어난다                     owner_adult_wake
+  주인이 문으로 걸어간다              owner_adult_walk + 코드가 x 이동
+       ↓ 문 앞 도착
+  닫힌 문(0)이 사라지고
+  빛(2) → 빈 문틀(1) 순으로 깔린다
+  그 사이에 강아지가 선다             dog_idle  ← 평소 쓰던 그 스프라이트
+       ↓
+  주인이 무릎 꿇고 팔을 벌린다        owner_adult_kneel
+  강아지가 품으로 달려든다            dog_run + 코드가 x 이동
+       ↓ 화면이 하얗게 물든다 (껴안는 순간은 빛에 가려진다)
+```
+
+---
+
+## 6. 빛 두 장 — 낱장 GUI
 
 냄새 입자와 세이브 오라도 애니메이션에서 뺐다. 밝기와 크기 변화는 코드가 준다.
 
@@ -223,7 +278,7 @@ A soft warm ring of golden light lying flat on the ground, seen from a low side 
 
 ---
 
-## 6. 배경 레이어 — 다시 뽑을 때만
+## 7. 배경 레이어 — 다시 뽑을 때만
 
 1차 배경은 전처리로 살려 놓았으니 **다시 뽑을 필요는 없다.**
 새로 뽑는다면 아래 조건만 바꾸면 된다.
@@ -245,7 +300,7 @@ The sky area is a completely flat solid magenta #FF00FF fill with no gradient an
 
 ---
 
-## 7. 아직 없는 것
+## 8. 아직 없는 것
 
 강아지 10종은 들어왔다. 남은 것은 프롤로그·엔딩 연출용 5종이다 —
 `dog_puppy_run`, `owner_child_run`, `owner_walk_silhouette`, `owner_adult_wake`, `owner_dog_hug`.
@@ -253,7 +308,7 @@ The sky area is a completely flat solid magenta #FF00FF fill with no gradient an
 
 ---
 
-## 8. 넣는 법
+## 9. 넣는 법
 
 ```bash
 # 1. assets-src/ 아래 규정된 경로에 원본을 넣는다
@@ -267,7 +322,7 @@ npm run dev
 
 `public/assets/` 는 **전처리 결과물**이라 직접 손대지 않는다. 원본은 항상 `assets-src/` 에 둔다.
 
-## 9. 체크리스트
+## 10. 체크리스트
 
 1. 배경이 **단색 마젠타**인가 (그라데이션·후광·그림자 없음)
 2. 칸 수가 정확한가 — 소품 12칸(4×3), 타일 8칸(4×2)
@@ -275,4 +330,5 @@ npm run dev
 4. 소품이 칸 **바닥에 서 있는가** (공중에 떠 있으면 안 됨)
 5. 타일이 칸을 **꽉 채우는가** (여백이 있으면 지면에 틈이 생긴다)
 6. 어디에도 글자·숫자·상표가 없는가
-7. 파일명이 위 표와 정확히 일치하는가
+7. `props_home` 1번 칸이 **문짝 없는 빈 문틀**이고 안쪽이 뚫려 있는가
+8. 파일명이 위 표와 정확히 일치하는가

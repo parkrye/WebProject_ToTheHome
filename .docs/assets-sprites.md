@@ -2,7 +2,8 @@
 
 ## 0. 만드는 방법
 
-1. **레퍼런스 이미지 한 장**을 생성기에 넣는다 (캐릭터를 고정하는 기준 그림).
+1. **레퍼런스 이미지 한 장**을 먼저 만든다. 캐릭터를 고정하는 기준 그림이며,
+   각 항목의 "① 레퍼런스" 프롬프트로 뽑는다. 같은 인물이면 레퍼런스를 돌려 쓴다.
 2. 아래 **8줄짜리 프롬프트**를 넣는다. 각 줄이 **한 장의 그림**이 된다.
 3. 나온 8장을 가로로 이어 붙여 시트 한 장으로 만든다.
 4. `assets-src/sprites/<이름>.png` 로 저장하고 `npm run assets:prepare` 를 돌린다.
@@ -15,6 +16,8 @@
 - 캐릭터의 생김새는 레퍼런스가 정하므로, 문장은 **자세와 동작만** 서술한다.
 - 8장이 이어져 하나의 동작이 되도록, 마지막 줄은 첫 줄로 자연스럽게 돌아가야 한다
   (점프처럼 한 번만 재생하는 것은 예외).
+- **한 시트에는 한 동작만 담는다.** 문을 열거나 누구를 만나는 것 같은 *장면*은 넣지 않는다.
+  배경·문·빛·상대 캐릭터는 각자 따로 있는 부품이고, 겹치고 움직이는 건 코드가 한다.
 
 ## 1. 규격
 
@@ -171,17 +174,43 @@ The dog stands over the ball again, ready to play once more.
 
 ---
 
-## 3. 남은 것 — 연출용 5종
+## 3. 남은 것 — 연출용 6종
 
 프롤로그와 엔딩에만 나온다. 강아지 다음으로 필요한 것들이다.
 
-### 3.1 `dog_puppy_run` — 어린 강아지가 신나게 달린다 (루프 · 14fps)
+> **원칙: 한 시트는 한 동작만 담는다.**
+> "문을 연다", "문 너머로 강아지가 보인다" 같은 **장면**을 스프라이트에 넣지 않는다.
+> 문·빛·강아지는 따로 있는 부품이고, 그것들을 겹치고 움직이는 건 코드가 한다.
+> 그래야 한 동작을 여러 장면에서 다시 쓸 수 있고, 하나가 어긋나도 전부 다시 뽑지 않는다.
 
-> 레퍼런스: 강아지 그림을 쓰되 **머리가 더 크고 다리가 짧은 새끼** 비율로.
+각 항목은 **① 레퍼런스 그림 프롬프트**(한 장)와 **② 8줄 동작 프롬프트**로 되어 있다.
+①로 기준 그림을 먼저 만들고, 그 그림을 넣은 채로 ②의 여덟 줄을 돌린다.
+
+### 어른 주인은 레퍼런스 하나를 셋이 함께 쓴다
+
+`owner_adult_wake` · `owner_adult_walk` · `owner_adult_kneel` 은 같은 사람이므로
+**레퍼런스를 한 번만 만들어** 세 시트에 모두 쓴다.
 
 ```
-The round-bodied puppy stretches into a clumsy gallop with its front paws reaching forward.
-The puppy's front paws land and its oversized head dips toward the grass.
+Soft hand-painted pixel art character reference, a single adult person standing in a neutral side view pose facing right, arms relaxed at the sides, wearing simple soft home clothes in muted warm colours, plain short hair, facial features kept soft and barely detailed so the face reads as anyone's, full body visible from head to feet with both feet on an invisible ground line, warm pastel palette with gentle rim light, storybook dream atmosphere, one character only. The background is a completely flat solid magenta #FF00FF fill with no gradient, no glow, no drop shadow and no ground shadow. No text, no letters, no numbers, no watermark, no logo.
+```
+
+---
+
+### 3.1 `dog_puppy_run` — 어린 강아지가 신나게 달린다
+루프 · 14fps
+
+**① 레퍼런스**
+
+```
+Soft hand-painted pixel art character reference, a single puppy version of a small cream-and-white short-haired dog with a red neckerchief, standing in a neutral side view pose facing right, drawn with puppy proportions of an oversized round head, big floppy ears, short stubby legs and a plump belly, full body visible with all four paws on an invisible ground line, warm pastel palette with gentle rim light, storybook dream atmosphere, one character only. The background is a completely flat solid magenta #FF00FF fill with no gradient, no glow, no drop shadow and no ground shadow. No text, no letters, no numbers, no watermark, no logo.
+```
+
+**② 동작 8줄**
+
+```
+The puppy stretches into a clumsy gallop with its front paws reaching forward.
+The puppy's front paws land and its oversized head dips downward.
 The puppy's short legs gather under its plump belly.
 The puppy pushes off with both hind legs and lifts off the ground.
 The puppy floats in mid-bound with its floppy ears flying upward.
@@ -190,12 +219,21 @@ The puppy tips forward and reaches for the ground with its front paws.
 The puppy is about to touch down, ready to bound again.
 ```
 
-### 3.2 `owner_child_run` — 어린 주인이 달린다 (루프 · 12fps)
+---
 
-> 레퍼런스: 노란 옷을 입은 아이. **얼굴 이목구비는 흐리게** — 누구의 기억이든 될 수 있도록.
+### 3.2 `owner_child_run` — 어린 주인이 달린다
+루프 · 12fps
+
+**① 레퍼런스**
 
 ```
-A young child in a yellow coat runs to the right with the left leg swung forward and arms open.
+Soft hand-painted pixel art character reference, a single young child of about seven years old standing in a neutral side view pose facing right, arms relaxed at the sides, wearing a soft yellow coat and simple trousers, plain short hair, facial features kept soft and barely detailed so the face reads as anyone's, full body visible from head to feet with both feet on an invisible ground line, warm pastel palette with gentle rim light, storybook dream atmosphere, one character only. The background is a completely flat solid magenta #FF00FF fill with no gradient, no glow, no drop shadow and no ground shadow. No text, no letters, no numbers, no watermark, no logo.
+```
+
+**② 동작 8줄**
+
+```
+The child runs to the right with the left leg swung forward and both arms open.
 The child's left foot lands and the body leans into the stride.
 The child's weight passes over the planted foot as the arms swing across the chest.
 The right leg drives forward and the child's hair lifts in the wind.
@@ -205,49 +243,83 @@ The child descends with the left leg reaching forward again.
 The child completes the stride in the same pose that began it.
 ```
 
-### 3.3 `owner_walk_silhouette` — 밤에 다가오는 주인 (비루프 · 8fps)
+---
 
-> 레퍼런스: **완전한 검은 실루엣**. 뒤에서 따뜻한 빛이 비친다. 얼굴은 보이지 않는다.
+### 3.3 `owner_walk_silhouette` — 어둠 속에서 걸어온다
+루프 · 8fps
 
-```
-A backlit adult silhouette stands in a doorway with warm light spilling around the body.
-The silhouette takes its first slow step forward and the doorway light narrows behind it.
-The figure walks closer and its shadow stretches long across the floor.
-The figure takes another quiet step, one arm hanging loose at its side.
-The silhouette stops and begins to lean down toward the floor.
-The figure crouches with one hand reaching gently downward.
-The hand comes to rest and the silhouette holds perfectly still.
-The whole scene fades toward black with only a rim of warm light remaining.
-```
+프롤로그 마지막 컷에서 쓴다. **걷는 동작만** 있으면 된다 —
+어디서 어디로 걸어오는지, 언제 멈추는지, 언제 어두워지는지는 코드가 정한다.
 
-### 3.4 `owner_adult_wake` — 어른이 된 주인이 일어나 문을 연다 (비루프 · 8fps · 224px)
-
-> 레퍼런스: 작고 따뜻한 침실. 침대와 문이 함께 보이는 구도.
+**① 레퍼런스**
 
 ```
-An adult lies asleep under a blanket in a small bed, seen from the side.
-The adult's eyes open and the head turns slightly toward the door.
-The adult props up on one elbow and the blanket slides off a shoulder.
-The adult sits upright on the edge of the bed with both feet on the floor.
-The adult stands and takes the first step away from the bed.
-The adult walks toward the door with one hand rising toward the handle.
-The hand grips the door handle and the body leans in.
-The door swings open and bright warm light floods across the adult's face.
+Soft hand-painted pixel art character reference, a single adult figure rendered as a completely solid black featureless silhouette with no facial features and no clothing detail, standing in a neutral side view pose facing right, arms relaxed at the sides, full body visible from head to feet with both feet on an invisible ground line, only the outer shape readable, one character only. The background is a completely flat solid magenta #FF00FF fill with no gradient, no glow, no drop shadow and no ground shadow. No text, no letters, no numbers, no watermark, no logo.
 ```
 
-### 3.5 `owner_dog_hug` — 재회 (비루프 · 8fps · 224px)
-
-> 레퍼런스: 열린 문 안쪽에서 본 구도. 강아지와 어른이 함께 담긴다.
+**② 동작 8줄**
 
 ```
-The adult stands in an open doorway and the small dog sits on the threshold looking up.
-The dog's tail begins to wag hard and the adult's knees start to bend.
-The adult kneels down and opens both arms wide toward the dog.
-The dog springs off its hind legs toward the adult's chest.
-The dog collides softly into the adult's arms as the arms begin to close.
-The adult wraps both arms fully around the dog and buries their face in its fur.
-The two hold still together while a warm glow spreads outward around them.
-The glow overtakes everything and both figures fade into soft white light.
+The black silhouette begins a slow walking stride with the left leg swung forward.
+The left foot lands and the body settles over it.
+The silhouette's weight passes over the planted foot with both arms hanging still.
+The right leg swings forward through the air.
+The right foot lands and the shoulders rise slightly.
+The silhouette reaches the tallest point of the stride.
+The left leg swings forward again as the body dips.
+The silhouette completes the stride in the same pose that began it.
+```
+
+---
+
+### 3.4 `owner_adult_wake` — 침대에서 일어나 선다
+비루프 · 8fps · 224px · 레퍼런스는 위의 **어른 주인** 공용
+
+침대는 배경과 소품에 이미 있으므로 **사람만** 그린다.
+누운 자세에서 시작해 두 발로 서는 데서 끝난다. 문은 나오지 않는다.
+
+**② 동작 8줄**
+
+```
+The adult lies asleep on one side with knees drawn up and eyes closed.
+The adult's eyes open while the body stays lying down.
+The adult props up on one elbow and lifts the head and shoulders.
+The adult pushes upright into a sitting pose with the legs still folded.
+The adult swings both legs down and sits on the edge with feet on the ground.
+The adult leans forward and pushes off with both hands to rise.
+The adult straightens up onto both feet, still slightly hunched.
+The adult stands fully upright with arms relaxed at the sides.
+```
+
+### 3.5 `owner_adult_walk` — 어른이 걷는다
+루프 · 10fps · 224px · 레퍼런스는 위의 **어른 주인** 공용
+
+```
+The adult begins a slow walking stride with the left leg swung forward.
+The left foot lands and the body settles over it.
+The adult's weight passes over the planted foot as the arms swing gently.
+The right leg swings forward through the air.
+The right foot lands and the shoulders rise slightly.
+The adult reaches the tallest point of the stride.
+The left leg swings forward again as the body dips.
+The adult completes the stride in the same pose that began it.
+```
+
+### 3.6 `owner_adult_kneel` — 무릎을 꿇고 두 팔을 벌린다
+비루프 · 8fps · 224px · 레퍼런스는 위의 **어른 주인** 공용
+
+재회 장면에 쓴다. **사람의 동작만** 담는다 — 강아지는 따로 있는 스프라이트를
+코드가 품 쪽으로 옮기고, 껴안는 순간은 화면이 하얗게 물들며 가려진다.
+
+```
+The adult stands upright with arms relaxed at the sides.
+The adult bends both knees slightly and begins to lower.
+The adult sinks lower with the back straight and arms starting to lift.
+One knee touches the ground and the other stays raised.
+The adult settles onto both knees with the torso upright.
+The adult begins to open both arms forward.
+The adult spreads both arms wide and leans slightly forward.
+The adult holds both arms wide open, waiting to receive something.
 ```
 
 ---
