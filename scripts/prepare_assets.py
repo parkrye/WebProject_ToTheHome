@@ -307,6 +307,7 @@ ATLASES = {
     'props/props_coast': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_mountain': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_field': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
+    'props/props_home': {'cols': 4, 'rows': 2, 'cell': 384, 'anchor': 'bottom'},
     # 움직이는 것들 — 4열 1행 (4칸)
     'props/actors_city': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
     'props/actors_coast': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
