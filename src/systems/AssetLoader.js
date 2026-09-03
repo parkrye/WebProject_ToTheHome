@@ -159,16 +159,39 @@ export function registerAnimations(scene) {
     const frameCount = scene.textures.get(def.key).frameTotal - 1; // __BASE 제외
     const end = Math.max(0, Math.min(7, frameCount - 1));
 
-    // 첫 칸이 '기본 서 있는 자세'인 시트가 있다. 그대로 반복하면 한 바퀴마다
-    // 벌떡 일어나므로, loopFrom 이 있으면 그 앞의 도입 칸들을 고리에서 뺀다.
-    const start = def.loop ? Math.min(def.loopFrom ?? 0, end) : 0;
+    // 시트가 도입 / 고리 / 마무리로 나뉘어 있으면 그대로 셋으로 등록한다.
+    //
+    //   key         고리 (평소에 쓰는 것)
+    //   key + '_in'  들어가는 동작, 한 번만
+    //   key + '_out' 마무리 동작, 한 번만
+    //
+    // 나눌 게 없으면 예전처럼 전체가 곧 고리다.
+    const from = def.loop ? Math.min(def.loopFrom ?? 0, end) : 0;
+    const to = def.loop ? Math.min(def.loopTo ?? end, end) : end;
 
     scene.anims.create({
       key: def.key,
-      frames: scene.anims.generateFrameNumbers(def.key, { start, end }),
+      frames: scene.anims.generateFrameNumbers(def.key, { start: from, end: to }),
       frameRate: def.fps,
       repeat: def.loop ? -1 : 0,
     });
+
+    if (from > 0) {
+      scene.anims.create({
+        key: `${def.key}_in`,
+        frames: scene.anims.generateFrameNumbers(def.key, { start: 0, end: from - 1 }),
+        frameRate: def.fps,
+        repeat: 0,
+      });
+    }
+    if (to < end) {
+      scene.anims.create({
+        key: `${def.key}_out`,
+        frames: scene.anims.generateFrameNumbers(def.key, { start: to + 1, end }),
+        frameRate: def.fps,
+        repeat: 0,
+      });
+    }
 
     // 사망 → 부활은 같은 시트의 역재생을 쓴다
     if (def.key === 'dog_dispel' && !scene.anims.exists('dog_respawn')) {

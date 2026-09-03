@@ -178,12 +178,38 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** 세이브 모션 등 — 재생이 끝나면 resolve 되는 프라미스 */
+  /**
+   * 세이브 포인트에서 노는 모션.
+   *
+   * 시트에 따라 **들어가는 동작 → 고리 → 마무리 동작** 으로 나뉘어 있다.
+   * 예를 들어 땅파기는 1칸이 서 있는 자세, 2~3칸이 파는 고리, 4~8칸이 털고 일어서는
+   * 마무리다. 고리만 돌리면 파다 말고 끝나고, 전체를 돌리면 한 바퀴마다 일어선다.
+   *
+   * 마무리는 **끝나기 전에 미리 시작해야** 주어진 시간 안에 맞아떨어진다.
+   */
   playMotion(animKey, durationMs) {
     if (this.state_ === DogState.DEAD) return Promise.resolve();
     this.state_ = DogState.MOTION;
     this.body.setVelocity(0, this.body.velocity.y);
     this.body.setAccelerationX(0);
-    this.anims.play(animKey, true);
+
+    const bank = this.scene.anims;
+    const inKey = `${animKey}_in`;
+    const outKey = `${animKey}_out`;
+    const outMs = bank.exists(outKey) ? bank.get(outKey).duration : 0;
+
+    if (bank.exists(inKey)) {
+      this.anims.play(inKey, true);
+      this.anims.chain(animKey);
+    } else {
+      this.anims.play(animKey, true);
+    }
+
+    if (outMs) {
+      this.scene.time.delayedCall(Math.max(0, durationMs - outMs), () => {
+        if (this.state_ === DogState.MOTION) this.anims.play(outKey, true);
+      });
+    }
 
     return new Promise((resolve) => {
       this.scene.time.delayedCall(durationMs, () => {

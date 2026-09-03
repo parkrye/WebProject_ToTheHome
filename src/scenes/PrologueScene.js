@@ -238,7 +238,11 @@ export default class PrologueScene extends Phaser.Scene {
       delay: 1200,
       ease: 'Sine.easeInOut',
       onStart: () => owner.play('owner_walk_silhouette'),
-      onComplete: () => owner.anims.stop(),
+      // 걷다 멈춘 자리의 아무 칸에서 서 버리면 어색하다. 서 있는 칸으로 되돌린다
+      onComplete: () => {
+        owner.anims.stop();
+        owner.setFrame(0);
+      },
     });
 
     this.audio.play('sfx_whine', { volume: 0.25 });
