@@ -103,16 +103,6 @@ A mid parallax layer for a side-scrolling platformer showing a row of low four-s
 A foreground parallax layer for a side-scrolling platformer showing the blurred edge of a chain link fence, a leaning street pole and a few weeds pushing through cracked pavement along the bottom of the frame, painted in soft hand-painted pixel art in dark cool gray, slightly out of focus as if very close to the camera. Only the bottom fifth contains detail, everything else fully transparent, tiles seamlessly left to right. No text, no letters, no signage, no watermark, no characters.
 ```
 
-## 2.5 `bg_columbarium_interior.png` (960×540, 불투명) — 스테이지 1 시작 지점
-
-```
-An interior background of a quiet columbarium hall for a side-scrolling game, painted in soft hand-painted pixel art with a hushed palette of warm beige stone, pale marble and dim amber light. Tall walls of small square memorial niches with polished glass fronts, each holding a tiny unlit candle and a single dried flower, a narrow strip of pale daylight falling from a high window onto the stone floor, and dust motes floating in the light beam. Every niche plate is blank with no engraving. Reverent, still and gentle rather than frightening. No text, no letters, no numbers, no photographs, no watermark, no characters.
-```
-
----
-
-# 3. 배경 — 스테이지 2 (해안가)
-
 ## 3.1 `bg_coast_sky_day.png` (1920×540, 불투명)
 
 ```

@@ -65,14 +65,14 @@ The background is a completely flat solid magenta #FF00FF fill with absolutely n
 ### 2.1 `props_city.png` — 도시
 
 ```
-Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city prop sheet arranged in a strict grid of exactly 4 columns and 3 rows, twelve equal square cells of identical size, one object centered in each cell and standing on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a cast-iron street lamp, a traffic light with blank unlit lenses, a round metal drain grate seen from the side, a terracotta flower pot with a small plant, a weathered public bench, a dented metal trash bin, a stack of three cardboard boxes, a rolled-down shop shutter with a completely blank face, a red fire hydrant, an old bicycle leaning on its stand, a bare street tree in a square planter, and a tall wall of small blank memorial niches. Muted palette of concrete gray, rust orange and dull teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city prop sheet arranged in a strict grid of exactly 4 columns and 3 rows, twelve equal square cells of identical size, one object centered in each cell and standing on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a cast-iron street lamp, a traffic light with blank unlit lenses, a round metal drain grate seen from the side, a terracotta flower pot with a small plant, a weathered public bench, a dented metal trash bin, a stack of three cardboard boxes, a rolled-down shop shutter with a completely blank face, a red fire hydrant, an old bicycle leaning on its stand, a bare street tree in a square planter, and a tall concrete overpass pillar with a metal staircase winding up it. Muted palette of concrete gray, rust orange and dull teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 | 0 | 1 | 2 | 3 |
 |---|---|---|---|
 | 가로등 | 신호등 | 하수구 그레이트 | 화분 |
 | **4** 벤치 | **5** 쓰레기통 | **6** 상자더미 | **7** 셔터 |
-| **8** 소화전 | **9** 자전거 | **10** 가로수 | **11** 납골당 유골함 벽 |
+| **8** 소화전 | **9** 자전거 | **10** 가로수 | **11** 고가도로 기둥 |
 
 ### 2.2 `props_coast.png` — 해안가
 
@@ -308,7 +308,7 @@ fully transparent background
 The sky area is a completely flat solid magenta #FF00FF fill with no gradient and no clouds, so it can be cut out cleanly. Only the scenery itself is painted.
 ```
 
-`sky` 레이어와 실내 배경(`bg_columbarium_interior`, `bg_home_interior_night`, `bg_home_exterior`)은
+`sky` 레이어와 실내 배경(`bg_home_interior_night`, `bg_home_exterior`)은
 **원래 불투명이 맞으므로** 이 치환을 하지 않는다.
 
 ---

@@ -1,6 +1,6 @@
 {
   "autodetect": false,
-  "generatedAt": "2026-09-03T03:14:59.089Z",
+  "generatedAt": "2026-09-03T03:22:12.208Z",
   "files": [
     "assets/audio/amb_city_morning.ogg",
     "assets/audio/amb_coast_waves.ogg",
@@ -47,7 +47,6 @@
     "assets/bg/bg_coast_near.png",
     "assets/bg/bg_coast_sky_day.png",
     "assets/bg/bg_coast_sky_sunset.png",
-    "assets/bg/bg_columbarium_interior.png",
     "assets/bg/bg_field_far.png",
     "assets/bg/bg_field_mid.png",
     "assets/bg/bg_field_near.png",

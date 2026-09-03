@@ -3,7 +3,8 @@ import { PROP, ACTOR } from '../systems/AssetManifest.js';
 /**
  * 스테이지 1 — 도시 (튜토리얼)
  *
- * 납골당에서 나와 주인의 냄새를 쫓기 시작한다.
+ * 안개 낀 이른 아침, 아직 깨어나지 않은 도시에서 눈을 뜬다.
+ * **어디에서 왔는지는 말하지 않는다.** 강아지가 무엇인지도 설명하지 않는다.
  * 이동 → 점프 → 도움닫기 순으로 배우고, 마지막에 횡단보도에서 타이밍을 익힌다.
  *
  * 배치 기준: 지면 상단 y=470. 걷기 점프 ~118px, 달리기 ~222px, 도움닫기 ~240px.
@@ -30,7 +31,6 @@ export default {
     near: 'bg_city_near',
   },
   start: { x: 140, y: 420 },
-  intro: { texture: 'bg_columbarium_interior', fadeIn: 1400 },
 
   ground: [
     // 갭 폭은 도움닫기 최대 도달거리(약 240px)보다 넉넉히 짧게 잡는다.
@@ -95,8 +95,8 @@ export default {
   },
 
   props: [
-    // 납골당 유골함 벽 — 출발 지점의 상징물
-    { x: 60, y: GY, atlas: 'props_city', frame: PROP.LANDMARK, height: 300, depth: 6, alpha: 0.95 },
+    // 출발 지점 — 셔터가 내려진 가게. 도시가 아직 깨지 않았다는 것만 말한다
+    { x: 60, y: GY, atlas: 'props_city', frame: PROP.H, height: 240, depth: 6, alpha: 0.95 },
     { x: 520, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
     { x: 900, y: GY, atlas: 'props_city', frame: PROP.E, height: 90, depth: 7 },
     { x: 1180, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },

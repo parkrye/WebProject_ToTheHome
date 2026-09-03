@@ -50,10 +50,9 @@
 
 ## 5. 실내 배경 3장 — 불투명 통짜가 맞나?
 
-**맞다.** `bg_columbarium_interior`, `bg_home_interior_night`, `bg_home_exterior` 는
+**맞다.** `bg_home_interior_night`, `bg_home_exterior` 는
 패럴랙스 레이어가 아니라 **화면을 통째로 채우는 장면 이미지**다.
 
-- 납골당: 스테이지 1 시작 연출 (페이드로 걷힌다)
 - 집 안: 프롤로그 4컷과 엔딩
 - 집 외관: 스테이지 4 종착점
 

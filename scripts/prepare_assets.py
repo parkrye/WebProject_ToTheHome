@@ -405,7 +405,7 @@ OPAQUE_BG = [
     'bg_city_sky', 'bg_coast_sky_day', 'bg_coast_sky_sunset',
     'bg_field_sky_morning', 'bg_field_sky_noon', 'bg_field_sky_evening',
     'bg_mountain_sky_night', 'bg_mountain_sky_dawn',
-    'bg_columbarium_interior', 'bg_home_interior_night', 'bg_home_exterior',
+    'bg_home_interior_night', 'bg_home_exterior',
 ]
 
 # 8프레임 스프라이트의 프레임 한 칸 크기.

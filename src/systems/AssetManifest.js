@@ -74,7 +74,6 @@ export const BACKGROUNDS = [
   { key: 'bg_mountain_mid', file: 'bg_mountain_mid.png', kind: 'mid', theme: 'mountain' },
   { key: 'bg_mountain_near', file: 'bg_mountain_near.png', kind: 'near', theme: 'mountain' },
 
-  { key: 'bg_columbarium_interior', file: 'bg_columbarium_interior.png', kind: 'interior', theme: 'city' },
   { key: 'bg_home_interior_night', file: 'bg_home_interior_night.png', kind: 'interior', theme: 'home' },
   { key: 'bg_home_exterior', file: 'bg_home_exterior.png', kind: 'interior', theme: 'field' },
 ];
@@ -116,7 +115,7 @@ export const PROP = {
   E: 4, F: 5, G: 6, H: 7,
   I: 8, J: 9,
   TREE: 10, // 10번은 항상 그 스테이지의 큰 나무
-  LANDMARK: 11, // 11번은 그 스테이지의 상징물 (유골함 벽 / 등대 / 부엉이 가지 / 집)
+  LANDMARK: 11, // 11번은 그 스테이지의 상징물 (고가도로 / 등대 / 부엉이 가지 / 집)
 };
 
 /**
