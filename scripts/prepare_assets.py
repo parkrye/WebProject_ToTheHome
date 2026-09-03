@@ -15,6 +15,7 @@ AI 생성 에셋은 크기도 제각각이고, "투명 배경"을 실제 알파 
 사용: python scripts/prepare_assets.py [--only images|audio] [--force]
 """
 
+import math
 import os
 import shutil
 import subprocess
@@ -77,12 +78,50 @@ def fit(im, max_w=None, max_h=None):
 # ---------------------------------------------------------------- 배경 제거
 
 
+def _fill_runs(mask, seed, axis):
+    """축을 따라 mask 의 연속 구간마다, 그 안에 seed 가 하나라도 있으면 구간 전체를 채운다."""
+    m = mask if axis == 1 else mask.T
+    sd = seed if axis == 1 else seed.T
+    w = m.shape[1]
+    idx = np.arange(w)[None, :]
+    hit = (sd & m).astype(np.int32)
+
+    def sweep(mm, hh):
+        c = np.cumsum(hh, axis=1)
+        prev = np.maximum.accumulate(np.where(mm, -1, idx), axis=1)
+        base = np.where(prev >= 0, np.take_along_axis(c, np.maximum(prev, 0), axis=1), 0)
+        return (c - base) > 0
+
+    filled = sweep(m, hit) | sweep(m[:, ::-1], hit[:, ::-1])[:, ::-1]
+    out = m & filled
+    return out if axis == 1 else out.T
+
+
+def flood(mask, seed, rounds=256):
+    """seed 에서 출발해 mask 안에서 이어진 곳을 전부 찾는다.
+
+    가로 한 번, 세로 한 번씩 구간을 통째로 채우기를 반복한다. 한 번에 한 칸씩
+    번지는 방식과 달리 구간 끝까지 단번에 가므로 몇 바퀴면 끝난다.
+    """
+    keep = seed & mask
+    for _ in range(rounds):
+        before = int(keep.sum())
+        keep = _fill_runs(mask, keep, 1)
+        keep = _fill_runs(mask, keep, 0)
+        if int(keep.sum()) == before:
+            break
+    return keep
+
+
 def strip_sky(im, bright=232, sat=26, feather=6):
     """
-    위쪽 하늘/체커보드를 지운다.
+    위쪽 하늘을 지운다.
 
-    각 열을 위에서 아래로 훑어 '밝고 채도 낮은' 픽셀이 이어지는 동안만 지운다.
-    건물 안쪽의 밝은 창문은 위와 이어져 있지 않으므로 살아남는다.
+    윗변에 닿아 있는 '밝고 채도 낮은' 덩어리를 통째로 지운다. 열 단위로 위에서
+    아래로만 훑으면 **나무나 풀에 가로막힌 하늘이 흰 덩어리로 남는다.** 나무 사이의
+    하늘은 나무 꼭대기를 돌아 위쪽 하늘과 이어져 있으므로, 이어진 곳을 따라가야 한다.
+
+    건물 안쪽의 밝은 창문은 하늘과 이어져 있지 않으므로 살아남는다.
     """
     a = np.asarray(im).astype(np.int16)
     rgb = a[:, :, :3]
@@ -91,9 +130,12 @@ def strip_sky(im, bright=232, sat=26, feather=6):
     mx = rgb.max(axis=2)
     mn = rgb.min(axis=2)
     skyish = (mx >= bright) & ((mx - mn) <= sat)
+    # 이미 투명한 곳도 하늘로 친다. 그래야 한 번 지운 뒤 다시 돌려도 이어진다
+    skyish |= a[:, :, 3] <= 16
 
-    # 열마다 위에서부터 연속인 구간만 True 로 남긴다
-    keep = np.cumprod(skyish, axis=0).astype(bool)
+    seed = np.zeros_like(skyish)
+    seed[0, :] = True
+    keep = flood(skyish, seed)
 
     alpha = a[:, :, 3].copy()
     alpha[keep] = 0
@@ -215,6 +257,94 @@ def strip_chroma(im, feather=1):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
 
 
+def strip_grid_lines(im, light=190, ratio=0.85):
+    """시트에 그려진 흰 격자선을 배경색으로 덮는다.
+
+    생성기가 칸을 나눠 그리라고 하면 칸 사이에 밝은 선을 실제로 그어 준다.
+    그 선이 남아 있으면 여백을 자를 때 선까지 물건으로 잡혀 소품이 칸 안에서
+    조그맣게, 한쪽으로 치우쳐 앉는다.
+
+    선은 시트를 가로지르지만 소품은 그렇지 않다. 그래서 **끝에서 끝까지 밝은**
+    줄만 골라 지운다.
+    """
+    a = np.asarray(im).astype(np.int16)
+    rgb = a[:, :, :3]
+    lightish = rgb.min(axis=2) > light
+
+    bg = np.median(rgb.reshape(-1, 3), axis=0).astype(np.uint8)
+    out = np.asarray(im).copy()
+    for idx in np.where(lightish.mean(axis=0) > ratio)[0]:
+        out[:, idx, :3] = bg
+    for idx in np.where(lightish.mean(axis=1) > ratio)[0]:
+        out[idx, :, :3] = bg
+    return Image.fromarray(out)
+
+
+def magenta_bands(im, count, axis, min_run=4):
+    """마젠타 여백으로 나뉜 칸의 경계를 찾는다.
+
+    타일 시트는 칸이 맞닿아 있지 않고 **칸 사이가 마젠타로 벌어져** 나온다.
+    균등하게 나누면 그 여백을 반씩 물고 들어와, 타일을 이어 붙일 때마다
+    보라색 세로줄이 선다.
+
+    칸 수가 기대와 다르면 None 을 돌려주고, 부르는 쪽이 균등 분할로 돌아간다.
+    """
+    a = np.asarray(im.convert('RGB')).astype(np.int16)
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    mag = (r > 150) & (b > 150) & (g < 110)
+    frac = mag.mean(axis=0 if axis == 1 else 1)
+
+    content = frac < 0.7
+    bands = []
+    start = None
+    for i, v in enumerate(content):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            if i - start >= min_run:
+                bands.append((start, i))
+            start = None
+    if start is not None and len(content) - start >= min_run:
+        bands.append((start, len(content)))
+
+    if len(bands) != count:
+        return None
+    # 여백과 맞닿은 한두 줄에는 마젠타가 번져 있다. 안으로 조금 들어가서 쓴다
+    pad = 2
+    return [(lo + pad, hi - pad) for lo, hi in bands if hi - lo > 4 * pad]
+
+
+def clamp_border(im, n=2):
+    """가장자리 n 줄을 바로 안쪽 줄로 덮는다 (크기는 그대로)."""
+    if n <= 0:
+        return im
+    a = np.asarray(im).copy()
+    if a.shape[0] <= 2 * n or a.shape[1] <= 2 * n:
+        return im
+    a[:, :n] = a[:, n:n + 1]
+    a[:, -n:] = a[:, -n - 1:-n]
+    a[:n, :] = a[n:n + 1, :]
+    a[-n:, :] = a[-n - 1:-n, :]
+    return Image.fromarray(a)
+
+
+def despill(im):
+    """크로마키 배경색이 그림 안으로 번진 것을 걷어낸다.
+
+    김·물보라·안개처럼 **반투명하고 색이 없는 것**을 초록 배경에서 오려 내면, 배경색이
+    그림 속으로 스며 형광 초록 얼룩이 남는다. 피사체에 색이 없어 "배경인지 그림인지"
+    가릴 기준이 없기 때문이다.
+
+    초록이 빨강·파랑보다 튀는 픽셀에서 초록을 둘 중 높은 쪽까지 끌어내린다. 원래
+    흰색·회색이던 것은 제 색으로 돌아오고, 진짜 초록(풀·나뭇잎)은 빨강이나 파랑이
+    함께 높아서 거의 건드려지지 않는다.
+    """
+    a = np.asarray(im.convert('RGBA')).astype(np.int16)
+    cap = np.maximum(a[:, :, 0], a[:, :, 2])
+    a[:, :, 1] = np.minimum(a[:, :, 1], cap)
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
 def clean_background(im, tol=80):
     """배경을 지운다 — 마젠타 키가 보이면 그쪽을, 아니면 가장자리 번짐을 쓴다."""
     if looks_magenta(im):
@@ -275,7 +405,7 @@ OPAQUE_BG = [
     'bg_city_sky', 'bg_coast_sky_day', 'bg_coast_sky_sunset',
     'bg_field_sky_morning', 'bg_field_sky_noon', 'bg_field_sky_evening',
     'bg_mountain_sky_night', 'bg_mountain_sky_dawn',
-    'bg_columbarium_interior', 'bg_home_interior_night', 'bg_home_exterior',
+    'bg_home_interior_night', 'bg_home_exterior',
 ]
 
 # 8프레임 스프라이트의 프레임 한 칸 크기.
@@ -312,11 +442,7 @@ ATLASES = {
     'props/props_mountain': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_field': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_home': {'cols': 4, 'rows': 2, 'cell': 384, 'anchor': 'bottom'},
-    # 움직이는 것들 — 4열 1행 (4칸)
-    'props/actors_city': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_coast': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_mountain': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_field': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
+    # 움직이는 것들은 do_actor_sheets() 가 따로 만든다 (8프레임 x 4역할)
     # 지형 타일 — 4열 2행 (8칸). 타일은 칸을 꽉 채워야 하므로 여백을 자르지 않는다
     'tiles/tiles_city': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
     'tiles/tiles_coast': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
@@ -412,6 +538,8 @@ def do_sprites():
         if looks_magenta(im):
             im = strip_chroma(im)
 
+        im = despill(im)
+
         # 시트 전체 기준으로 아래 여백을 잘라 낸다.
         # 프레임마다 자르면 위치가 흔들리므로 8장을 통째로 본다.
         alpha = np.asarray(im)[:, :, 3]
@@ -457,27 +585,62 @@ def do_atlases():
         cols, rows, cell = spec['cols'], spec['rows'], spec['cell']
         anchor = spec['anchor']
 
-        # 격자 규격이 안 맞는 옛 시트를 잘못 자르지 않도록 비율을 확인한다
-        want = cols / float(rows)
-        got = src_im.width / float(src_im.height)
-        if abs(got - want) / want > 0.18:
-            log('아틀라스 %s 건너뜀 — 비율이 %d:%d 가 아니다 (%dx%d). '
-                '.docs/assets-images2.md 규격으로 다시 뽑아야 한다'
-                % (rel, cols, rows, src_im.width, src_im.height))
-            continue
+        if anchor != 'stretch':
+            src_im = strip_grid_lines(src_im)
+
         cw = src_im.width / float(cols)
         ch = src_im.height / float(rows)
+
+        # 타일은 칸 사이가 마젠타로 벌어져 나오는 일이 잦다. 여백을 찾아 그 사이만 쓴다
+        xb = yb = None
+        if anchor == 'stretch':
+            xb = magenta_bands(src_im, cols, 1)
+            yb = magenta_bands(src_im, rows, 0)
+            if xb and yb:
+                log('아틀라스 %s  칸 사이 여백을 찾아 잘라 낸다' % rel)
+
+        # 격자 규격이 안 맞는 옛 시트를 잘못 자르지 않도록 칸 모양을 확인한다.
+        #
+        # 생성기가 칸을 정사각으로 안 그려 준다. 4x2 를 시켜도 세로로 긴 칸 여덟 개로
+        # 주는 일이 흔하다. 소품은 칸마다 오려서 다시 앉히므로 칸이 좀 길어도 상관없고,
+        # 칸 비율이 상식 밖일 때만 (칸 수를 잘못 센 시트다) 건너뛴다.
+        # 타일은 칸을 통째로 정사각으로 늘려 쓰기 때문에 칸이 정사각이어야 한다.
+        ratio = cw / ch
+        lo, hi = (0.85, 1.18) if anchor == 'stretch' else (0.45, 2.2)
+        if not lo <= ratio <= hi:
+            log('아틀라스 %s 건너뜀 — %d x %d 칸으로 나누면 칸 모양이 %.2f : 1 이다 (%dx%d). '
+                '.docs/assets-images2.md 규격으로 다시 뽑아야 한다'
+                % (rel, cols, rows, ratio, src_im.width, src_im.height))
+            continue
 
         out = Image.new('RGBA', (cell * cols, cell * rows), (0, 0, 0, 0))
         filled = 0
 
         for r in range(rows):
             for c in range(cols):
-                box = (int(c * cw), int(r * ch), int((c + 1) * cw), int((r + 1) * ch))
-                piece = src_im.crop(box)
+                if xb and yb:
+                    box = [xb[c][0], yb[r][0], xb[c][1], yb[r][1]]
+                else:
+                    # 칸 폭이 딱 떨어지지 않는 경우가 많다 (1774 / 4 = 443.5).
+                    # 내림하면 칸마다 경계가 최대 1px 씩 밀려 옆 칸 픽셀이 딸려 온다
+                    box = [int(round(c * cw)), int(round(r * ch)),
+                           int(round((c + 1) * cw)), int(round((r + 1) * ch))]
+                if anchor != 'stretch':
+                    # 생성기가 칸 사이에 흰 격자선을 그려 주는 일이 있다. 그 선이 남으면
+                    # 여백을 자를 때 칸 전체가 물건으로 잡혀 소품이 조그맣게 앉는다.
+                    # 타일은 칸을 꽉 채워야 하므로 건드리지 않는다.
+                    ix, iy = int(cw * 0.02), int(ch * 0.02)
+                    box = [box[0] + ix, box[1] + iy, box[2] - ix, box[3] - iy]
+                piece = src_im.crop(tuple(box))
 
                 if anchor == 'stretch':
-                    # 타일은 칸을 꽉 채운다. 마젠타 여백만 걷어내고 늘린다
+                    # 타일은 칸을 꽉 채운다. 마젠타 여백만 걷어내고 늘린다.
+                    #
+                    # 칸 경계의 몇 줄은 **잘라내지 않고 안쪽 픽셀로 덮는다.** 생성기가
+                    # 칸 사이에 얇은 선을 그어 두는데, 그 선을 그대로 두면 타일을 이어
+                    # 붙일 때마다 세로줄이 서고, 잘라내면 무늬의 주기가 어긋나 이음매가
+                    # 더 벌어진다. 크기를 지킨 채 테두리만 덮으면 둘 다 피한다.
+                    piece = clamp_border(piece, max(2, int(min(cw, ch) * 0.008)))
                     if looks_magenta(piece):
                         piece = trim(strip_chroma(piece))
                     piece = piece.resize((cell, cell), Image.LANCZOS)
@@ -499,6 +662,146 @@ def do_atlases():
 
         save(out, rel + '.png')
         log('아틀라스 %s  %d/%d칸  %dx%d' % (rel, filled, cols * rows, out.width, out.height))
+
+
+# 움직이는 것들 — 역할마다 8프레임짜리 시트를 받아 한 장으로 합친다.
+# 세로 한 줄이 역할 하나(ACTOR 상수 순서), 가로 8칸이 그 역할의 애니메이션이다.
+ACTOR_SLOTS = ['mover', 'faller', 'puff', 'flyer']
+ACTOR_STAGES = ['city', 'coast', 'mountain', 'field']
+ACTOR_CELL = 320
+
+# 칸 안에서 어디에 세울지. 땅에 붙는 것은 바닥, 공중에 뜨는 것은 가운데
+ACTOR_ANCHOR = {
+    ('city', 'mover'): 'bottom', ('city', 'faller'): 'center',
+    ('city', 'puff'): 'bottom', ('city', 'flyer'): 'center',
+    ('coast', 'mover'): 'bottom', ('coast', 'faller'): 'bottom',
+    ('coast', 'puff'): 'bottom', ('coast', 'flyer'): 'center',
+    ('mountain', 'mover'): 'bottom', ('mountain', 'faller'): 'center',
+    ('mountain', 'puff'): 'bottom', ('mountain', 'flyer'): 'bottom',
+    ('field', 'mover'): 'center', ('field', 'faller'): 'center',
+    ('field', 'puff'): 'center', ('field', 'flyer'): 'center',
+}
+
+# 프레임마다 물체가 널뛰는 시트만 손본다.
+#   'center' — 프레임마다 그림의 중심을 한 자리로 모은다 (크기는 안 건드린다)
+#   'size'   — 중심을 모으고 넓이까지 맞춘다. 돌기만 하는 것(화분)은 넓이가 변할 리 없다
+ACTOR_FIX = {
+    'actor_city_flyer': 'center',
+    'actor_field_mover': 'center',
+    'actor_city_faller': 'size',
+}
+
+
+def union_box(frames, threshold=8):
+    """여러 프레임을 통틀어 그림이 들어 있는 범위."""
+    box = None
+    for f in frames:
+        a = np.asarray(f)[:, :, 3]
+        ys, xs = np.where(a > threshold)
+        if not len(xs):
+            continue
+        b = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+        box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]),
+                                     max(box[2], b[2]), max(box[3], b[3]))
+    return box
+
+
+def _frame_stat(frame):
+    a = np.asarray(frame)[:, :, 3] > 16
+    ys, xs = np.where(a)
+    if not len(xs):
+        return None
+    return {
+        'cx': (int(xs.min()) + int(xs.max()) + 1) / 2.0,
+        'cy': (int(ys.min()) + int(ys.max()) + 1) / 2.0,
+        'area': float(a.sum()),
+    }
+
+
+def steady_frames(frames, mode):
+    """프레임마다 물체가 옮겨 다니거나 커졌다 작아지는 것을 잡아 준다.
+
+    생성기가 8장을 따로 그리다 보니 같은 것을 조금씩 다른 크기·자리에 그려 놓는다.
+    그대로 재생하면 덜컹거린다. 여기서 자리를 모으고, 필요하면 크기까지 맞춘다.
+    """
+    st = [_frame_stat(f) for f in frames]
+    if any(x is None for x in st):
+        return frames
+
+    cx = float(np.median([x['cx'] for x in st]))
+    cy = float(np.median([x['cy'] for x in st]))
+    ref = float(np.median([math.sqrt(x['area']) for x in st]))
+
+    out = []
+    for f, x in zip(frames, st):
+        k = 1.0
+        if mode == 'size':
+            # 지나치게 늘이거나 줄이면 그림이 뭉개지므로 한계를 둔다
+            k = min(max(ref / math.sqrt(x['area']), 0.8), 1.25)
+        g = f if k == 1.0 else f.resize((max(1, round(f.width * k)), max(1, round(f.height * k))), Image.LANCZOS)
+        canvas = Image.new('RGBA', f.size, (0, 0, 0, 0))
+        canvas.alpha_composite(g, (int(round(cx - x['cx'] * k)), int(round(cy - x['cy'] * k))))
+        out.append(canvas)
+    return out
+
+
+def load_actor_frames(path):
+    """8프레임 가로 시트든 낱장이든 프레임 8개로 돌려준다."""
+    im = load(path)
+    if looks_magenta(im):
+        im = strip_chroma(im)
+    im = despill(im)
+
+    if im.width == im.height * 8:
+        return [im.crop((i * im.height, 0, (i + 1) * im.height, im.height)) for i in range(8)]
+    # 낱장 — 움직일 필요가 없는 것(낙석)은 같은 그림을 여덟 번 쓴다
+    return [im] * 8
+
+
+def do_actor_sheets():
+    """assets-src/_ref/actors 의 8프레임 시트를 스테이지별 한 장으로 합친다."""
+    src = os.path.join(SRC, '_ref', 'actors')
+    if not os.path.isdir(src):
+        return
+
+    for stage in ACTOR_STAGES:
+        sheet = Image.new('RGBA', (ACTOR_CELL * 8, ACTOR_CELL * len(ACTOR_SLOTS)), (0, 0, 0, 0))
+        found = 0
+
+        for row, slot in enumerate(ACTOR_SLOTS):
+            name = 'actor_%s_%s' % (stage, slot)
+            path = os.path.join(src, name + '.png')
+            if not os.path.exists(path):
+                continue
+
+            frames = load_actor_frames(path)
+            fix = ACTOR_FIX.get(name)
+            if fix:
+                frames = steady_frames(frames, fix)
+
+            # 여백을 자르고 크기를 맞추는 일은 **8장을 한 덩어리로** 해야 한다.
+            # 프레임마다 따로 하면 날개를 편 칸만 작게 앉아 다시 덜컹거린다
+            box = union_box(frames)
+            if box is None:
+                continue
+            frames = [f.crop(box) for f in frames]
+
+            fw, fh = frames[0].size
+            scale = min((ACTOR_CELL - 8) / float(fw), (ACTOR_CELL - 8) / float(fh), 1.0)
+            tw, th = max(1, round(fw * scale)), max(1, round(fh * scale))
+
+            anchor = ACTOR_ANCHOR.get((stage, slot), 'bottom')
+            x = (ACTOR_CELL - tw) // 2
+            y = ACTOR_CELL - th if anchor == 'bottom' else (ACTOR_CELL - th) // 2
+            for col, fr in enumerate(frames):
+                piece = fr.resize((tw, th), Image.LANCZOS)
+                sheet.paste(piece, (col * ACTOR_CELL + x, row * ACTOR_CELL + y), piece)
+            found += 1
+
+        if not found:
+            continue
+        save(sheet, 'props/actors_%s.png' % stage)
+        log('움직이는 것들 actors_%-9s %d/%d 역할  8프레임' % (stage, found, len(ACTOR_SLOTS)))
 
 
 def do_ui():
@@ -616,6 +919,7 @@ def main():
         do_backgrounds()
         do_props()
         do_atlases()
+        do_actor_sheets()
         do_ui()
     if only in (None, 'audio'):
         do_audio()

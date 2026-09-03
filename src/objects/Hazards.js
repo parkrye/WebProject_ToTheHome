@@ -3,21 +3,22 @@
  *
  * 모든 위험은 예고 동작(텔레그래프)을 가진다 — 암기가 아니라 관찰로 풀리게 하기 위해서다.
  *
- * 그림은 스테이지별 actors 시트에서 프레임 하나를 꺼내 쓰는 정적 이미지다.
- * 모양이 변하지 않고 위치·각도·크기만 바뀌므로 애니메이션 시트가 필요 없다.
+ * 그림은 스테이지별 actors 시트의 한 줄(8프레임)을 재생한다.
+ * 바퀴가 돌고 날개가 움직이는 건 시트가 하고, 옮기고 돌리고 명멸시키는 건 코드가 한다.
  *
  * kill: 접촉 시 사망 / push: 접촉 시 밀려남 / lift: 위로 밀어 올림
  */
 
 import Phaser from 'phaser';
-import { ACTOR } from '../systems/AssetManifest.js';
+import { ACTOR, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 import { sizeTo } from '../systems/Layout.js';
 
 class HazardBase extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, def, defaultFrame) {
+  constructor(scene, def, defaultSlot) {
     const key = def.texture || def.actors;
-    const frame = def.frame ?? defaultFrame;
-    super(scene, def.x, def.y, key, frame);
+    const slot = def.slot ?? defaultSlot;
+    // 낱장 텍스처를 지정한 경우엔 줄 개념이 없다
+    super(scene, def.x, def.y, key, def.texture ? (def.frame ?? 0) : actorFrame(slot));
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -27,6 +28,11 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
     this.effect = def.effect || 'kill';
     this.setDepth(def.depth ?? 18);
     if (def.height) sizeTo(this, { height: def.height });
+
+    if (!def.texture) {
+      const anim = actorAnim(key, slot);
+      if (anim && scene.anims.exists(anim)) this.play(anim);
+    }
   }
 
   /** 서브클래스에서 구현 */

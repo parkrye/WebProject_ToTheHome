@@ -32,6 +32,12 @@ const config = {
   input: {
     activePointers: 3, // 좌우 이동 + 점프 동시 터치
   },
+  render: {
+    // 개발 중에만 켠다. 헤드리스 브라우저로 화면을 찍어 확인할 때, 이게 꺼져 있으면
+    // 그리기 버퍼가 비워져서 **직전 프레임이 찍히거나 빈 화면이 나온다.**
+    // 배포 빌드에서는 성능 때문에 끈다.
+    preserveDrawingBuffer: import.meta.env.DEV,
+  },
   scene: [
     BootScene,
     PreloadScene,

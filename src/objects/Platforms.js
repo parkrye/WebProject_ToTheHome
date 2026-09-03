@@ -11,17 +11,38 @@ import { TILE } from '../systems/AssetManifest.js';
 /** 타일 한 칸이 화면에서 차지할 크기 (아틀라스 프레임은 128px) */
 const TILE_SCALE = 0.5;
 
+/** 화면에서 타일 한 칸의 높이 */
+const TILE_PX = 128 * TILE_SCALE;
+
+/** 지면 윗면으로 쓰는 칸들 — 이 칸을 세로로 반복하면 잔디가 중간에 또 나온다 */
+const TOP_FRAMES = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
+
 /** 정적 지면. group 에 넣어 한 번에 충돌시킨다 */
 export function createGround(scene, group, def, tileKey) {
   const key = def.tile || tileKey;
   const frame = def.frame ?? TILE.TOP;
-  const body = scene.add.tileSprite(def.x + def.w / 2, def.y + def.h / 2, def.w, def.h, key, frame);
+  const depth = def.depth ?? 10;
+
+  // 윗면 칸을 사각형 높이만큼 반복하면 **잔디가 중간에 한 번 더 나온다.**
+  // 두 칸 이상 두꺼운 지면은 윗면을 맨 위 한 줄만 깔고 그 아래는 속을 채운다.
+  const layered = TOP_FRAMES.includes(frame) && def.h > TILE_PX + 2;
+  const bodyFrame = layered ? (def.fill ?? TILE.FILL) : frame;
+
+  const body = scene.add.tileSprite(def.x + def.w / 2, def.y + def.h / 2, def.w, def.h, key, bodyFrame);
   body.setTileScale(TILE_SCALE, TILE_SCALE);
-  body.setDepth(def.depth ?? 10);
+  body.setDepth(depth);
   scene.physics.add.existing(body, true);
   body.body.setSize(def.w, def.h);
   body.surface = def.surface || 'soft';
   group.add(body);
+
+  if (layered) {
+    const cap = scene.add.tileSprite(def.x + def.w / 2, def.y + TILE_PX / 2, def.w, TILE_PX, key, frame);
+    cap.setTileScale(TILE_SCALE, TILE_SCALE);
+    cap.setDepth(depth + 0.1);
+    body.cap = cap;
+  }
+
   return body;
 }
 

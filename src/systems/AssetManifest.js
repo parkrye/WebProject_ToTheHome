@@ -30,9 +30,11 @@ export const SPRITE_SHEETS = [
   { key: 'dog_sniff', file: 'dog_sniff.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogSniff' },
   { key: 'dog_dispel', file: 'dog_dispel.png', w: 160, h: 160, fps: 10, loop: false, placeholder: 'dogDispel' },
   { key: 'dog_dig', file: 'dog_dig.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogDig' },
-  { key: 'dog_sleep', file: 'dog_sleep.png', w: 160, h: 160, fps: 6, loop: true, placeholder: 'dogSleep' },
+  // 잠자기·공놀이는 첫 칸이 '서 있는 자세'다. 생성기가 기본 자세에서 시작해 그렸기 때문에
+  // 8칸을 그대로 돌리면 한 바퀴마다 벌떡 일어난다. loopFrom 부터를 고리로 삼는다.
+  { key: 'dog_sleep', file: 'dog_sleep.png', w: 160, h: 160, fps: 6, loop: true, loopFrom: 2, placeholder: 'dogSleep' },
   { key: 'dog_splash', file: 'dog_splash.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogSplash' },
-  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogBall' },
+  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 160, h: 160, fps: 10, loop: true, loopFrom: 1, placeholder: 'dogBall' },
 
   // 프롤로그 · 엔딩 연출
   { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'puppyRun' },
@@ -72,7 +74,6 @@ export const BACKGROUNDS = [
   { key: 'bg_mountain_mid', file: 'bg_mountain_mid.png', kind: 'mid', theme: 'mountain' },
   { key: 'bg_mountain_near', file: 'bg_mountain_near.png', kind: 'near', theme: 'mountain' },
 
-  { key: 'bg_columbarium_interior', file: 'bg_columbarium_interior.png', kind: 'interior', theme: 'city' },
   { key: 'bg_home_interior_night', file: 'bg_home_interior_night.png', kind: 'interior', theme: 'home' },
   { key: 'bg_home_exterior', file: 'bg_home_exterior.png', kind: 'interior', theme: 'field' },
 ];
@@ -100,10 +101,10 @@ export const ATLASES = [
   { key: 'tiles_mountain', file: 'assets/tiles/tiles_mountain.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'mountain' },
   { key: 'tiles_field', file: 'assets/tiles/tiles_field.png', w: 128, h: 128, cols: 4, rows: 2, kind: 'tile', theme: 'field' },
 
-  { key: 'actors_city', file: PROP_DIR + 'actors_city.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'city' },
-  { key: 'actors_coast', file: PROP_DIR + 'actors_coast.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'coast' },
-  { key: 'actors_mountain', file: PROP_DIR + 'actors_mountain.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'mountain' },
-  { key: 'actors_field', file: PROP_DIR + 'actors_field.png', w: 320, h: 320, cols: 4, rows: 1, kind: 'actor', theme: 'field' },
+  { key: 'actors_city', file: PROP_DIR + 'actors_city.png', w: 320, h: 320, cols: 8, rows: 4, kind: 'actor', theme: 'city' },
+  { key: 'actors_coast', file: PROP_DIR + 'actors_coast.png', w: 320, h: 320, cols: 8, rows: 4, kind: 'actor', theme: 'coast' },
+  { key: 'actors_mountain', file: PROP_DIR + 'actors_mountain.png', w: 320, h: 320, cols: 8, rows: 4, kind: 'actor', theme: 'mountain' },
+  { key: 'actors_field', file: PROP_DIR + 'actors_field.png', w: 320, h: 320, cols: 8, rows: 4, kind: 'actor', theme: 'field' },
 
   { key: 'props_home', file: PROP_DIR + 'props_home.png', w: 384, h: 384, cols: 4, rows: 2, kind: 'prop', theme: 'home' },
 ];
@@ -114,14 +115,16 @@ export const PROP = {
   E: 4, F: 5, G: 6, H: 7,
   I: 8, J: 9,
   TREE: 10, // 10번은 항상 그 스테이지의 큰 나무
-  LANDMARK: 11, // 11번은 그 스테이지의 상징물 (유골함 벽 / 등대 / 부엉이 가지 / 집)
+  LANDMARK: 11, // 11번은 그 스테이지의 상징물 (고가도로 / 등대 / 부엉이 가지 / 집)
 };
 
 /**
- * 움직이는 것들 — 스테이지마다 한 줄짜리 시트(4열 × 1행).
+ * 움직이는 것들 — 스테이지마다 시트 한 장 (8열 × 4행).
  *
- * 모양이 변하지 않고 위치·각도만 바뀌는 것들이라 애니메이션이 필요 없다.
- * 이동·회전·명멸은 전부 코드가 준다.
+ * **세로 한 줄이 역할 하나**이고, 가로 8칸이 그 역할의 8프레임 애니메이션이다.
+ * 바퀴가 돌고 날개가 움직이는 건 시트가 하고, 옮기고 돌리는 건 코드가 한다.
+ *
+ * 값은 줄 번호다. 그 역할의 첫 프레임 번호는 `actorFrame(역할)` 로 얻는다.
  */
 export const ACTOR = {
   MOVER: 0, // 큰 이동체  — 자동차 / 자동차 / 멧돼지 / 큰 새
@@ -129,6 +132,26 @@ export const ACTOR = {
   PUFF: 2, // 피어오르는 것 — 증기 / 물보라 / 안개 / 나비
   FLYER: 3, // 나는 것 — 참새 / 갈매기 / 부엉이 / 잠자리
 };
+
+/** 역할 한 줄에 들어 있는 프레임 수 */
+export const ACTOR_FRAMES = 8;
+
+/** 줄 번호 → 이름. 애니메이션 key 를 짓는 데 쓴다 */
+export const ACTOR_SLOTS = ['mover', 'faller', 'puff', 'flyer'];
+
+/** 역할마다 다른 재생 속도 — 날갯짓은 빠르고 안개는 느리다 */
+export const ACTOR_FPS = { mover: 12, faller: 12, puff: 10, flyer: 14 };
+
+/** 그 역할의 첫 프레임 번호 */
+export function actorFrame(slot) {
+  return slot * ACTOR_FRAMES;
+}
+
+/** 그 역할의 애니메이션 key (`actors_city_flyer` 꼴) */
+export function actorAnim(sheetKey, slot) {
+  const name = ACTOR_SLOTS[slot];
+  return name ? `${sheetKey}_${name}` : null;
+}
 
 /**
  * 집 안 부품 칸 번호.

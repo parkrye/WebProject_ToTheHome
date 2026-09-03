@@ -65,14 +65,14 @@ The background is a completely flat solid magenta #FF00FF fill with absolutely n
 ### 2.1 `props_city.png` — 도시
 
 ```
-Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city prop sheet arranged in a strict grid of exactly 4 columns and 3 rows, twelve equal square cells of identical size, one object centered in each cell and standing on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a cast-iron street lamp, a traffic light with blank unlit lenses, a round metal drain grate seen from the side, a terracotta flower pot with a small plant, a weathered public bench, a dented metal trash bin, a stack of three cardboard boxes, a rolled-down shop shutter with a completely blank face, a red fire hydrant, an old bicycle leaning on its stand, a bare street tree in a square planter, and a tall wall of small blank memorial niches. Muted palette of concrete gray, rust orange and dull teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+Soft hand-painted pixel art game asset sheet, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer, consistent art style across every item in the image. A foggy-morning city prop sheet arranged in a strict grid of exactly 4 columns and 3 rows, twelve equal square cells of identical size, one object centered in each cell and standing on that cell's bottom edge. Reading left to right, top to bottom the cells contain: a cast-iron street lamp, a traffic light with blank unlit lenses, a round metal drain grate seen from the side, a terracotta flower pot with a small plant, a weathered public bench, a dented metal trash bin, a stack of three cardboard boxes, a rolled-down shop shutter with a completely blank face, a red fire hydrant, an old bicycle leaning on its stand, a bare street tree in a square planter, and a tall concrete overpass pillar with a metal staircase winding up it. Muted palette of concrete gray, rust orange and dull teal. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Every item is fully separated from its neighbours and never overlaps the grid lines. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
 ```
 
 | 0 | 1 | 2 | 3 |
 |---|---|---|---|
 | 가로등 | 신호등 | 하수구 그레이트 | 화분 |
 | **4** 벤치 | **5** 쓰레기통 | **6** 상자더미 | **7** 셔터 |
-| **8** 소화전 | **9** 자전거 | **10** 가로수 | **11** 납골당 유골함 벽 |
+| **8** 소화전 | **9** 자전거 | **10** 가로수 | **11** 고가도로 기둥 |
 
 ### 2.2 `props_coast.png` — 해안가
 
@@ -169,6 +169,10 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 자동차·돌·파도처럼 **모양은 그대로고 위치나 각도만 바뀌는 것들**이다.
 전에는 8프레임 애니메이션으로 잡아 두었지만 그럴 필요가 없어서, 그림 한 장을 두고
 코드가 옮기고 돌리고 늘린다.
+
+> **이 절은 아래 프롬프트로 시트를 받는 데까지다.** 받아 놓고 보니 바퀴가 안 돌고
+> 날개가 안 움직여서 결국 8프레임으로 다시 굽기로 했다. 쪼개 놓은 낱장 레퍼런스와
+> 16종 8프레임 프롬프트는 [assets-actors.md](assets-actors.md) 에 있다.
 
 - 저장 경로: `assets-src/props/actors_<스테이지>.png`
 - 비율 **4 : 1** (권장 2048×512). 전처리가 1280×320(칸당 320px)으로 맞춘다
@@ -304,28 +308,29 @@ fully transparent background
 The sky area is a completely flat solid magenta #FF00FF fill with no gradient and no clouds, so it can be cut out cleanly. Only the scenery itself is painted.
 ```
 
-`sky` 레이어와 실내 배경(`bg_columbarium_interior`, `bg_home_interior_night`, `bg_home_exterior`)은
+`sky` 레이어와 실내 배경(`bg_home_interior_night`, `bg_home_exterior`)은
 **원래 불투명이 맞으므로** 이 치환을 하지 않는다.
 
 ---
 
-## 8. 아직 없는 것 — 남은 전부
+## 8. 다 들어왔다
 
-애니메이션 스프라이트 16종은 다 들어왔다. 이미지로 남은 것은 아래가 **전부**이며,
-모두 이 문서 안에 프롬프트가 있다.
+15장 전부 `assets-src/` 에 들어가 전처리를 통과했다. 아래는 무엇이 어디에 있는지의 표로만
+남긴다. 다시 뽑을 일이 있으면 해당 절의 프롬프트를 그대로 쓰면 된다.
+넣으면서 겪은 것은 [asset-review.md](asset-review.md) 2차 항목에 적어 두었다.
 
 | 무엇 | 몇 장 | 격자 | 어디에 |
 |---|---|---|---|
 | 소품 아틀라스 | 4 | 4×3 (12칸) | **2절** |
 | 지형 타일 | 4 | 4×2 (8칸) | **3절** |
-| 움직이는 것들 | 4 | 4×1 (4칸) | **4절** |
+| 움직이는 것들 | 4 | 4×1 (4칸) | **4절** → 8프레임은 [assets-actors.md](assets-actors.md) |
 | 집 안 부품 | 1 | 4×2 (8칸) | **5절** |
 | 빛 | 2 | 낱장 | **6절** |
 
-합쳐서 **15장**이다. 배경(7절)은 이미 들어와 있어 다시 뽑지 않아도 된다.
+합쳐서 **15장**이다.
 
-> 화면에서 가장 티가 나는 건 **지형 타일**이다. 지금 지면이 밋밋한 회색 막대라
-> 이것부터 채우면 인상이 크게 달라진다.
+> 배경은 도시·해안·들판 셋만 멀쩡하다. **산 배경 3장은 다시 뽑아야 한다** — 흰 줄무늬와
+> 구멍이 나 있다. 7절대로 하늘만 마젠타로 칠해서 뽑으면 된다.
 
 ## 9. 넣는 법
 

@@ -253,46 +253,10 @@ function drawNearLayer(ctx, theme, kind, w, h) {
 }
 
 function themeKind(key) {
-  if (key.includes('city') || key.includes('columbarium')) return 'city';
+  if (key.includes('city')) return 'city';
   if (key.includes('coast')) return 'coast';
   if (key.includes('mountain')) return 'mountain';
   return 'field';
-}
-
-function drawColumbarium(ctx, w, h) {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#cfc4ae');
-  g.addColorStop(1, '#8d8271');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-  // 유골함 벽
-  for (let y = 40; y < h - 120; y += 62) {
-    for (let x = 30; x < w - 30; x += 74) {
-      ctx.fillStyle = '#e3dbc9';
-      ctx.fillRect(x, y, 62, 50);
-      ctx.strokeStyle = '#a99b83';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, 62, 50);
-      ctx.fillStyle = 'rgba(255,236,190,0.5)';
-      ctx.fillRect(x + 26, y + 30, 8, 14);
-    }
-  }
-  // 높은 창에서 들어오는 빛
-  ctx.save();
-  const beam = ctx.createLinearGradient(w * 0.62, 0, w * 0.42, h);
-  beam.addColorStop(0, 'rgba(255,246,220,0.55)');
-  beam.addColorStop(1, 'rgba(255,246,220,0)');
-  ctx.fillStyle = beam;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.58, 0);
-  ctx.lineTo(w * 0.78, 0);
-  ctx.lineTo(w * 0.52, h);
-  ctx.lineTo(w * 0.24, h);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-  ctx.fillStyle = '#6d6455';
-  ctx.fillRect(0, h - 110, w, 110);
 }
 
 function drawHomeInterior(ctx, w, h) {
@@ -376,7 +340,6 @@ export function buildBackground(scene, def) {
     const w = 960;
     const h = 540;
     createImage(scene, def.key, w, h, (ctx) => {
-      if (def.key.includes('columbarium')) return drawColumbarium(ctx, w, h);
       if (def.key.includes('home_interior')) return drawHomeInterior(ctx, w, h);
       return drawHomeExterior(ctx, w, h);
     });
@@ -882,19 +845,8 @@ const IMAGE_DRAWERS = {
     ctx.fillRect(w - 16, h - 120, 16, 120);
   },
 
-  nicheWall: (ctx, w, h) => {
-    for (let y = 0; y < h; y += 62) {
-      for (let x = 0; x < w; x += 74) {
-        ctx.fillStyle = '#e3dbc9';
-        ctx.fillRect(x + 4, y + 4, 62, 50);
-        ctx.strokeStyle = '#a99b83';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + 4, y + 4, 62, 50);
-        ctx.fillStyle = 'rgba(255,236,190,0.5)';
-        ctx.fillRect(x + 30, y + 34, 8, 14);
-      }
-    }
-  },
+
+
 
   logo: (ctx, w, h) => {
     ctx.save();

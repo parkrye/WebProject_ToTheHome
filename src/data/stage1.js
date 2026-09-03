@@ -3,7 +3,8 @@ import { PROP, ACTOR } from '../systems/AssetManifest.js';
 /**
  * 스테이지 1 — 도시 (튜토리얼)
  *
- * 납골당에서 나와 주인의 냄새를 쫓기 시작한다.
+ * 안개 낀 이른 아침, 아직 깨어나지 않은 도시에서 눈을 뜬다.
+ * **어디에서 왔는지는 말하지 않는다.** 강아지가 무엇인지도 설명하지 않는다.
  * 이동 → 점프 → 도움닫기 순으로 배우고, 마지막에 횡단보도에서 타이밍을 익힌다.
  *
  * 배치 기준: 지면 상단 y=470. 걷기 점프 ~118px, 달리기 ~222px, 도움닫기 ~240px.
@@ -30,7 +31,6 @@ export default {
     near: 'bg_city_near',
   },
   start: { x: 140, y: 420 },
-  intro: { texture: 'bg_columbarium_interior', fadeIn: 1400 },
 
   ground: [
     // 갭 폭은 도움닫기 최대 도달거리(약 240px)보다 넉넉히 짧게 잡는다.
@@ -57,18 +57,24 @@ export default {
 
   moving: [{ x: 3560, y: 420, w: 130, h: 22, dy: -110, duration: 2000 }],
 
+  /**
+   * 튜토리얼이므로 **위험은 한 번에 하나씩만** 만나게 둔다.
+   *
+   * 증기(리프트)와 화분(타이밍)과 자동차(관찰)를 x 로 멀찍이 떼어 놓고, 주기도 넉넉하게
+   * 잡는다. 1000px 당 위험 0.9 개 — 산(스테이지 3)의 절반이 안 된다.
+   */
   hazards: [
-    // 하수구 증기 — 위로 밀어 올리는 리프트
-    { type: 'steam', x: 3340, y: GY, interval: 2200, activeTime: 1300, power: -430 },
+    // 하수구 증기 — 위로 밀어 올리는 리프트. 위험이 아니라 도구다
+    { type: 'steam', x: 3340, y: GY, interval: 2400, activeTime: 1400, power: -430 },
 
-    // 떨어지는 화분
-    { type: 'rock', x: 3860, y: 120, groundY: GY - 10, interval: 2600, delay: 600 },
-    { type: 'rock', x: 4060, y: 120, groundY: GY - 10, interval: 3000, delay: 1800 },
+    // 떨어지는 화분 — 한 개만 둔다. 둘을 붙여 두면 처음 배우는 사람에게 너무 빠르다
+    { type: 'rock', x: 3980, y: 120, groundY: GY - 10, interval: 3000, delay: 900 },
 
-    // 횡단보도 — 세 대가 다른 주기로 지나간다
-    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 300, interval: 3400, delay: 400 },
-    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 240, interval: 4600, delay: 2200 },
-    { type: 'car', x: 4200, y: GY - 34, fromX: 4200, toX: 5700, dir: 1, speed: 270, interval: 5200, delay: 3400 },
+    // 횡단보도 — 세 대가 다른 주기로 지나간다.
+    // 주기를 길게 잡아 **차가 다 지나간 뒤 건너는 시간**이 확실히 생기게 한다
+    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 280, interval: 4400, delay: 400 },
+    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 230, interval: 5600, delay: 2400 },
+    { type: 'car', x: 4200, y: GY - 34, fromX: 4200, toX: 5700, dir: 1, speed: 250, interval: 6200, delay: 3800 },
   ],
 
   signs: [
@@ -89,8 +95,8 @@ export default {
   },
 
   props: [
-    // 납골당 유골함 벽 — 출발 지점의 상징물
-    { x: 60, y: GY, atlas: 'props_city', frame: PROP.LANDMARK, height: 300, depth: 6, alpha: 0.95 },
+    // 출발 지점 — 셔터가 내려진 가게. 도시가 아직 깨지 않았다는 것만 말한다
+    { x: 60, y: GY, atlas: 'props_city', frame: PROP.H, height: 240, depth: 6, alpha: 0.95 },
     { x: 520, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
     { x: 900, y: GY, atlas: 'props_city', frame: PROP.E, height: 90, depth: 7 },
     { x: 1180, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
