@@ -7,8 +7,9 @@
 python scripts/split_actor_sheets.py "C:\Users\<이름>\Downloads\images2"
 ```
 
-결과는 `assets-src/_ref/actors/actor_<스테이지>_<역할>.png` (1024×1024, 배경 마젠타).
-`_ref/` 는 전처리가 건드리지 않는다. 게임에 들어가는 건 여기서 구워 낸 8프레임 시트다.
+결과는 `assets-src/_ref/actors_single/actor_<스테이지>_<역할>.png` (1024×1024, 배경 마젠타).
+구워 낸 **8프레임 시트는 `assets-src/_ref/actors/`** 에 둔다. 스크립트는 낱장을 일부러
+다른 곳에 떨어뜨리므로 시트를 덮어쓰지 않는다. `_ref/` 는 전처리가 건드리지 않는다.
 
 | 파일 | 스테이지 | 역할 | 무엇 |
 |---|---|---|---|
@@ -21,7 +22,7 @@ python scripts/split_actor_sheets.py "C:\Users\<이름>\Downloads\images2"
 | `actor_coast_puff` | 해안 | PUFF | 바위 물보라 |
 | `actor_coast_flyer` | 해안 | FLYER | 갈매기 |
 | `actor_mountain_mover` | 산 | MOVER | 멧돼지 |
-| `actor_mountain_faller` | 산 | FALLER | 낙석 |
+| `actor_mountain_faller` | 산 | FALLER | 낙석 — **낱장 그대로 쓴다** (아래 참고) |
 | `actor_mountain_puff` | 산 | PUFF | 골짜기 안개 |
 | `actor_mountain_flyer` | 산 | FLYER | 부엉이 |
 | `actor_field_mover` | 들판 | MOVER | 작은 새 |
@@ -192,7 +193,14 @@ The rear-right hoof pushes off and the body rises to the highest point of the st
 The boar has come back to the posture that began the stride.
 ```
 
-### `actor_mountain_faller` — 낙석 (루프 · 12fps)
+### ~~`actor_mountain_faller`~~ — 낙석은 굽지 않는다
+
+**낱장 그대로 쓰기로 했다.** 떨어지는 돌은 회전만 하면 되고, 그 회전은 코드가 각도를
+돌려 주는 편이 8장을 굽는 것보다 낫다. 8장으로 굽으면 프레임마다 돌 모양이 미세하게
+달라져 오히려 덜컹거린다.
+
+`assets-src/_ref/actors/actor_mountain_faller.png` 는 **1024×1024 낱장**이며 그대로 둔다.
+아래 프롬프트는 쓰지 않지만, 마음이 바뀔 때를 위해 남겨 둔다.
 
 ```
 The rock hangs with its cracked face toward the viewer and a few small chips beside it.
@@ -310,7 +318,102 @@ All four wings return to the level hovering pose that began the cycle.
 
 플레이스홀더 모드(`?placeholder=1`)는 에셋을 아예 안 보므로 손댈 것이 없다.
 
-## 7. 체크리스트
+## 7. 1차 굽기 결과 — 무엇을 다시 뽑아야 하나
+
+15장을 구워 넣고 프레임마다 위치·크기·색을 재 봤다. 세 부류로 갈린다.
+
+| 결과 | 몇 장 | 무엇 |
+|---|---|---|
+| 그대로 쓴다 | 8 | city_mover, coast_mover, coast_faller, coast_flyer, mountain_mover, mountain_flyer, field_puff, field_faller |
+| 전처리가 고친다 | 4 | city_puff, coast_puff, mountain_puff, field_flyer |
+| **다시 뽑아야 한다** | 3 | **city_flyer, field_mover, city_faller** |
+
+### 초록 오염 — 다시 뽑을 필요 없다
+
+증기·물보라·안개 세 장은 그림 한가운데가 **형광 초록**으로 물들어 있다 (불투명 픽셀의
+11~15%). 잠자리도 다섯 번째 칸에 초록 테두리가 둘렸다.
+
+반투명하고 색이 없는 것(김·물방울·안개)을 크로마키로 오려 내면 배경색이 그림 속으로
+번진다. 피사체 자체에 색이 없어서 "배경인지 그림인지" 가릴 기준이 없기 때문이다.
+
+- **조치**: 전처리가 **디스필**한다 — 초록이 빨강·파랑보다 튀는 픽셀에서 초록을 둘 중
+  높은 쪽까지 끌어내린다. 김과 물보라는 원래 흰색·회색이라 이렇게만 해도 제 색으로 돌아온다.
+  실제로 돌려 보니 물보라와 안개는 완전히 깨끗해지고, 증기는 여섯 번째 칸만 조금 탁하다.
+- 다시 뽑는다면 **배경을 마젠타로** 두는 게 낫다. 마젠타는 이 그림들 어디에도 없는 색이라
+  번져도 알아보기 쉽고, 초록보다 잘 갈린다.
+
+### 프레임마다 크기가 널뛴다 — 이건 다시 뽑아야 한다
+
+| 시트 | 프레임별 가로 | 바닥선 흔들림 | 증상 |
+|---|---|---|---|
+| `actor_city_flyer` | 159 ~ 246px | 40px | 2·3번 칸의 참새가 눈에 띄게 크고, 1번 칸은 왼쪽이 잘렸다 |
+| `actor_field_mover` | 200 ~ 255px | 61px | 같은 증상. 1번 칸 꼬리가 프레임 밖으로 나갔다 |
+| `actor_city_faller` | 139 ~ 232px | 52px | 화분이 구르면서 커졌다 작아진다 (7번 칸이 가장 작다) |
+
+재생할 때 물체가 **커졌다 작아졌다 하며 덜컹거린다.** 코드로는 못 고친다.
+
+---
+
+## 8. 다시 뽑는 3장
+
+레퍼런스는 `assets-src/_ref/actors_single/` 의 같은 이름 파일을 쓴다.
+(8프레임 시트가 `_ref/actors/` 를 덮었으므로 낱장을 다시 뽑아 두었다.)
+
+### 공통 지시문 — 강화판
+
+앞선 실패가 **크기가 널뛰는 것**이었으므로, 크기와 자리를 못 박는 문장을 앞에 세웠다.
+아래 세 장은 2절의 공통 지시문 대신 **이것**을 쓴다.
+
+```
+Use the attached image as the exact reference for this subject's shape, colours and art style; do not redesign it. Soft hand-painted pixel art game asset, warm pastel palette with muted saturation, gentle rim light, storybook dream atmosphere, side-scrolling platformer. Draw eight frames as one horizontal strip of eight equal square cells in a single row. In every cell the subject is drawn at exactly the same scale, seen from exactly the same distance, with its body centred on the same point of the cell; only the parts named in each line move. Leave a clear empty margin on all four sides so that no part of the subject ever touches a cell edge. The background is a completely flat solid magenta #FF00FF fill with absolutely no gradient, no vignette, no glow, no drop shadow and no ground shadow anywhere. Absolutely no text, no letters, no numbers, no labels, no watermark, no logo, no signature.
+```
+
+### `actor_city_flyer` — 참새 (루프 · 14fps)
+
+몸통을 고정하고 **날개만** 움직이라고 매 줄에서 다시 말한다.
+
+```
+The sparrow's body is level and still, with both wings held straight out to the sides at shoulder height.
+The body stays exactly where it was; the wings have swept up so the wingtips are level with the top of the back.
+The body stays exactly where it was; the wings are raised high above the back with the tips nearly meeting.
+The body stays exactly where it was; the wings have started down and the primary feathers are fanned wide.
+The body stays exactly where it was; the wings are level with the body again and the tail has spread a little.
+The body stays exactly where it was; the wings have driven down past the belly and the tail has closed.
+The body stays exactly where it was; the wings are at the bottom of the beat with the tips below the feet.
+The body stays exactly where it was; the wings have swept back up into the straight-out pose that began the cycle.
+```
+
+### `actor_field_mover` — 작은 새 (루프 · 14fps)
+
+```
+The songbird's body is level and still, with both wings held wide and level and the tail closed.
+The body stays exactly where it was; the wings have swept up so the wingtips are level with the top of the back.
+The body stays exactly where it was; the wings are raised high with the tips nearly meeting above the back.
+The body stays exactly where it was; the wings have begun to drive down and the feathers are fanned apart.
+The body stays exactly where it was; the wings are level with the body again and the tail has spread slightly.
+The body stays exactly where it was; the wings have pushed down past the belly and the tail has closed.
+The body stays exactly where it was; the wings are at the bottom of the beat with the tips below the feet.
+The body stays exactly where it was; the wings have swept back up into the level pose that began the cycle.
+```
+
+### `actor_city_faller` — 넘어진 화분 (루프 · 12fps)
+
+화분은 제자리에서 **한 바퀴 도는 것**이 전부다. 크기를 매 줄에서 못 박는다.
+
+```
+The flower pot is drawn at the centre of the cell with its mouth facing up and to the right, a little loose soil spilling from it.
+The same pot at the same size has turned an eighth of a turn clockwise about its own centre, and the spilled soil trails behind the mouth.
+The same pot at the same size has turned a quarter turn clockwise and lies on its side with the mouth facing right, the soil spreading in a loose arc.
+The same pot at the same size has turned three eighths of a turn clockwise, the mouth tipping downward and the soil scattering wider.
+The same pot at the same size has turned half a turn clockwise and is upside down with the mouth facing straight down, the soil falling in a thin curtain.
+The same pot at the same size has turned five eighths of a turn clockwise, the mouth swinging toward the left and the soil breaking into separate clumps.
+The same pot at the same size has turned three quarters of a turn clockwise and lies on its other side with the mouth facing left, only a few crumbs still falling.
+The same pot at the same size has turned seven eighths of a turn clockwise, almost back to the mouth-up-right pose that began the tumble.
+```
+
+---
+
+## 9. 체크리스트
 
 1. 8칸이 정확히 같은 크기인가
 2. 물체가 8장 모두 **같은 자리·같은 크기**인가 (특히 하수구 뚜껑·바위)

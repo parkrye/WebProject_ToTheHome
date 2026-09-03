@@ -4,9 +4,11 @@
 8프레임 애니메이션 시트를 만들 때 생성기에 물려 줄 **기준 그림**이라,
 배경은 게임용처럼 투명하게 만들지 않고 원본과 같은 마젠타로 둔다.
 
-    python scripts/split_actor_sheets.py [원본_디렉터리]
+    python scripts/split_actor_sheets.py [원본_디렉터리] [결과_디렉터리]
 
-결과: assets-src/_ref/actors/actor_<스테이지>_<역할>.png (1024x1024)
+결과: <결과_디렉터리>/actor_<스테이지>_<역할>.png (1024x1024)
+기본 결과 위치는 assets-src/_ref/actors_single 이다. 8프레임 시트를 넣어 두는
+assets-src/_ref/actors 를 덮어쓰지 않도록 일부러 다른 곳을 본다.
 """
 import os
 import sys
@@ -16,7 +18,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'assets-src', 'props')
-OUT = os.path.join(ROOT, 'assets-src', '_ref', 'actors')
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'assets-src', '_ref', 'actors_single')
 
 CANVAS = 1024
 MARGIN = 0.06
