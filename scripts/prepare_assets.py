@@ -215,6 +215,29 @@ def strip_chroma(im, feather=1):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
 
 
+def strip_grid_lines(im, light=190, ratio=0.85):
+    """시트에 그려진 흰 격자선을 배경색으로 덮는다.
+
+    생성기가 칸을 나눠 그리라고 하면 칸 사이에 밝은 선을 실제로 그어 준다.
+    그 선이 남아 있으면 여백을 자를 때 선까지 물건으로 잡혀 소품이 칸 안에서
+    조그맣게, 한쪽으로 치우쳐 앉는다.
+
+    선은 시트를 가로지르지만 소품은 그렇지 않다. 그래서 **끝에서 끝까지 밝은**
+    줄만 골라 지운다.
+    """
+    a = np.asarray(im).astype(np.int16)
+    rgb = a[:, :, :3]
+    lightish = rgb.min(axis=2) > light
+
+    bg = np.median(rgb.reshape(-1, 3), axis=0).astype(np.uint8)
+    out = np.asarray(im).copy()
+    for idx in np.where(lightish.mean(axis=0) > ratio)[0]:
+        out[:, idx, :3] = bg
+    for idx in np.where(lightish.mean(axis=1) > ratio)[0]:
+        out[idx, :, :3] = bg
+    return Image.fromarray(out)
+
+
 def clean_background(im, tol=80):
     """배경을 지운다 — 마젠타 키가 보이면 그쪽을, 아니면 가장자리 번짐을 쓴다."""
     if looks_magenta(im):
@@ -457,24 +480,39 @@ def do_atlases():
         cols, rows, cell = spec['cols'], spec['rows'], spec['cell']
         anchor = spec['anchor']
 
-        # 격자 규격이 안 맞는 옛 시트를 잘못 자르지 않도록 비율을 확인한다
-        want = cols / float(rows)
-        got = src_im.width / float(src_im.height)
-        if abs(got - want) / want > 0.18:
-            log('아틀라스 %s 건너뜀 — 비율이 %d:%d 가 아니다 (%dx%d). '
-                '.docs/assets-images2.md 규격으로 다시 뽑아야 한다'
-                % (rel, cols, rows, src_im.width, src_im.height))
-            continue
+        if anchor != 'stretch':
+            src_im = strip_grid_lines(src_im)
+
         cw = src_im.width / float(cols)
         ch = src_im.height / float(rows)
+
+        # 격자 규격이 안 맞는 옛 시트를 잘못 자르지 않도록 칸 모양을 확인한다.
+        #
+        # 생성기가 칸을 정사각으로 안 그려 준다. 4x2 를 시켜도 세로로 긴 칸 여덟 개로
+        # 주는 일이 흔하다. 소품은 칸마다 오려서 다시 앉히므로 칸이 좀 길어도 상관없고,
+        # 칸 비율이 상식 밖일 때만 (칸 수를 잘못 센 시트다) 건너뛴다.
+        # 타일은 칸을 통째로 정사각으로 늘려 쓰기 때문에 칸이 정사각이어야 한다.
+        ratio = cw / ch
+        lo, hi = (0.85, 1.18) if anchor == 'stretch' else (0.45, 2.2)
+        if not lo <= ratio <= hi:
+            log('아틀라스 %s 건너뜀 — %d x %d 칸으로 나누면 칸 모양이 %.2f : 1 이다 (%dx%d). '
+                '.docs/assets-images2.md 규격으로 다시 뽑아야 한다'
+                % (rel, cols, rows, ratio, src_im.width, src_im.height))
+            continue
 
         out = Image.new('RGBA', (cell * cols, cell * rows), (0, 0, 0, 0))
         filled = 0
 
         for r in range(rows):
             for c in range(cols):
-                box = (int(c * cw), int(r * ch), int((c + 1) * cw), int((r + 1) * ch))
-                piece = src_im.crop(box)
+                box = [int(c * cw), int(r * ch), int((c + 1) * cw), int((r + 1) * ch)]
+                if anchor != 'stretch':
+                    # 생성기가 칸 사이에 흰 격자선을 그려 주는 일이 있다. 그 선이 남으면
+                    # 여백을 자를 때 칸 전체가 물건으로 잡혀 소품이 조그맣게 앉는다.
+                    # 타일은 칸을 꽉 채워야 하므로 건드리지 않는다.
+                    ix, iy = int(cw * 0.02), int(ch * 0.02)
+                    box = [box[0] + ix, box[1] + iy, box[2] - ix, box[3] - iy]
+                piece = src_im.crop(tuple(box))
 
                 if anchor == 'stretch':
                     # 타일은 칸을 꽉 채운다. 마젠타 여백만 걷어내고 늘린다
