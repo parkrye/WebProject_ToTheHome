@@ -1,344 +1,292 @@
 /**
  * 스테이지 절차 생성기.
  *
- * 사람이 **거쳐 갈 지점(앵커)** 만 찍어 주면 그 사이를 채워 지형을 만든다.
- * 관리 툴(`editor.html`)과 게임이 같은 함수를 쓴다 — Phaser 를 쓰지 않는 순수 함수다.
+ * 사람은 **점만 찍는다.** 출발 · 밟을 수 있는 자리 · 세이브 · 수집 요소 · 도착.
+ * 순서도 없고 방향도 없다. 그 점들에 발판을 놓고, **전부 오갈 수 있도록** 사이를 잇는 것이
+ * 이 파일이 하는 일이다. 관리 툴(`editor.html`)과 게임이 같은 함수를 쓴다 — Phaser 없는 순수 함수.
  *
- * ## 왜 앵커만 받나
- * 발판을 하나하나 놓는 건 사람이 하기에 지루하고, 점프가 닿는지 매번 계산해야 한다.
- * 반대로 전부 자동으로 만들면 "여기서 높이 올라갔다가 내려오면 좋겠다" 같은 의도를
- * 넣을 수가 없다. 그래서 **의도는 사람이, 계산은 기계가** 하도록 나눈다.
+ * ## 무엇을 보장하는가
  *
- * ## 앵커는 순서대로 따라간다 (x 로 정렬하지 않는다)
- * 앞으로 갔다가 → 발판을 타고 올라가서 → **왔던 방향으로 되돌아가면 다른 길**,
- * 같은 x 자리에 높이가 다른 두 길이 겹치는 구조를 만들려면 순서를 지켜야 한다.
- * x 로 정렬해 버리면 왼쪽으로 되돌아가는 구간이 사라지고 한 줄기 길만 남는다.
+ * **모든 발판에서 모든 발판으로 갈 수 있어야 한다.** 한쪽으로만 갈 수 있으면 안 된다.
+ * 떨어지는 건 공짜라서 아래로 가는 길은 저절로 생기지만, 그게 함정이 된다 —
+ * 떨어졌는데 돌아 올라갈 수 없으면 게임이 거기서 막힌다.
  *
- * ## 길은 여러 갈래일 수 있다
- * `paths` 에 폴리라인을 여러 개 넣으면 각각 지형이 된다. 첫 번째가 본길(출발~도착)이고
- * 나머지는 곁길이다. 아래 길은 얇은 발판이라 아래에서 위로 뚫고 올라갈 수 있다.
+ * 그래서 잇는 길은 전부 **올라갈 수 있는 연결**로만 만든다.
  *
- * ## 닿는 거리
- * 점프 속도 -520, 중력 1400 이므로 최고 상승 96px, 달리며 뛰면 240px 를 건넌다.
- * 생성기는 여유를 두고 상승 84px, 건너뛰기 190px 안에서만 발판을 놓는다.
+ *   한 칸의 높이차 <= 84px  (점프 최고 상승 96px 에서 여유를 뺀 값)
+ *   한 칸의 가로 간격 <= 190px (달리며 뛰어 240px 에서 여유를 뺀 값)
+ *
+ * 이 조건을 지키는 연결은 **위로도 아래로도** 지날 수 있다. 올라갈 땐 뛰고, 내려올 땐
+ * 그냥 떨어지면 된다. 그러므로 이런 연결만으로 전부 이어 두면 **오갈 수 있음이 저절로
+ * 보장된다.** 따로 방향을 따질 필요가 없다.
+ *
+ * 바닥은 끊지 않고 쭉 깐다. 어디서 떨어져도 바닥에 닿고, 바닥은 다른 발판과 이어져 있으므로
+ * 다시 올라갈 수 있다. 구멍을 파면 그 순간 "떨어지면 죽는 자리"가 생긴다.
  */
 
+/** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
 export const REACH = {
-  rise: 84, // 한 번에 올라갈 수 있는 높이
-  hop: 190, // 발판 사이 가로 간격
-  drop: 260, // 내려올 때 한 번에 떨어져도 되는 높이
+  rise: 84,
+  hop: 190,
 };
 
-const LEDGE_W = 120;
-const GROUND_BAND = 60; // 이 안이면 "바닥"으로 보고 지면을 깐다
+const PAD_W = {
+  start: 240,
+  goal: 240,
+  save: 220,
+  pad: 170,
+  keep: 130,
+  link: 120,
+};
+
+/** 수집 요소는 발판 위 이만큼 떠 있다 (서 있는 채로 닿는 높이) */
+const KEEP_LIFT = 52;
+
+/** 바닥으로 볼 높이 폭. 가장 낮은 점에서 이 안이면 두꺼운 지면으로 깐다 */
+const GROUND_BAND = 70;
 
 const round = (n) => Math.round(n);
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-/** 씨앗 하나로 같은 결과를 내는 난수 (같은 배치는 같은 지도가 나와야 한다) */
-function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => {
-    s ^= s << 13;
-    s ^= s >>> 17;
-    s ^= s << 5;
-    return ((s >>> 0) % 10000) / 10000;
-  };
+/* ------------------------------------------------------------------ 그래프 */
+
+/** 두 발판이 **서로** 오갈 수 있는가 (올라갈 수 있으면 내려오는 것은 저절로 된다) */
+function linked(a, b) {
+  const gap = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
+  if (gap > REACH.hop) return false;
+  return Math.abs(a.y - b.y) <= REACH.rise;
 }
 
-/**
- * 평지 구간 — 지면을 깔되 사이에 틈을 둔다.
- * 틈은 걷기 점프로 넘을 수 있는 폭(90~170)만 쓴다.
- */
-function flat(a, b, out, rand, opts) {
-  // 되돌아가는 구간도 있으므로 방향을 따지지 않고 [왼쪽, 오른쪽] 을 채운다
-  const x0 = Math.min(a.x, b.x);
-  const x1 = Math.max(a.x, b.x);
-  a = { ...a, x: x0 };
-  b = { ...b, x: x1 };
-  const span = x1 - x0;
-  if (span < 40) return;
-
-  // 공중의 평지는 **얇은 발판**을 이어 깐다. 두꺼운 지면 덩어리를 공중에 띄우면
-  // 옥상이 아니라 잘려 나온 땅덩어리처럼 보인다
-  if (a.y < opts.baseY - 120) {
-    const step = 150;
-    for (let x = a.x; x < b.x; x += step) {
-      out.ledges.push({ x: round(x), y: a.y, w: Math.min(step - 10, round(b.x - x)) });
+/** 서로 오갈 수 있는 것끼리 묶는다 */
+function components(pads) {
+  const seen = new Array(pads.length).fill(-1);
+  const groups = [];
+  pads.forEach((_, i) => {
+    if (seen[i] >= 0) return;
+    const id = groups.length;
+    const bag = [];
+    const open = [i];
+    seen[i] = id;
+    while (open.length) {
+      const cur = open.pop();
+      bag.push(cur);
+      pads.forEach((p, j) => {
+        if (seen[j] >= 0 || !linked(pads[cur], p)) return;
+        seen[j] = id;
+        open.push(j);
+      });
     }
-    return;
-  }
-
-  const gaps = opts.peaceful ? 0 : clamp(Math.floor(span / 620), 0, 3);
-  const cuts = [];
-  for (let i = 1; i <= gaps; i += 1) cuts.push(a.x + (span * i) / (gaps + 1));
-
-  let cursor = a.x;
-  cuts.forEach((cx) => {
-    const gap = round(90 + rand() * 80);
-    const w = round(cx - gap / 2 - cursor);
-    if (w > 60) out.ground.push({ x: round(cursor), y: a.y, w });
-    cursor = cx + gap / 2;
+    groups.push(bag);
   });
-  const last = round(b.x - cursor);
-  if (last > 60) out.ground.push({ x: round(cursor), y: a.y, w: last });
+  return { groups, of: seen };
 }
 
 /**
- * 올라가는 구간 — 지그재그 탑을 세운다.
+ * 두 발판 사이에 사다리를 놓는다.
  *
- * 발판을 왼쪽·오른쪽 번갈아 놓아서 **좌우로 오가며 위로** 올라가게 만든다.
- * 한 층씩 앞으로만 가는 계단보다 훨씬 높이 올릴 수 있고, 올려다보면 길이 보인다.
+ * 한 칸의 높이차와 가로 간격이 위 한계를 넘지 않도록 잘게 나눈다.
+ * 거의 수직이면 좌우로 흔들어 지그재그로 만든다 — 그래야 착지할 자리가 생기고,
+ * 올려다봤을 때 길이 보인다.
  */
-function tower(a, b, out, rand) {
-  const totalRise = a.y - b.y;
-  const steps = Math.max(1, Math.ceil(totalRise / REACH.rise));
-  const rise = totalRise / steps;
+function ladder(a, b, out) {
+  const ax = a.x + a.w / 2;
+  const bx = b.x + b.w / 2;
+  const dx = bx - ax;
+  const dy = b.y - a.y;
 
-  // 탑이 차지할 가로 폭. 좁으면 답답하고 넓으면 점프가 닿지 않는다
-  const bandW = clamp(Math.abs(b.x - a.x) || 300, 240, 400);
-  const bandX = Math.min(a.x, b.x);
-  const swing = (bandW - LEDGE_W) * 0.62;
+  const steps = Math.max(
+    Math.ceil(Math.abs(dx) / (REACH.hop - 30)),
+    Math.ceil(Math.abs(dy) / (REACH.rise - 8)),
+    1
+  );
+  const vertical = Math.abs(dx) < 120;
 
-  for (let i = 1; i <= steps; i += 1) {
-    const y = round(a.y - rise * i);
-    const left = i % 2 === 1;
-    const x = round(bandX + (left ? 0 : swing) + (rand() - 0.5) * 20);
-    const w = i === steps ? LEDGE_W + 40 : LEDGE_W;
-    out.ledges.push({ x, y, w });
-  }
-}
-
-/**
- * 내려오는 구간 — 떨어지는 건 공짜지만 그냥 떨어뜨리면 어디로 갈지 모른다.
- * 착지할 자리를 몇 개 놓아 길을 보여 준다.
- */
-function descend(a, b, out) {
-  const totalDrop = b.y - a.y;
-  const steps = Math.max(1, Math.ceil(totalDrop / REACH.drop));
   for (let i = 1; i < steps; i += 1) {
+    const t = i / steps;
+    const zig = vertical ? (i % 2 ? 78 : -78) : 0;
     out.ledges.push({
-      x: round(a.x + ((b.x - a.x) * i) / steps),
-      y: round(a.y + (totalDrop * i) / steps),
-      w: LEDGE_W + 20,
+      x: round(ax + dx * t + zig - PAD_W.link / 2),
+      y: round(a.y + dy * t),
+      w: PAD_W.link,
     });
   }
 }
 
 /**
- * 곁길 — 기억 조각으로 가는 길.
+ * 갈라진 덩어리를 하나로 잇는다.
  *
- * 정규 루트에서 **위로 두 단** 빠져나갔다가 되돌아 나오게 만든다.
- * 정규 루트에 붙여 두면 지나가다 저절로 주워지므로, 일부러 어긋나게 놓는다.
+ * 가장 가까운 두 덩어리를 골라 사다리를 놓기를, 덩어리가 하나가 될 때까지 되풀이한다.
+ * 가까운 것부터 이으면 사다리가 짧아지고, 짧은 사다리는 지형처럼 보인다.
  */
-function sideBranch(anchor, out) {
-  // 곁길은 **본 지형에 붙어 있어야** 한다. 앵커를 찍은 높이가 아니라,
-  // 그 자리에서 가장 가까운 발판 위에서 뻗어 나간다
-  const pads = [...out.ground, ...out.ledges];
-  if (!pads.length) return { x: anchor.x, y: anchor.y };
+function connectAll(out) {
+  for (let pass = 0; pass < 200; pass += 1) {
+    const pads = allPads(out);
+    const { groups } = components(pads);
+    if (groups.length <= 1) return true;
 
-  const from = pads
-    .map((p) => ({ p, d: Math.abs(p.x + p.w / 2 - anchor.x) + Math.abs(p.y - anchor.y) * 0.4 }))
-    .sort((a, b) => a.d - b.d)[0].p;
+    // **서로 다른 덩어리에 속한 발판 중 전체에서 가장 가까운 짝**을 고른다.
+    // 특정 덩어리를 기준으로 삼으면 멀리 있는 것끼리 억지로 이어져 긴 사다리가 생긴다.
+    const groupOf = new Map();
+    groups.forEach((bag, g) => bag.forEach((i) => groupOf.set(i, g)));
 
-  const dir = anchor.dir === 'left' ? -1 : 1;
-  const step1 = { x: round(from.x + from.w / 2 + dir * 120), y: round(from.y - 76), w: 110 };
-  const step2 = { x: round(step1.x + dir * 120), y: round(step1.y - 74), w: 110 };
-  out.ledges.push(step1, step2);
-  return { x: round(step2.x + 55), y: round(step2.y - 52) };
-}
-
-/** 생성된 길 위에 냄새 입자를 뿌린다 — 정규 루트만 가리킨다 */
-function scentAlong(route, out) {
-  for (let i = 0; i < route.length - 1; i += 1) {
-    const a = route[i];
-    const b = route[i + 1];
-    const steps = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 260));
-    for (let k = 0; k < steps; k += 1) {
-      const t = k / steps;
-      out.scent.push({
-        x: round(a.x + (b.x - a.x) * t),
-        y: round(a.y + (b.y - a.y) * t - 62),
-      });
-    }
-  }
-  out.scent.push({ x: route[route.length - 1].x, y: route[route.length - 1].y - 62 });
-}
-
-/**
- * 끊긴 발판을 이어 붙인다.
- *
- * 길이 여러 갈래로 겹치면 사람이 아무리 잘 찍어도 섬처럼 떨어지는 발판이 생긴다.
- * 그걸 "끊겼다"고 알려 주고 사람이 고치게 하는 것보다, **기계가 이어 붙이는 편이** 낫다.
- * 닿는 곳에서 가장 가까운 섬으로 징검다리를 놓기를, 더 이을 것이 없을 때까지 되풀이한다.
- */
-function stitch(out, from) {
-  for (let pass = 0; pass < 12; pass += 1) {
-    const check = checkReach(out, from);
-    if (check.ok) return;
-
-    const pads = [
-      ...out.ground.map((g) => ({ ...g, h: g.h ?? 90 })),
-      ...out.ledges.map((l) => ({ ...l, h: 18 })),
-    ];
-    const reachable = pads.filter((_, i) => check.seen.has(i));
-    const stranded = pads.filter((_, i) => !check.seen.has(i));
-    if (!reachable.length || !stranded.length) return;
-
-    // 가장 가까운 짝을 찾는다
     let best = null;
-    stranded.forEach((s2) => {
-      reachable.forEach((r) => {
-        const dx = Math.abs(s2.x + s2.w / 2 - (r.x + r.w / 2));
-        const dy = Math.abs(s2.y - r.y);
-        const d = dx + dy * 1.4;
-        if (!best || d < best.d) best = { d, from: r, to: s2 };
-      });
-    });
-    if (!best) return;
-
-    // 사이에 징검다리를 놓는다. 한 칸에 상승 REACH.rise, 가로 REACH.hop 을 넘지 않게
-    const a = { x: best.from.x + best.from.w / 2, y: best.from.y };
-    const b = { x: best.to.x + best.to.w / 2, y: best.to.y };
-    const steps = Math.max(
-      1,
-      Math.ceil(Math.max(Math.abs(b.x - a.x) / (REACH.hop - 20), Math.max(0, a.y - b.y) / REACH.rise))
-    );
-    for (let i = 1; i <= steps; i += 1) {
-      const t = i / (steps + 1);
-      out.ledges.push({
-        x: round(a.x + (b.x - a.x) * t - LEDGE_W / 2),
-        y: round(a.y + (b.y - a.y) * t),
-        w: LEDGE_W,
-      });
+    for (let i = 0; i < pads.length; i += 1) {
+      for (let j = i + 1; j < pads.length; j += 1) {
+        if (groupOf.get(i) === groupOf.get(j)) continue;
+        const a = pads[i];
+        const b = pads[j];
+        const gap = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
+        const d = gap + Math.abs(a.y - b.y) * 1.2;
+        if (!best || d < best.d) best = { d, a, b };
+      }
     }
+    if (!best) return false;
+    ladder(best.a, best.b, out);
   }
+  return false;
+}
+
+const allPads = (out) => [
+  ...out.ground.map((g) => ({ ...g, kind: '지면' })),
+  ...out.ledges.map((l) => ({ ...l, kind: '턱' })),
+];
+
+/* ------------------------------------------------------------------ 만들기 */
+
+/** 점 하나를 발판 하나로 바꾼다 */
+function padAt(point, width, baseY) {
+  const onGround = point.y >= baseY - GROUND_BAND;
+  return {
+    x: round(point.x - width / 2),
+    y: round(onGround ? baseY : point.y),
+    w: width,
+    onGround,
+  };
 }
 
 /**
- * 발판이 전부 이어져 있는지 확인한다.
- * 지면에서 출발해 상승 84 / 가로 190 안에서 갈 수 있는 곳을 넓혀 나간다.
+ * 냄새 입자 — 출발에서 도착까지, 발판을 타고 가는 순서대로 뿌린다.
+ *
+ * 갈림길이 많아도 **길잡이는 하나여야** 한다. 최단 경로만 따라 놓는다.
  */
-export function checkReach(layout, from) {
-  const pads = [
-    ...layout.ground.map((g) => ({ ...g, kind: '지면' })),
-    ...layout.ledges.map((l) => ({ ...l, kind: '턱' })),
-  ];
-  if (!pads.length) return { ok: true, unreachable: [] };
+function scentPath(out, startPad, goalPad) {
+  const pads = allPads(out);
+  const idx = (p) => pads.findIndex((q) => q.x === p.x && q.y === p.y && q.w === p.w);
+  const from = idx(startPad);
+  const to = idx(goalPad);
+  if (from < 0 || to < 0) return;
 
-  const can = (a, b) => {
-    const gap = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
-    return gap <= REACH.hop && a.y - b.y <= REACH.rise;
-  };
-
-  // **출발 지점이 놓인 발판**에서 시작한다. 공중에 뜬 지면까지 시작점으로 치면
-  // 정작 거기 못 올라가는 지도를 "이어짐"이라고 잘못 판정한다
-  const seen = new Set();
-  const open = [];
-  const roots = from
-    ? pads
-        .map((p, i) => ({ p, i }))
-        .filter(({ p }) => p.x - 80 <= from.x && from.x <= p.x + p.w + 80 && p.y >= from.y - 40)
-        .sort((a, b) => a.p.y - b.p.y)
-        .slice(0, 1)
-    : pads.map((p, i) => ({ p, i })).filter(({ p }) => p.kind === '지면');
-  roots.forEach(({ i }) => {
-    seen.add(i);
-    open.push(i);
-  });
-  while (open.length) {
-    const cur = pads[open.pop()];
-    pads.forEach((p, i) => {
-      if (seen.has(i) || !can(cur, p)) return;
-      seen.add(i);
-      open.push(i);
+  const prev = new Array(pads.length).fill(-1);
+  const seen = new Array(pads.length).fill(false);
+  const queue = [from];
+  seen[from] = true;
+  while (queue.length) {
+    const cur = queue.shift();
+    if (cur === to) break;
+    pads.forEach((p, j) => {
+      if (seen[j] || !linked(pads[cur], p)) return;
+      seen[j] = true;
+      prev[j] = cur;
+      queue.push(j);
     });
   }
-  const unreachable = pads.filter((_, i) => !seen.has(i)).map((p) => `${p.kind}@${p.x},${p.y}`);
-  return { ok: !unreachable.length, unreachable, seen };
+  if (!seen[to]) return;
+
+  const chain = [];
+  for (let at = to; at >= 0; at = prev[at]) chain.unshift(pads[at]);
+  chain.forEach((p) => {
+    out.scent.push({ x: round(p.x + p.w / 2), y: round(p.y - 62) });
+  });
 }
 
 /**
- * 앵커 배치를 받아 지형을 만든다.
+ * 점 배치를 지형으로 바꾼다.
  *
  * @param {object} seed
- *   { stage, seedNumber, peaceful, route:[{x,y}], keepsakes:[{id,x,y,dir}], groundH }
- * @returns {object} { ground, ledges, scent, keepsakes, stats }
+ *   { stage, start:{x,y}, goal:{x,y}, pads:[{x,y}], saves:[{x,y}], keeps:[{x,y}], groundH }
  */
 export function build(seed) {
-  const rand = rng(seed.seedNumber ?? 1);
   const groundH = seed.groundH ?? 90;
-  // 길은 여러 갈래일 수 있다. 옛 형식(route 하나)도 그대로 받는다
-  const paths = (seed.paths && seed.paths.length ? seed.paths : [seed.route || []]).filter(
-    (p) => p && p.length >= 2
-  );
-  const allPoints = paths.flat();
-  const baseY = allPoints.length ? Math.max(...allPoints.map((p) => p.y)) : 470;
-  const opts = { peaceful: !!seed.peaceful, baseY };
+  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [] };
 
-  const out = { ground: [], ledges: [], scent: [], keepsakes: [] };
-  if (!paths.length) return { ...out, stats: { error: '길에 앵커가 두 개는 있어야 한다' } };
+  const start = seed.start;
+  const goal = seed.goal;
+  if (!start || !goal) {
+    return { ...out, stats: { error: '출발 지점과 도착 지점을 찍어야 한다' } };
+  }
 
-  paths.forEach((path) => {
-    // **정렬하지 않는다.** 찍은 순서가 곧 지나가는 순서다
-    for (let i = 0; i < path.length - 1; i += 1) {
-      const a = path[i];
-      const b = path[i + 1];
-      const dy = a.y - b.y; // 양수면 올라간다
+  const pts = [
+    start,
+    goal,
+    ...(seed.pads || []),
+    ...(seed.saves || []),
+    ...(seed.keeps || []).map((k) => ({ ...k, y: k.y + KEEP_LIFT })),
+  ];
+  const baseY = Math.max(...pts.map((p) => p.y));
+  const minX = Math.min(...pts.map((p) => p.x)) - 160;
+  const maxX = Math.max(...pts.map((p) => p.x)) + 200;
 
-      if (Math.abs(dy) <= GROUND_BAND) {
-        flat(a, b, out, rand, opts);
-      } else {
-        // 바닥에서 시작하는 오르막 아래에만 바닥을 깐다.
-        // 오르다 떨어졌을 때 죽는 게 아니라 **올라온 만큼을 잃는** 편이 낫다.
-        // 위층에서 떨어지는 건 아래층에 착지하는 것이므로 따로 깔지 않는다
-        if (Math.max(a.y, b.y) >= baseY - 150) {
-          const from = Math.min(a.x, b.x) - 80;
-          const to = Math.max(a.x, b.x) + 140;
-          out.ground.push({ x: round(from), y: baseY, w: round(to - from) });
-        }
+  // 1. 바닥을 쭉 깐다. 구멍이 있으면 그 자리가 곧 "떨어지면 죽는 자리"가 된다
+  out.ground.push({ x: round(minX), y: round(baseY), w: round(maxX - minX), h: groundH });
 
-        if (dy > 0) tower(a, b, out, rand);
-        else descend(a, b, out);
-      }
+  // 2. 찍은 점마다 발판을 놓는다. 바닥 높이에 있는 것은 이미 바닥이 있으므로 그냥 둔다
+  const place = (point, width) => {
+    const pad = padAt(point, width, baseY);
+    if (!pad.onGround) out.ledges.push({ x: pad.x, y: pad.y, w: pad.w });
+    return pad;
+  };
 
-      // 구간이 끝나는 자리에는 반드시 설 곳이 있어야 한다
-      const landing = { x: round(b.x - 80), y: b.y, w: 180 };
-      const flatRun = Math.abs(dy) <= GROUND_BAND;
-      if (flatRun && a.y >= baseY - 120) out.ground.push({ ...landing, y: a.y });
-      else out.ledges.push(flatRun ? { ...landing, y: a.y } : landing);
-    }
+  const startPad = place(start, PAD_W.start);
+  const goalPad = place(goal, PAD_W.goal);
+  (seed.pads || []).forEach((p) => place(p, PAD_W.pad));
+
+  (seed.saves || []).forEach((p, i) => {
+    const pad = place(p, PAD_W.save);
+    out.saves.push({ x: round(p.x), y: pad.y });
   });
 
-  const route = paths[0];
-
-  (seed.keepsakes || []).forEach((k) => {
-    const spot = sideBranch(k, out);
-    out.keepsakes.push({ id: k.id, x: spot.x, y: spot.y });
+  (seed.keeps || []).forEach((p, i) => {
+    const pad = place({ x: p.x, y: p.y + KEEP_LIFT }, PAD_W.keep);
+    out.keepsakes.push({ id: `s${seed.stage}_gen${i + 1}`, x: round(p.x), y: round(pad.y - KEEP_LIFT) });
   });
 
-  // 겹치는 길을 만들다 보면 섬처럼 떨어지는 발판이 생긴다. 기계가 이어 붙인다
-  stitch(out, route[0]);
+  // 3. 갈라진 덩어리를 전부 잇는다
+  const connected = connectAll(out);
 
-  scentAlong(route, out);
+  // 4. 길잡이 냄새는 출발에서 도착까지 한 줄기만
+  scentPath(out, startPad.onGround ? out.ground[0] : startPad, goalPad.onGround ? out.ground[0] : goalPad);
 
-  // 지면에 두께를 준다
-  out.ground = out.ground.map((g) => ({ ...g, h: groundH }));
-
-  const check = checkReach(out, route[0]);
-  const top = Math.min(...[...out.ground, ...out.ledges].map((p) => p.y));
-  const bottom = Math.max(...[...out.ground, ...out.ledges].map((p) => p.y));
+  const pads = allPads(out);
+  const { groups } = components(pads);
+  const tops = pads.map((p) => p.y);
 
   return {
     ...out,
+    start: { x: start.x, y: startPad.y },
+    goal: { x: goal.x, y: goalPad.y },
+    width: round(maxX + 120),
     stats: {
-      길이: Math.max(...allPoints.map((p) => p.x)) + 240,
-      갈래: paths.length,
-      발판: out.ground.length + out.ledges.length,
-      최고높이: bottom - top,
+      길이: round(maxX + 120),
+      발판: pads.length,
+      놓은점: pts.length,
+      높이차: Math.max(...tops) - Math.min(...tops),
       기억: out.keepsakes.length,
-      이어짐: check.ok ? '전부 이어짐' : `끊긴 발판 ${check.unreachable.length}개`,
-      끊긴것: check.unreachable,
+      세이브: out.saves.length,
+      이어짐: connected && groups.length === 1 ? '전부 오갈 수 있다' : `덩어리 ${groups.length}개로 갈라짐`,
+      갈라진덩어리: groups.length,
     },
   };
+}
+
+/**
+ * 검사 — 모든 발판이 서로 오갈 수 있는가.
+ *
+ * 잇는 연결이 전부 "올라갈 수 있는" 연결이므로, 하나로 이어져 있으면
+ * 어느 쪽으로든 지날 수 있다. 방향을 따로 볼 필요가 없다.
+ */
+export function checkReach(layout) {
+  const pads = allPads(layout);
+  if (!pads.length) return { ok: true, unreachable: [] };
+  const { groups, of } = components(pads);
+  const unreachable = pads.filter((_, i) => of[i] !== of[0]).map((p) => `${p.kind}@${p.x},${p.y}`);
+  return { ok: groups.length === 1, unreachable, groups: groups.length };
 }

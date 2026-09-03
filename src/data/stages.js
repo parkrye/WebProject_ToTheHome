@@ -47,11 +47,12 @@ function applyLayout(base, saved) {
   const L = saved.layout;
   if (!L || !L.ground?.length) return base;
 
+  // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다
   const savePoints = (L.saves || []).map((s, i) => ({
     ...(base.savePoint || {}),
     id: `s${base.id}_gen${i + 1}`,
     x: s.x,
-    y: groundTopAt(L.ground, s.x) ?? s.y,
+    y: s.y ?? groundTopAt(L.ground, s.x) ?? base.savePoint?.y,
   }));
 
   // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다
@@ -73,8 +74,8 @@ function applyLayout(base, saved) {
     scent: L.scent || [],
     keepsakes: L.keepsakes || [],
     props: reanchor(base.props, L.ground),
-    // 앵커는 지면 **윗면**이다. 거기에 그대로 놓으면 몸이 지면에 박혀 못 움직인다
-    start: L.start ? { x: L.start.x + 40, y: L.start.y - 70 } : base.start,
+    // 발판 **윗면** 좌표다. 거기에 그대로 놓으면 몸이 지면에 박혀 못 움직인다
+    start: L.start ? { x: L.start.x, y: L.start.y - 70 } : base.start,
     goal: { ...base.goal, ...(L.goal || {}) },
     savePoint: savePoints[0] || base.savePoint,
     savePoints,

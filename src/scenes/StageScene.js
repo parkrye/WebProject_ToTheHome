@@ -405,9 +405,14 @@ export default class StageScene extends Phaser.Scene {
 
   updateParallax() {
     const cam = this.cameras.main;
+
+    // 세로로는 흘리지 않는다.
+    //
+    // 배경 그림은 가로로만 이어지도록 그려져 있어서, 세로로 밀면 위아래로 **반복되어**
+    // 같은 건물이 층층이 쌓여 보인다. 위로 한참 올라가는 지도에서 특히 티가 난다.
+    // 먼 배경은 원래 잘 안 움직이는 것이므로 가만히 두는 편이 자연스럽다.
     this.bgLayers.forEach(({ tile, factor }) => {
       tile.tilePositionX = cam.scrollX * factor;
-      tile.tilePositionY = cam.scrollY * factor * 0.5;
     });
   }
 
