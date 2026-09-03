@@ -15,6 +15,8 @@ export default class HudScene extends Phaser.Scene {
     this.inputSystem = this.registry.get('input');
     this.audio = this.registry.get('audio');
 
+    // 씬 인스턴스는 다시 시작해도 그대로 재사용된다. 남은 상태를 여기서 지운다
+    this.paused = false;
     this.touchButtons = [];
     this.buildTouchControls();
     this.buildPauseButton();
@@ -98,7 +100,9 @@ export default class HudScene extends Phaser.Scene {
 
   togglePause() {
     const stage = this.scene.get('Stage');
-    if (!stage || !stage.scene.isActive()) return;
+    // 멈춰 있는 씬은 isActive() 가 false 다. 그것만 보면 한 번 멈춘 뒤로는
+    // 재개 버튼도 ESC 도 여기서 되돌아가 영영 풀리지 않는다
+    if (!stage || !(stage.scene.isActive() || stage.scene.isPaused())) return;
 
     this.paused = !this.paused;
     this.pausePanel.setVisible(this.paused);

@@ -18,6 +18,11 @@ export default class TitleScene extends Phaser.Scene {
     input.attach(this);
     input.clearTouch();
 
+    // 씬 인스턴스는 다시 시작해도 그대로 재사용된다. confirm() 이 걸어 둔 자물쇠가
+    // 남아 있으면 홈으로 돌아왔을 때 메뉴가 통째로 먹통이 된다
+    this.locked = false;
+    this.selectedOnce = false;
+
     this.buildBackdrop();
 
     sizeTo(this.add.image(GAME_WIDTH / 2, 168, 'ui_title_logo').setDepth(10), {
