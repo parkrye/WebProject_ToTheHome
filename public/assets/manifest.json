@@ -1,6 +1,6 @@
 {
   "autodetect": false,
-  "generatedAt": "2026-09-03T11:09:27.051Z",
+  "generatedAt": "2026-09-03T23:48:02.031Z",
   "files": [
     "assets/audio/amb_city_morning.ogg",
     "assets/audio/amb_coast_waves.ogg",
@@ -71,6 +71,8 @@
     "assets/props/prop_owner_car.png",
     "assets/props/prop_sandbox.png",
     "assets/props/prop_sign_jump.png",
+    "assets/props/prop_sign_jumpdown.png",
+    "assets/props/prop_sign_lookdown.png",
     "assets/props/prop_sign_move.png",
     "assets/props/prop_sign_run.png",
     "assets/props/prop_valley_pond.png",

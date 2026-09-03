@@ -678,6 +678,57 @@ const IMAGE_DRAWERS = {
       keyCap(c, 16, 20, 26, arrowGlyph('right'));
     }),
 
+  // 아래 + 점프 — 딛고 선 발판을 통과해 아래로 내려간다
+  signJumpDown: (ctx, w, h) =>
+    signBoard(ctx, w, h, (c) => {
+      c.save();
+      c.translate(0, -24);
+      dogGlyph(c, 0.55);
+      c.restore();
+      // 발판과, 그걸 뚫고 내려가는 자취
+      c.strokeStyle = '#6b5a45';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(-26, -8);
+      c.lineTo(26, -8);
+      c.stroke();
+      c.save();
+      c.setLineDash([4, 4]);
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, -14);
+      c.lineTo(0, 6);
+      c.stroke();
+      c.restore();
+      keyCap(c, -16, 22, 26, arrowGlyph('down'));
+      keyCap(c, 16, 22, 26, arrowGlyph('up'));
+    }),
+
+  // 아래 — 카메라를 내려 아래쪽을 본다
+  signLookDown: (ctx, w, h) =>
+    signBoard(ctx, w, h, (c) => {
+      c.save();
+      c.translate(0, -22);
+      dogGlyph(c, 0.55);
+      c.restore();
+      // 발판 끝에서 아래를 내려다본다
+      c.strokeStyle = '#6b5a45';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(-26, -8);
+      c.lineTo(4, -8);
+      c.stroke();
+      c.save();
+      c.setLineDash([3, 4]);
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(10, -14);
+      c.lineTo(10, 8);
+      c.stroke();
+      c.restore();
+      keyCap(c, 0, 22, 26, arrowGlyph('down'));
+    }),
+
   sandbox: (ctx, w, h) => {
     ctx.fillStyle = '#e0cda6';
     ctx.beginPath();
