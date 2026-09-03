@@ -9,7 +9,10 @@
  * 4) 애니메이션은 실제/플레이스홀더 구분 없이 동일하게 등록된다.
  */
 
-import { SPRITE_SHEETS, BACKGROUNDS, ATLASES, CUTSCENES, IMAGES, AUDIO, DIRS } from './AssetManifest.js';
+import {
+  SPRITE_SHEETS, BACKGROUNDS, ATLASES, CUTSCENES, IMAGES, AUDIO, DIRS,
+  ACTOR_SLOTS, ACTOR_FRAMES, ACTOR_FPS, actorAnim, actorFrame,
+} from './AssetManifest.js';
 import { buildSpriteSheet } from './PlaceholderArt.js';
 import { buildBackground, buildAtlas, buildImage } from './PlaceholderScenery.js';
 
@@ -172,6 +175,36 @@ export function registerAnimations(scene) {
         repeat: 0,
       });
     }
+  });
+
+  registerActorAnimations(scene);
+}
+
+/**
+ * 움직이는 것들 — 시트 한 장에 역할 네 줄이 들어 있으므로 줄마다 애니메이션을 만든다.
+ *
+ * 플레이스홀더 시트도 같은 칸 배치로 만들어지므로 실제 에셋 유무와 무관하게 돈다.
+ */
+function registerActorAnimations(scene) {
+  ATLASES.filter((def) => def.kind === 'actor').forEach((def) => {
+    if (!scene.textures.exists(def.key)) return;
+    const total = scene.textures.get(def.key).frameTotal - 1; // __BASE 제외
+
+    ACTOR_SLOTS.forEach((name, slot) => {
+      const key = actorAnim(def.key, slot);
+      if (scene.anims.exists(key)) return;
+
+      const start = actorFrame(slot);
+      const end = start + ACTOR_FRAMES - 1;
+      if (end >= total) return;
+
+      scene.anims.create({
+        key,
+        frames: scene.anims.generateFrameNumbers(def.key, { start, end }),
+        frameRate: ACTOR_FPS[name] ?? 12,
+        repeat: -1,
+      });
+    });
   });
 }
 

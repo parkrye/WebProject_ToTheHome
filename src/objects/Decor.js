@@ -7,6 +7,7 @@
 
 import Phaser from 'phaser';
 import { sizeTo } from '../systems/Layout.js';
+import { actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
 export class ScentTrail {
   /**
@@ -114,7 +115,14 @@ export function placeProp(scene, def) {
 
   let prop;
   if (def.atlas) {
-    prop = scene.add.image(def.x, def.y, def.atlas, def.frame ?? 0);
+    // 움직이는 것들 시트는 한 줄이 8프레임짜리 애니메이션이다.
+    // frame 이 그 줄 번호이므로, 애니메이션이 있으면 재생하고 없으면 그림 한 장으로 둔다
+    const anim = actorAnim(def.atlas, def.frame ?? 0);
+    if (anim && scene.anims.exists(anim)) {
+      prop = scene.add.sprite(def.x, def.y, def.atlas, actorFrame(def.frame ?? 0)).play(anim);
+    } else {
+      prop = scene.add.image(def.x, def.y, def.atlas, def.frame ?? 0);
+    }
   } else if (scene.anims.exists(key)) {
     prop = scene.add.sprite(def.x, def.y, key).play(key);
   } else {

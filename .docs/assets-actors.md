@@ -303,20 +303,35 @@ All four wings return to the level hovering pose that began the cycle.
 
 ---
 
-## 6. 다 구운 뒤 — 코드가 할 일
+## 6. 어떻게 게임에 들어가 있나
 
-지금 `AssetManifest.js` 는 `actors_<스테이지>` 를 **4칸짜리 아틀라스 한 장**으로 읽고,
-스테이지 데이터가 `{ atlas: 'actors_city', frame: ACTOR.FLYER }` 로 칸 번호를 집는다.
-8프레임 시트로 바뀌면 이렇게 손봐야 한다.
+**시트 한 장에 역할 네 줄.** 세로 한 줄이 역할 하나(`ACTOR` 상수 순서)이고,
+가로 8칸이 그 역할의 애니메이션이다. 스테이지마다 한 장이므로 시트는 넷.
 
-1. `AssetManifest.js` — `actors_*` 아틀라스 4줄을 지우고, `actor_*_*` 스프라이트 16줄을 넣는다.
-2. `stage1~4.js` — `{ atlas, frame }` 을 `{ sprite: 'actor_city_flyer' }` 로 바꾼다.
-3. 배치기 — 프레임 하나를 세우는 대신 8프레임 루프 애니메이션을 만들어 재생한다.
-   fps 는 각 항목 제목에 적어 두었다.
-4. `prepare_assets.py` — `ATLASES` 에서 `props/actors_*` 4줄을 지운다.
-   (8프레임 시트는 `assets-src/sprites/` 로 들어가므로 `do_sprites()` 가 알아서 처리한다)
+```
+public/assets/props/actors_<스테이지>.png   2560 x 1280  (칸 320px)
 
-플레이스홀더 모드(`?placeholder=1`)는 에셋을 아예 안 보므로 손댈 것이 없다.
+      0   1   2   3   4   5   6   7      ← 프레임
+ 0 [ mover  ................... ]        ← ACTOR.MOVER
+ 1 [ faller ................... ]
+ 2 [ puff   ................... ]
+ 3 [ flyer  ................... ]
+```
+
+- `prepare_assets.py` 의 `do_actor_sheets()` 가 `assets-src/_ref/actors/` 의 낱장 시트
+  16개를 읽어 이 한 장으로 합친다. **`_ref/actors/` 가 원본 자리다** — 여기에 새 시트를
+  덮어쓰고 전처리를 다시 돌리면 그대로 반영된다.
+- 합치면서 배경 마젠타 제거·디스필·여백 정리를 한다. 여백을 자르고 크기를 맞추는 건
+  **8장을 한 덩어리로** 한다. 프레임마다 따로 하면 날개를 편 칸만 작게 앉아 덜컹거린다.
+- 프레임마다 물체가 널뛰는 시트는 `ACTOR_FIX` 에 적어 자리를(필요하면 크기까지) 맞춘다.
+- `AssetLoader.registerActorAnimations()` 가 줄마다 애니메이션을 만든다.
+  key 는 `actors_city_flyer` 꼴이고, 속도는 `ACTOR_FPS` 가 정한다.
+- `Hazards.js` 와 `Decor.placeProp()` 이 그 애니메이션을 재생한다.
+  스테이지 데이터(`{ atlas: 'actors_city', frame: ACTOR.FLYER }`)는 **바꿀 필요가 없었다** —
+  `frame` 이 이제 칸 번호가 아니라 줄 번호로 읽힌다.
+
+낙석만 낱장이라, 같은 그림을 여덟 번 넣어 둔다. 애니메이션은 돌지만 그림이 안 바뀐다.
+따로 분기하지 않으려고 일부러 그렇게 했다.
 
 ## 7. 1차 굽기 결과 — 무엇을 다시 뽑아야 하나
 

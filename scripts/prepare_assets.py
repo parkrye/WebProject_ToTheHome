@@ -15,6 +15,7 @@ AI 생성 에셋은 크기도 제각각이고, "투명 배경"을 실제 알파 
 사용: python scripts/prepare_assets.py [--only images|audio] [--force]
 """
 
+import math
 import os
 import shutil
 import subprocess
@@ -441,11 +442,7 @@ ATLASES = {
     'props/props_mountain': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_field': {'cols': 4, 'rows': 3, 'cell': 384, 'anchor': 'bottom'},
     'props/props_home': {'cols': 4, 'rows': 2, 'cell': 384, 'anchor': 'bottom'},
-    # 움직이는 것들 — 4열 1행 (4칸)
-    'props/actors_city': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_coast': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_mountain': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
-    'props/actors_field': {'cols': 4, 'rows': 1, 'cell': 320, 'anchor': 'bottom'},
+    # 움직이는 것들은 do_actor_sheets() 가 따로 만든다 (8프레임 x 4역할)
     # 지형 타일 — 4열 2행 (8칸). 타일은 칸을 꽉 채워야 하므로 여백을 자르지 않는다
     'tiles/tiles_city': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
     'tiles/tiles_coast': {'cols': 4, 'rows': 2, 'cell': 128, 'anchor': 'stretch'},
@@ -667,6 +664,146 @@ def do_atlases():
         log('아틀라스 %s  %d/%d칸  %dx%d' % (rel, filled, cols * rows, out.width, out.height))
 
 
+# 움직이는 것들 — 역할마다 8프레임짜리 시트를 받아 한 장으로 합친다.
+# 세로 한 줄이 역할 하나(ACTOR 상수 순서), 가로 8칸이 그 역할의 애니메이션이다.
+ACTOR_SLOTS = ['mover', 'faller', 'puff', 'flyer']
+ACTOR_STAGES = ['city', 'coast', 'mountain', 'field']
+ACTOR_CELL = 320
+
+# 칸 안에서 어디에 세울지. 땅에 붙는 것은 바닥, 공중에 뜨는 것은 가운데
+ACTOR_ANCHOR = {
+    ('city', 'mover'): 'bottom', ('city', 'faller'): 'center',
+    ('city', 'puff'): 'bottom', ('city', 'flyer'): 'center',
+    ('coast', 'mover'): 'bottom', ('coast', 'faller'): 'bottom',
+    ('coast', 'puff'): 'bottom', ('coast', 'flyer'): 'center',
+    ('mountain', 'mover'): 'bottom', ('mountain', 'faller'): 'center',
+    ('mountain', 'puff'): 'bottom', ('mountain', 'flyer'): 'bottom',
+    ('field', 'mover'): 'center', ('field', 'faller'): 'center',
+    ('field', 'puff'): 'center', ('field', 'flyer'): 'center',
+}
+
+# 프레임마다 물체가 널뛰는 시트만 손본다.
+#   'center' — 프레임마다 그림의 중심을 한 자리로 모은다 (크기는 안 건드린다)
+#   'size'   — 중심을 모으고 넓이까지 맞춘다. 돌기만 하는 것(화분)은 넓이가 변할 리 없다
+ACTOR_FIX = {
+    'actor_city_flyer': 'center',
+    'actor_field_mover': 'center',
+    'actor_city_faller': 'size',
+}
+
+
+def union_box(frames, threshold=8):
+    """여러 프레임을 통틀어 그림이 들어 있는 범위."""
+    box = None
+    for f in frames:
+        a = np.asarray(f)[:, :, 3]
+        ys, xs = np.where(a > threshold)
+        if not len(xs):
+            continue
+        b = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+        box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]),
+                                     max(box[2], b[2]), max(box[3], b[3]))
+    return box
+
+
+def _frame_stat(frame):
+    a = np.asarray(frame)[:, :, 3] > 16
+    ys, xs = np.where(a)
+    if not len(xs):
+        return None
+    return {
+        'cx': (int(xs.min()) + int(xs.max()) + 1) / 2.0,
+        'cy': (int(ys.min()) + int(ys.max()) + 1) / 2.0,
+        'area': float(a.sum()),
+    }
+
+
+def steady_frames(frames, mode):
+    """프레임마다 물체가 옮겨 다니거나 커졌다 작아지는 것을 잡아 준다.
+
+    생성기가 8장을 따로 그리다 보니 같은 것을 조금씩 다른 크기·자리에 그려 놓는다.
+    그대로 재생하면 덜컹거린다. 여기서 자리를 모으고, 필요하면 크기까지 맞춘다.
+    """
+    st = [_frame_stat(f) for f in frames]
+    if any(x is None for x in st):
+        return frames
+
+    cx = float(np.median([x['cx'] for x in st]))
+    cy = float(np.median([x['cy'] for x in st]))
+    ref = float(np.median([math.sqrt(x['area']) for x in st]))
+
+    out = []
+    for f, x in zip(frames, st):
+        k = 1.0
+        if mode == 'size':
+            # 지나치게 늘이거나 줄이면 그림이 뭉개지므로 한계를 둔다
+            k = min(max(ref / math.sqrt(x['area']), 0.8), 1.25)
+        g = f if k == 1.0 else f.resize((max(1, round(f.width * k)), max(1, round(f.height * k))), Image.LANCZOS)
+        canvas = Image.new('RGBA', f.size, (0, 0, 0, 0))
+        canvas.alpha_composite(g, (int(round(cx - x['cx'] * k)), int(round(cy - x['cy'] * k))))
+        out.append(canvas)
+    return out
+
+
+def load_actor_frames(path):
+    """8프레임 가로 시트든 낱장이든 프레임 8개로 돌려준다."""
+    im = load(path)
+    if looks_magenta(im):
+        im = strip_chroma(im)
+    im = despill(im)
+
+    if im.width == im.height * 8:
+        return [im.crop((i * im.height, 0, (i + 1) * im.height, im.height)) for i in range(8)]
+    # 낱장 — 움직일 필요가 없는 것(낙석)은 같은 그림을 여덟 번 쓴다
+    return [im] * 8
+
+
+def do_actor_sheets():
+    """assets-src/_ref/actors 의 8프레임 시트를 스테이지별 한 장으로 합친다."""
+    src = os.path.join(SRC, '_ref', 'actors')
+    if not os.path.isdir(src):
+        return
+
+    for stage in ACTOR_STAGES:
+        sheet = Image.new('RGBA', (ACTOR_CELL * 8, ACTOR_CELL * len(ACTOR_SLOTS)), (0, 0, 0, 0))
+        found = 0
+
+        for row, slot in enumerate(ACTOR_SLOTS):
+            name = 'actor_%s_%s' % (stage, slot)
+            path = os.path.join(src, name + '.png')
+            if not os.path.exists(path):
+                continue
+
+            frames = load_actor_frames(path)
+            fix = ACTOR_FIX.get(name)
+            if fix:
+                frames = steady_frames(frames, fix)
+
+            # 여백을 자르고 크기를 맞추는 일은 **8장을 한 덩어리로** 해야 한다.
+            # 프레임마다 따로 하면 날개를 편 칸만 작게 앉아 다시 덜컹거린다
+            box = union_box(frames)
+            if box is None:
+                continue
+            frames = [f.crop(box) for f in frames]
+
+            fw, fh = frames[0].size
+            scale = min((ACTOR_CELL - 8) / float(fw), (ACTOR_CELL - 8) / float(fh), 1.0)
+            tw, th = max(1, round(fw * scale)), max(1, round(fh * scale))
+
+            anchor = ACTOR_ANCHOR.get((stage, slot), 'bottom')
+            x = (ACTOR_CELL - tw) // 2
+            y = ACTOR_CELL - th if anchor == 'bottom' else (ACTOR_CELL - th) // 2
+            for col, fr in enumerate(frames):
+                piece = fr.resize((tw, th), Image.LANCZOS)
+                sheet.paste(piece, (col * ACTOR_CELL + x, row * ACTOR_CELL + y), piece)
+            found += 1
+
+        if not found:
+            continue
+        save(sheet, 'props/actors_%s.png' % stage)
+        log('움직이는 것들 actors_%-9s %d/%d 역할  8프레임' % (stage, found, len(ACTOR_SLOTS)))
+
+
 def do_ui():
     src = os.path.join(SRC, 'ui')
     for sheet, names in UI_SHEETS.items():
@@ -782,6 +919,7 @@ def main():
         do_backgrounds()
         do_props()
         do_atlases()
+        do_actor_sheets()
         do_ui()
     if only in (None, 'audio'):
         do_audio()
