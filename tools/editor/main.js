@@ -91,6 +91,67 @@ function everyPoint() {
   return out;
 }
 
+/**
+ * 눈금.
+ *
+ * 스테이지 크기에 맞춰 그리면 화면을 밀었을 때 눈금이 끊긴다. **보이는 범위 전체**에
+ * 깔고, 음수 쪽으로도 이어 준다. 간격은 배율을 보고 골라서, 확대해도 축소해도
+ * 화면에서 40px 아래로 촘촘해지지 않게 한다.
+ */
+function drawGrid(w, h) {
+  const stepFor = (base) => {
+    const steps = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+    return steps.find((v) => v * state.view.scale >= base) || steps[steps.length - 1];
+  };
+  const stepX = stepFor(60);
+  const stepY = stepFor(40);
+
+  const x0 = Math.floor(state.view.x / stepX) * stepX;
+  const x1 = state.view.x + w / state.view.scale;
+  const y0 = Math.floor(state.view.y / stepY) * stepY;
+  const y1 = state.view.y + h / state.view.scale;
+
+  ctx.font = '10px system-ui';
+  for (let x = x0; x <= x1; x += stepX) {
+    const p = toScreen(x, 0);
+    // 5칸마다 굵게 — 멀리 밀어도 어디쯤인지 읽힌다
+    const major = Math.round(x / stepX) % 5 === 0;
+    ctx.strokeStyle = major ? '#2b313e' : '#1e222b';
+    ctx.beginPath();
+    ctx.moveTo(p.x, 0);
+    ctx.lineTo(p.x, h);
+    ctx.stroke();
+    // 눈금이 넉넉히 벌어져 있으면 줄마다 숫자를 단다
+    if (major || stepX * state.view.scale >= 90) {
+      ctx.fillStyle = '#4a5364';
+      ctx.fillText(String(x), p.x + 3, 12);
+    }
+  }
+  for (let y = y0; y <= y1; y += stepY) {
+    const p = toScreen(0, y);
+    const major = Math.round(y / stepY) % 5 === 0;
+    ctx.strokeStyle = major ? '#2b313e' : '#1e222b';
+    ctx.beginPath();
+    ctx.moveTo(0, p.y);
+    ctx.lineTo(w, p.y);
+    ctx.stroke();
+    if (major || stepY * state.view.scale >= 70) {
+      ctx.fillStyle = '#4a5364';
+      ctx.fillText(String(y), 3, p.y - 3);
+    }
+  }
+
+  // 원점 — 여기가 0,0 이다
+  const o = toScreen(0, 0);
+  ctx.strokeStyle = '#3f4a5e';
+  ctx.beginPath();
+  ctx.moveTo(o.x, 0);
+  ctx.lineTo(o.x, h);
+  ctx.moveTo(0, o.y);
+  ctx.lineTo(w, o.y);
+  ctx.stroke();
+}
+
 function draw() {
   const def = stageDef();
   const w = canvas.clientWidth;
@@ -99,25 +160,20 @@ function draw() {
   ctx.fillRect(0, 0, w, h);
   if (!def) return;
 
-  ctx.strokeStyle = '#20242e';
-  ctx.fillStyle = '#3d4454';
-  ctx.font = '10px system-ui';
-  for (let x = 0; x <= def.width + 1600; x += 500) {
-    const p = toScreen(x, 0);
-    ctx.beginPath();
-    ctx.moveTo(p.x, 0);
-    ctx.lineTo(p.x, h);
-    ctx.stroke();
-    ctx.fillText(String(x), p.x + 3, 12);
-  }
-  for (let y = 0; y <= 1600; y += 100) {
-    const p = toScreen(0, y);
-    ctx.beginPath();
-    ctx.moveTo(0, p.y);
-    ctx.lineTo(w, p.y);
-    ctx.stroke();
-    ctx.fillText(String(y), 3, p.y - 3);
-  }
+  drawGrid(w, h);
+
+  // 낙사선 — 이 아래로 떨어지면 죽는다. 생성한 지형이 있으면 그 지형 기준으로 잡힌다
+  const killY = state.layout
+    ? Math.max(...state.layout.ground.map((g) => g.y + (g.h || 90))) + 90
+    : def.killY;
+  const kill = toScreen(0, killY);
+  ctx.strokeStyle = '#5b2b2b';
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, kill.y);
+  ctx.lineTo(w, kill.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   if (state.layout) {
     state.layout.ground.forEach((g) => box(g.x, g.y, g.w, g.h || 90, '#3a4a3f', '#5d7a66'));
@@ -305,21 +361,10 @@ async function loadStage(id) {
     /* 저장본이 없으면 아래에서 지금 배치를 되살린다 */
   }
 
-  // 저장본이 없으면 **지금 손으로 짜 둔 배치**를 점으로 되살려서 시작점으로 준다
-  const def = stageDef();
-  state.seed.start = { x: def.start.x, y: def.start.y };
-  state.seed.goal = { x: def.goal.x, y: def.goal.y + 90 };
-  state.seed.pads = def.ground
-    .map((g) => ({ x: Math.round(g.x + g.w / 2), y: g.y }))
-    .concat((def.ledges || []).map((l) => ({ x: Math.round(l.x + l.w / 2), y: l.y })));
-
-  const saves = def.savePoints && def.savePoints.length
-    ? def.savePoints
-    : def.savePoint
-      ? [def.savePoint]
-      : [];
-  state.seed.saves = saves.map((p) => ({ x: p.x, y: p.y }));
-  state.seed.keeps = (def.keepsakes || []).map((k) => ({ x: k.x, y: k.y }));
+  // 저장본이 없으면 **빈 화면**에서 시작한다.
+  // 예전에는 손으로 짠 배치를 점으로 되살려 줬는데, 찍지도 않은 점이 잔뜩 깔려 있으면
+  // 지우는 일부터 해야 해서 오히려 방해가 된다.
+  $('stats').textContent = '빈 화면이다. 출발과 도착을 찍고, 밟을 자리를 흩어 놓은 뒤 "생성".';
   draw();
 }
 
