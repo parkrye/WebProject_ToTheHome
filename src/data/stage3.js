@@ -64,32 +64,55 @@ export default {
     { x: 5300, y: 400, w: 130, h: 20, dx: 0, dy: -120, duration: 2400 },
   ],
 
-  /** 밟으면 무너지는 흙 발판 */
+  /**
+   * 밟으면 무너지는 흙 발판.
+   *
+   * 최고 난이도 스테이지의 뼈대다. **멈춰 설 곳이 없다**는 압박이 이 스테이지의 성격이다.
+   * 폭을 110px 로 줄이고 개수를 늘려, 착지하자마자 다음을 봐야 하게 만든다.
+   */
   crumble: [
-    { x: 4020, y: 400, w: 130, h: 22 },
-    { x: 4260, y: 370, w: 130, h: 22 },
-    { x: 4500, y: 400, w: 130, h: 22 },
-    { x: 5760, y: 340, w: 130, h: 22 },
-    { x: 6000, y: 320, w: 130, h: 22 },
+    // 도입의 맛보기 — 냄새 입자가 이 위를 지난다. 무너져도 바로 아래가 지면이라
+    // 떨어지는 게 무섭지 않고, 그래서 "밟으면 무너진다"를 안전하게 배운다
+    { x: 1660, y: 440, w: 110, h: 22 },
+    { x: 4000, y: 400, w: 110, h: 22 },
+    { x: 4200, y: 366, w: 110, h: 22 },
+    { x: 4400, y: 390, w: 110, h: 22 },
+    { x: 4600, y: 360, w: 110, h: 22 },
+    { x: 5720, y: 340, w: 110, h: 22 },
+    { x: 5920, y: 312, w: 110, h: 22 },
+    { x: 6120, y: 336, w: 110, h: 22 },
   ],
 
+  /**
+   * 최고 난이도 — 1000px 당 위험 1.8 개로, 도시(0.9)의 두 배다.
+   *
+   * 다만 **암기가 아니라 관찰로 풀리게** 배치한다. 모든 위험은 예고 동작을 가지고,
+   * 종류가 다른 위험을 겹치지 않게 구간을 나눠 둔다.
+   *   도입(0~1900)   험로 — 무너지는 발판 하나로 맛만 보인다
+   *   전개(1900~3800) 냇가 — 물살과 덫
+   *   절정(3800~7100) 낙석 + 멧돼지 + 무너지는 발판이 한꺼번에
+   */
   hazards: [
     // 냇물 — 빠지면 하류로 떠내려간다
     { type: 'static', x: 2660, y: 600, w: 900, h: 120, effect: 'kill' },
 
     // 멧돼지 — 땅을 긁고 나서 돌진
-    { type: 'boar', x: 4560, y: 450, range: 480, speed: 420, delay: 1400 },
-    { type: 'boar', x: 5380, y: 410, range: 440, speed: 460, delay: 2600 },
+    { type: 'boar', x: 4180, y: 450, range: 420, speed: 400, delay: 700 },
+    { type: 'boar', x: 4560, y: 450, range: 480, speed: 430, delay: 1900 },
+    { type: 'boar', x: 5380, y: 410, range: 440, speed: 470, delay: 2600 },
 
-    // 낙석
-    { type: 'rock', x: 4180, y: 120, groundY: 480, interval: 2800, delay: 500 },
-    { type: 'rock', x: 4420, y: 120, groundY: 480, interval: 3200, delay: 1900 },
-    { type: 'rock', x: 5900, y: 100, groundY: 400, interval: 2600, delay: 900 },
-    { type: 'rock', x: 6120, y: 100, groundY: 360, interval: 3400, delay: 2200 },
+    // 낙석 — 절정 구간 내내 떨어진다
+    { type: 'rock', x: 4060, y: 120, groundY: 480, interval: 2600, delay: 300 },
+    { type: 'rock', x: 4300, y: 120, groundY: 480, interval: 3000, delay: 1400 },
+    { type: 'rock', x: 4540, y: 120, groundY: 480, interval: 2800, delay: 2300 },
+    { type: 'rock', x: 5760, y: 100, groundY: 400, interval: 2400, delay: 600 },
+    { type: 'rock', x: 5960, y: 100, groundY: 380, interval: 3000, delay: 1700 },
+    { type: 'rock', x: 6160, y: 100, groundY: 360, interval: 3400, delay: 2600 },
 
     // 덫
     { type: 'static', x: 3600, y: 500, w: 90, h: 26, effect: 'kill' },
     { type: 'static', x: 5060, y: 440, w: 90, h: 26, effect: 'kill' },
+    { type: 'static', x: 6420, y: 360, w: 90, h: 26, effect: 'kill' },
   ],
 
   savePoint: {

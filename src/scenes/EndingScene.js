@@ -14,9 +14,28 @@ import { isReal } from '../systems/AssetLoader.js';
  * 문틀 구멍 뒤에 세우는 강아지는 게임 내내 쓰던 그 스프라이트다. 겹치고 옮기는 건 여기서 한다.
  */
 
-const DOOR_X = 196;
-const FLOOR_Y = GAME_HEIGHT - 70; // 배경 그림의 바닥선
-const BED_X = GAME_WIDTH - 330;
+/**
+ * 방 안 기준 치수 — 배경 그림에서 재서 정한다 (화면은 960 x 540).
+ *
+ * 그림 속 문틀은 y 21~451, 폭은 x 131~336 이다. 실제 문이 2m 이므로
+ * **1m 는 약 215px** 이다. 사람도 강아지도 이 자로 재야 방 안에 같이 있는 것으로 보인다.
+ * 예전 값(어른 240px)은 1.1m 라 아이보다도 작았다.
+ * 문 부품은 그림 속 문(이미 열려 있다)을 **덮어야** 하므로 그림보다 조금 크게 얹는다.
+ */
+const DOOR = { x: 233, y: 453, h: 447 };
+const FLOOR_Y = GAME_HEIGHT - 70; // 방바닥 (침대 쪽. 문보다 카메라에 가깝다)
+const BED_X = GAME_WIDTH - 250;
+const ADULT_H = 376; // 1.75m
+const DOG_H = 104; // 어깨높이 0.48m — 실제보다 조금 키워야 문 너머에서 눈에 든다
+/** 그림 속 방석 — 강아지가 자고 있는 채로 그려져 있어 덮어야 한다 */
+const CUSHION = { x: 709, y: 481, w: 250, h: 74 };
+/**
+ * 방 부품에 씌우는 색.
+ *
+ * `props_home` 은 밝은 램프빛 아래에서 그려졌는데 이 방은 밤이라 훨씬 어둡다.
+ * 그대로 얹으면 문만 환해서 **붙여 놓은 티**가 난다. 방 밝기에 맞춰 눌러 준다.
+ */
+const ROOM_TINT = 0x8b7d6d;
 
 export default class EndingScene extends Phaser.Scene {
   constructor() {
@@ -59,18 +78,25 @@ export default class EndingScene extends Phaser.Scene {
     this.hasHome = isReal(home);
 
     if (this.hasHome) {
-      const put = (frame, height, depth, x = DOOR_X, y = FLOOR_Y) =>
+      const put = (frame, height, depth, x = DOOR.x, y = DOOR.y) =>
         sizeTo(this.add.image(x, y, home, frame).setOrigin(0.5, 1).setDepth(depth), { height });
 
-      this.doorLight = put(HOME.LIGHT, 260, 8);
-      this.doorway = put(HOME.DOORWAY, 270, 11);
-      this.door = put(HOME.DOOR, 270, 12);
+      // 빛은 원래 밝아야 하므로 톤을 누르지 않는다
+      this.doorLight = put(HOME.LIGHT, DOOR.h - 30, 8);
+      this.doorway = put(HOME.DOORWAY, DOOR.h, 11).setTint(ROOM_TINT);
+      this.door = put(HOME.DOOR, DOOR.h, 12).setTint(ROOM_TINT);
       this.doorLight.setAlpha(0);
       this.doorway.setAlpha(0);
 
       // 배경 그림에는 강아지가 방석에서 자고 있다. 프롤로그에서는 그게 맞지만
       // 엔딩에서는 강아지가 밖에서 돌아오므로, 빈 방석으로 덮어 둔다.
-      put(HOME.CUSHION, 46, 5, GAME_WIDTH - 300, FLOOR_Y - 4);
+      // 그림 속 방석은 낮은 각도라 납작하다. 부품도 눌러서 맞춘다.
+      this.add
+        .image(CUSHION.x, CUSHION.y, home, HOME.CUSHION)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(CUSHION.w, CUSHION.h)
+        .setTint(ROOM_TINT)
+        .setDepth(5);
       return;
     }
 
@@ -112,14 +138,14 @@ export default class EndingScene extends Phaser.Scene {
 
     // 2. 침대에서 일어난다
     const owner = this.add.sprite(BED_X, FLOOR_Y, 'owner_adult_wake').setOrigin(0.5, 1).setDepth(20);
-    sizeTo(owner, { height: 240 });
+    sizeTo(owner, { height: ADULT_H });
     owner.play('owner_adult_wake');
     await this.wait(1500);
 
     // 3. 문으로 걸어간다 — 걷는 모션과 이동은 따로다
     if (this.anims.exists('owner_adult_walk')) owner.play('owner_adult_walk');
     owner.setFlipX(true); // 왼쪽 문을 향한다
-    await this.tweenTo(owner, { x: DOOR_X + 120 }, 3200);
+    await this.tweenTo(owner, { x: DOOR.x + 155 }, 3200);
     owner.anims.stop();
 
     // 4. 문이 열린다 — 닫힌 문을 치우면 그 자리에 빛과 빈 문틀이 남는다
@@ -130,8 +156,9 @@ export default class EndingScene extends Phaser.Scene {
     await this.wait(900);
 
     // 5. 문틀 구멍 뒤에 강아지가 서 있다 — 평소 쓰던 그 스프라이트다
-    const dog = this.add.sprite(DOOR_X, FLOOR_Y, 'dog_idle').setOrigin(0.5, 1).setDepth(10).setAlpha(0);
-    sizeTo(dog, { height: 92 });
+    // 문틀 구멍 뒤에 선다 — 문 바닥선은 방바닥보다 위다 (문이 벽 안쪽에 있다)
+    const dog = this.add.sprite(DOOR.x, DOOR.y, 'dog_idle').setOrigin(0.5, 1).setDepth(10).setAlpha(0);
+    sizeTo(dog, { height: DOG_H });
     dog.play('dog_idle');
     await this.tweenTo(dog, { alpha: 1 }, 900);
     await this.wait(700);
@@ -160,7 +187,7 @@ export default class EndingScene extends Phaser.Scene {
     if (this.doorway) this.doorway.setAlpha(0);
 
     const awake = this.add.sprite(BED_X, FLOOR_Y, 'owner_adult_wake').setOrigin(0.5, 1).setDepth(20);
-    sizeTo(awake, { height: 240 });
+    sizeTo(awake, { height: ADULT_H });
     awake.play('owner_adult_wake');
     awake.anims.stop();
     awake.setFrame(4); // 침대에 걸터앉은 자세에서 멈춘다
@@ -171,7 +198,7 @@ export default class EndingScene extends Phaser.Scene {
     // 10. 문 쪽을 바라본다 — 문 앞 바닥에 냄새 입자 하나
     const mote = sizeTo(
       this.add
-        .image(DOOR_X + 40, FLOOR_Y - 8, 'ui_scent_mote')
+        .image(DOOR.x + 40, DOOR.y - 8, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(30)
         .setAlpha(0),

@@ -57,18 +57,24 @@ export default {
 
   moving: [{ x: 3560, y: 420, w: 130, h: 22, dy: -110, duration: 2000 }],
 
+  /**
+   * 튜토리얼이므로 **위험은 한 번에 하나씩만** 만나게 둔다.
+   *
+   * 증기(리프트)와 화분(타이밍)과 자동차(관찰)를 x 로 멀찍이 떼어 놓고, 주기도 넉넉하게
+   * 잡는다. 1000px 당 위험 0.9 개 — 산(스테이지 3)의 절반이 안 된다.
+   */
   hazards: [
-    // 하수구 증기 — 위로 밀어 올리는 리프트
-    { type: 'steam', x: 3340, y: GY, interval: 2200, activeTime: 1300, power: -430 },
+    // 하수구 증기 — 위로 밀어 올리는 리프트. 위험이 아니라 도구다
+    { type: 'steam', x: 3340, y: GY, interval: 2400, activeTime: 1400, power: -430 },
 
-    // 떨어지는 화분
-    { type: 'rock', x: 3860, y: 120, groundY: GY - 10, interval: 2600, delay: 600 },
-    { type: 'rock', x: 4060, y: 120, groundY: GY - 10, interval: 3000, delay: 1800 },
+    // 떨어지는 화분 — 한 개만 둔다. 둘을 붙여 두면 처음 배우는 사람에게 너무 빠르다
+    { type: 'rock', x: 3980, y: 120, groundY: GY - 10, interval: 3000, delay: 900 },
 
-    // 횡단보도 — 세 대가 다른 주기로 지나간다
-    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 300, interval: 3400, delay: 400 },
-    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 240, interval: 4600, delay: 2200 },
-    { type: 'car', x: 4200, y: GY - 34, fromX: 4200, toX: 5700, dir: 1, speed: 270, interval: 5200, delay: 3400 },
+    // 횡단보도 — 세 대가 다른 주기로 지나간다.
+    // 주기를 길게 잡아 **차가 다 지나간 뒤 건너는 시간**이 확실히 생기게 한다
+    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 280, interval: 4400, delay: 400 },
+    { type: 'car', x: 5700, y: GY - 34, fromX: 5700, toX: 4200, dir: -1, speed: 230, interval: 5600, delay: 2400 },
+    { type: 'car', x: 4200, y: GY - 34, fromX: 4200, toX: 5700, dir: 1, speed: 250, interval: 6200, delay: 3800 },
   ],
 
   signs: [

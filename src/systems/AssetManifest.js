@@ -30,9 +30,11 @@ export const SPRITE_SHEETS = [
   { key: 'dog_sniff', file: 'dog_sniff.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogSniff' },
   { key: 'dog_dispel', file: 'dog_dispel.png', w: 160, h: 160, fps: 10, loop: false, placeholder: 'dogDispel' },
   { key: 'dog_dig', file: 'dog_dig.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogDig' },
-  { key: 'dog_sleep', file: 'dog_sleep.png', w: 160, h: 160, fps: 6, loop: true, placeholder: 'dogSleep' },
+  // 잠자기·공놀이는 첫 칸이 '서 있는 자세'다. 생성기가 기본 자세에서 시작해 그렸기 때문에
+  // 8칸을 그대로 돌리면 한 바퀴마다 벌떡 일어난다. loopFrom 부터를 고리로 삼는다.
+  { key: 'dog_sleep', file: 'dog_sleep.png', w: 160, h: 160, fps: 6, loop: true, loopFrom: 2, placeholder: 'dogSleep' },
   { key: 'dog_splash', file: 'dog_splash.png', w: 160, h: 160, fps: 12, loop: true, placeholder: 'dogSplash' },
-  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogBall' },
+  { key: 'dog_ball_nudge', file: 'dog_ball_nudge.png', w: 160, h: 160, fps: 10, loop: true, loopFrom: 1, placeholder: 'dogBall' },
 
   // 프롤로그 · 엔딩 연출
   { key: 'dog_puppy_run', file: 'dog_puppy_run.png', w: 160, h: 160, fps: 14, loop: true, placeholder: 'puppyRun' },

@@ -159,9 +159,13 @@ export function registerAnimations(scene) {
     const frameCount = scene.textures.get(def.key).frameTotal - 1; // __BASE 제외
     const end = Math.max(0, Math.min(7, frameCount - 1));
 
+    // 첫 칸이 '기본 서 있는 자세'인 시트가 있다. 그대로 반복하면 한 바퀴마다
+    // 벌떡 일어나므로, loopFrom 이 있으면 그 앞의 도입 칸들을 고리에서 뺀다.
+    const start = def.loop ? Math.min(def.loopFrom ?? 0, end) : 0;
+
     scene.anims.create({
       key: def.key,
-      frames: scene.anims.generateFrameNumbers(def.key, { start: 0, end }),
+      frames: scene.anims.generateFrameNumbers(def.key, { start, end }),
       frameRate: def.fps,
       repeat: def.loop ? -1 : 0,
     });

@@ -58,15 +58,23 @@ export default {
     { x: 4480, y: 440, w: 140, h: 22, dx: 140, dy: 0, duration: 2600, surface: 'hard' },
   ],
 
+  /**
+   * 스테이지 1 보다 확실히 빡빡해야 한다 — 1000px 당 위험 1.1 개.
+   *
+   * 다만 성격이 다르다. 도시가 "기다렸다 건넌다" 였다면 여기는 **양쪽에서 오는 것**을
+   * 동시에 봐야 한다. 파도는 죽이지 않고 밀어내기만 하므로 겁 없이 시험해 볼 수 있다.
+   */
   hazards: [
-    // 좁은 해안 도로의 양방향 차량
-    { type: 'car', x: 3400, y: GY - 34, fromX: 3400, toX: 1850, dir: -1, speed: 320, interval: 4200, delay: 800 },
-    { type: 'car', x: 1850, y: GY - 34, fromX: 1850, toX: 3400, dir: 1, speed: 280, interval: 5400, delay: 2600 },
-    { type: 'car', x: 4460, y: GY - 34, fromX: 4460, toX: 3520, dir: -1, speed: 300, interval: 4800, delay: 1600 },
+    // 좁은 해안 도로의 양방향 차량 — 갓길이 좁아 한쪽으로 붙어 피해야 한다
+    { type: 'car', x: 3400, y: GY - 34, fromX: 3400, toX: 1850, dir: -1, speed: 330, interval: 3800, delay: 800 },
+    { type: 'car', x: 1850, y: GY - 34, fromX: 1850, toX: 3400, dir: 1, speed: 290, interval: 4600, delay: 2400 },
+    { type: 'car', x: 3400, y: GY - 34, fromX: 3400, toX: 1850, dir: -1, speed: 260, interval: 6200, delay: 4200 },
+    { type: 'car', x: 4460, y: GY - 34, fromX: 4460, toX: 3520, dir: -1, speed: 310, interval: 4400, delay: 1600 },
 
-    // 밀물 — 닿으면 뒤로 밀려난다 (사망 아님)
-    { type: 'wave', x: 5000, y: GY + 120, reachX: 4700, interval: 3800, delay: 500, effect: 'push' },
-    { type: 'wave', x: 5760, y: GY + 120, reachX: 5420, interval: 4400, delay: 2400, effect: 'push' },
+    // 밀물 — 닿으면 뒤로 밀려난다 (사망 아님). 셋이 어긋난 주기로 밀려온다
+    { type: 'wave', x: 5000, y: GY + 120, reachX: 4700, interval: 3600, delay: 500, effect: 'push' },
+    { type: 'wave', x: 5420, y: GY + 120, reachX: 5120, interval: 4200, delay: 1800, effect: 'push' },
+    { type: 'wave', x: 5900, y: GY + 120, reachX: 5560, interval: 4800, delay: 3000, effect: 'push' },
   ],
 
   savePoint: {
