@@ -196,6 +196,9 @@ canvas.addEventListener(
 
 const seedFor = (def) => ({
   stage: def.id,
+  seedNumber: Number($('seedNumber').value) || 1,
+  // 살 — 찍지 않은 자리에 지형을 얼마나 붙일지. 0 이면 점만 잇는다
+  richness: Number($('richness').value) / 100,
   groundH: 90,
   start: state.seed.start,
   goal: state.seed.goal,
@@ -224,7 +227,8 @@ function generate() {
   }
   const broken = st['갈라진덩어리'] > 1;
   $('stats').innerHTML =
-    '길이 <b>' + st['길이'] + '</b>   찍은 점 <b>' + st['놓은점'] + '</b>   발판 <b>' +
+    '씨앗 <b>' + $('seedNumber').value + '</b>   길이 <b>' + st['길이'] +
+    '</b>   찍은 점 <b>' + st['찍은점'] + '</b>   발판 <b>' +
     st['발판'] + '</b>   높이차 <b>' + st['높이차'] + '</b>   세이브 <b>' + st['세이브'] +
     '</b>   수집 <b>' + st['기억'] + '</b>   ' +
     '<span class="' + (broken ? 'bad' : '') + '">' + st['이어짐'] + '</span>';
@@ -272,6 +276,8 @@ async function loadStage(id) {
     if (res.ok) {
       const saved = await res.json();
       if (saved && saved.seed && saved.seed.start) {
+        $('seedNumber').value = saved.seed.seedNumber || 1;
+        if (saved.seed.richness != null) $('richness').value = String(Math.round(saved.seed.richness * 100));
         state.seed = {
           start: saved.seed.start,
           goal: saved.seed.goal,
@@ -329,6 +335,14 @@ STAGES.forEach((s) => {
 
 $('stage').onchange = (e) => loadStage(Number(e.target.value));
 $('gen').onclick = generate;
+// 같은 점 배치라도 씨앗이 다르면 다른 지형이 나온다
+$('reroll').onclick = () => {
+  $('seedNumber').value = String(1 + Math.floor(Math.random() * 99999));
+  generate();
+};
+$('richness').oninput = () => {
+  if (state.layout) generate();
+};
 $('commit').onclick = commit;
 $('clear').onclick = () => {
   state.seed = { start: null, goal: null, pads: [], saves: [], keeps: [] };
@@ -342,8 +356,8 @@ $('revert').onclick = async () => {
 };
 $('hint').textContent =
   '좌클릭 = 점 찍기 · Shift+드래그 = 화면 이동 · 휠 = 확대  |  ' +
-  '순서는 없다. 점만 흩어 놓으면 전부 오갈 수 있도록 사이를 이어 준다 ' +
-  '(한 칸 높이차 84px · 가로 190px 안에서만 잇는다)';
+  '순서는 없다. 점만 흩어 놓으면 전부 오갈 수 있도록 사이를 이어 준다 · ' +
+  '"다시" 를 누르면 같은 점으로 다른 지형이 나온다 · "살" 은 찍지 않은 자리에 지형을 얼마나 붙일지';
 
 window.addEventListener('resize', resize);
 resize();

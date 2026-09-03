@@ -8,7 +8,8 @@ header strong { color: #f0d9a8; letter-spacing: .02em; }
 label { display: inline-flex; gap: 6px; align-items: center; color: #97a0b3; }
 select, input { background: #23263050; color: #dfe3ec; border: 1px solid var(--line);
   border-radius: 5px; padding: 4px 7px; }
-input[type=number] { width: 68px; }
+input[type=number] { width: 72px; }
+input[type=range] { width: 92px; accent-color: #6f8f78; }
 button { background: #232630; color: #dfe3ec; border: 1px solid var(--line);
   border-radius: 5px; padding: 5px 12px; cursor: pointer; }
 button:hover { border-color: #4a5165; }
