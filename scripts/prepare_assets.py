@@ -77,12 +77,50 @@ def fit(im, max_w=None, max_h=None):
 # ---------------------------------------------------------------- 배경 제거
 
 
+def _fill_runs(mask, seed, axis):
+    """축을 따라 mask 의 연속 구간마다, 그 안에 seed 가 하나라도 있으면 구간 전체를 채운다."""
+    m = mask if axis == 1 else mask.T
+    sd = seed if axis == 1 else seed.T
+    w = m.shape[1]
+    idx = np.arange(w)[None, :]
+    hit = (sd & m).astype(np.int32)
+
+    def sweep(mm, hh):
+        c = np.cumsum(hh, axis=1)
+        prev = np.maximum.accumulate(np.where(mm, -1, idx), axis=1)
+        base = np.where(prev >= 0, np.take_along_axis(c, np.maximum(prev, 0), axis=1), 0)
+        return (c - base) > 0
+
+    filled = sweep(m, hit) | sweep(m[:, ::-1], hit[:, ::-1])[:, ::-1]
+    out = m & filled
+    return out if axis == 1 else out.T
+
+
+def flood(mask, seed, rounds=256):
+    """seed 에서 출발해 mask 안에서 이어진 곳을 전부 찾는다.
+
+    가로 한 번, 세로 한 번씩 구간을 통째로 채우기를 반복한다. 한 번에 한 칸씩
+    번지는 방식과 달리 구간 끝까지 단번에 가므로 몇 바퀴면 끝난다.
+    """
+    keep = seed & mask
+    for _ in range(rounds):
+        before = int(keep.sum())
+        keep = _fill_runs(mask, keep, 1)
+        keep = _fill_runs(mask, keep, 0)
+        if int(keep.sum()) == before:
+            break
+    return keep
+
+
 def strip_sky(im, bright=232, sat=26, feather=6):
     """
-    위쪽 하늘/체커보드를 지운다.
+    위쪽 하늘을 지운다.
 
-    각 열을 위에서 아래로 훑어 '밝고 채도 낮은' 픽셀이 이어지는 동안만 지운다.
-    건물 안쪽의 밝은 창문은 위와 이어져 있지 않으므로 살아남는다.
+    윗변에 닿아 있는 '밝고 채도 낮은' 덩어리를 통째로 지운다. 열 단위로 위에서
+    아래로만 훑으면 **나무나 풀에 가로막힌 하늘이 흰 덩어리로 남는다.** 나무 사이의
+    하늘은 나무 꼭대기를 돌아 위쪽 하늘과 이어져 있으므로, 이어진 곳을 따라가야 한다.
+
+    건물 안쪽의 밝은 창문은 하늘과 이어져 있지 않으므로 살아남는다.
     """
     a = np.asarray(im).astype(np.int16)
     rgb = a[:, :, :3]
@@ -91,9 +129,12 @@ def strip_sky(im, bright=232, sat=26, feather=6):
     mx = rgb.max(axis=2)
     mn = rgb.min(axis=2)
     skyish = (mx >= bright) & ((mx - mn) <= sat)
+    # 이미 투명한 곳도 하늘로 친다. 그래야 한 번 지운 뒤 다시 돌려도 이어진다
+    skyish |= a[:, :, 3] <= 16
 
-    # 열마다 위에서부터 연속인 구간만 True 로 남긴다
-    keep = np.cumprod(skyish, axis=0).astype(bool)
+    seed = np.zeros_like(skyish)
+    seed[0, :] = True
+    keep = flood(skyish, seed)
 
     alpha = a[:, :, 3].copy()
     alpha[keep] = 0
@@ -236,6 +277,71 @@ def strip_grid_lines(im, light=190, ratio=0.85):
     for idx in np.where(lightish.mean(axis=1) > ratio)[0]:
         out[idx, :, :3] = bg
     return Image.fromarray(out)
+
+
+def magenta_bands(im, count, axis, min_run=4):
+    """마젠타 여백으로 나뉜 칸의 경계를 찾는다.
+
+    타일 시트는 칸이 맞닿아 있지 않고 **칸 사이가 마젠타로 벌어져** 나온다.
+    균등하게 나누면 그 여백을 반씩 물고 들어와, 타일을 이어 붙일 때마다
+    보라색 세로줄이 선다.
+
+    칸 수가 기대와 다르면 None 을 돌려주고, 부르는 쪽이 균등 분할로 돌아간다.
+    """
+    a = np.asarray(im.convert('RGB')).astype(np.int16)
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    mag = (r > 150) & (b > 150) & (g < 110)
+    frac = mag.mean(axis=0 if axis == 1 else 1)
+
+    content = frac < 0.7
+    bands = []
+    start = None
+    for i, v in enumerate(content):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            if i - start >= min_run:
+                bands.append((start, i))
+            start = None
+    if start is not None and len(content) - start >= min_run:
+        bands.append((start, len(content)))
+
+    if len(bands) != count:
+        return None
+    # 여백과 맞닿은 한두 줄에는 마젠타가 번져 있다. 안으로 조금 들어가서 쓴다
+    pad = 2
+    return [(lo + pad, hi - pad) for lo, hi in bands if hi - lo > 4 * pad]
+
+
+def clamp_border(im, n=2):
+    """가장자리 n 줄을 바로 안쪽 줄로 덮는다 (크기는 그대로)."""
+    if n <= 0:
+        return im
+    a = np.asarray(im).copy()
+    if a.shape[0] <= 2 * n or a.shape[1] <= 2 * n:
+        return im
+    a[:, :n] = a[:, n:n + 1]
+    a[:, -n:] = a[:, -n - 1:-n]
+    a[:n, :] = a[n:n + 1, :]
+    a[-n:, :] = a[-n - 1:-n, :]
+    return Image.fromarray(a)
+
+
+def despill(im):
+    """크로마키 배경색이 그림 안으로 번진 것을 걷어낸다.
+
+    김·물보라·안개처럼 **반투명하고 색이 없는 것**을 초록 배경에서 오려 내면, 배경색이
+    그림 속으로 스며 형광 초록 얼룩이 남는다. 피사체에 색이 없어 "배경인지 그림인지"
+    가릴 기준이 없기 때문이다.
+
+    초록이 빨강·파랑보다 튀는 픽셀에서 초록을 둘 중 높은 쪽까지 끌어내린다. 원래
+    흰색·회색이던 것은 제 색으로 돌아오고, 진짜 초록(풀·나뭇잎)은 빨강이나 파랑이
+    함께 높아서 거의 건드려지지 않는다.
+    """
+    a = np.asarray(im.convert('RGBA')).astype(np.int16)
+    cap = np.maximum(a[:, :, 0], a[:, :, 2])
+    a[:, :, 1] = np.minimum(a[:, :, 1], cap)
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
 
 
 def clean_background(im, tol=80):
@@ -435,6 +541,8 @@ def do_sprites():
         if looks_magenta(im):
             im = strip_chroma(im)
 
+        im = despill(im)
+
         # 시트 전체 기준으로 아래 여백을 잘라 낸다.
         # 프레임마다 자르면 위치가 흔들리므로 8장을 통째로 본다.
         alpha = np.asarray(im)[:, :, 3]
@@ -486,6 +594,14 @@ def do_atlases():
         cw = src_im.width / float(cols)
         ch = src_im.height / float(rows)
 
+        # 타일은 칸 사이가 마젠타로 벌어져 나오는 일이 잦다. 여백을 찾아 그 사이만 쓴다
+        xb = yb = None
+        if anchor == 'stretch':
+            xb = magenta_bands(src_im, cols, 1)
+            yb = magenta_bands(src_im, rows, 0)
+            if xb and yb:
+                log('아틀라스 %s  칸 사이 여백을 찾아 잘라 낸다' % rel)
+
         # 격자 규격이 안 맞는 옛 시트를 잘못 자르지 않도록 칸 모양을 확인한다.
         #
         # 생성기가 칸을 정사각으로 안 그려 준다. 4x2 를 시켜도 세로로 긴 칸 여덟 개로
@@ -505,7 +621,13 @@ def do_atlases():
 
         for r in range(rows):
             for c in range(cols):
-                box = [int(c * cw), int(r * ch), int((c + 1) * cw), int((r + 1) * ch)]
+                if xb and yb:
+                    box = [xb[c][0], yb[r][0], xb[c][1], yb[r][1]]
+                else:
+                    # 칸 폭이 딱 떨어지지 않는 경우가 많다 (1774 / 4 = 443.5).
+                    # 내림하면 칸마다 경계가 최대 1px 씩 밀려 옆 칸 픽셀이 딸려 온다
+                    box = [int(round(c * cw)), int(round(r * ch)),
+                           int(round((c + 1) * cw)), int(round((r + 1) * ch))]
                 if anchor != 'stretch':
                     # 생성기가 칸 사이에 흰 격자선을 그려 주는 일이 있다. 그 선이 남으면
                     # 여백을 자를 때 칸 전체가 물건으로 잡혀 소품이 조그맣게 앉는다.
@@ -515,7 +637,13 @@ def do_atlases():
                 piece = src_im.crop(tuple(box))
 
                 if anchor == 'stretch':
-                    # 타일은 칸을 꽉 채운다. 마젠타 여백만 걷어내고 늘린다
+                    # 타일은 칸을 꽉 채운다. 마젠타 여백만 걷어내고 늘린다.
+                    #
+                    # 칸 경계의 몇 줄은 **잘라내지 않고 안쪽 픽셀로 덮는다.** 생성기가
+                    # 칸 사이에 얇은 선을 그어 두는데, 그 선을 그대로 두면 타일을 이어
+                    # 붙일 때마다 세로줄이 서고, 잘라내면 무늬의 주기가 어긋나 이음매가
+                    # 더 벌어진다. 크기를 지킨 채 테두리만 덮으면 둘 다 피한다.
+                    piece = clamp_border(piece, max(2, int(min(cw, ch) * 0.008)))
                     if looks_magenta(piece):
                         piece = trim(strip_chroma(piece))
                     piece = piece.resize((cell, cell), Image.LANCZOS)
