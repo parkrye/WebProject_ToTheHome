@@ -9,10 +9,19 @@
  *   경로   반드시 지나야 하는 점. 높이를 크게 벌려 찍으면 지그재그 탑이 세워진다
  *   세이브 중간 저장 지점 (여러 개 가능)
  *   기억   기억 조각. 정규 루트에서 위로 두 단 빠지는 곁길이 자동으로 생긴다
+ *
+ * **찍은 순서가 곧 지나가는 순서다.** x 로 정렬하지 않으므로
+ * 앞으로 → 위로 → 왔던 쪽으로 되돌아가기 를 그대로 그릴 수 있고,
+ * 그러면 같은 x 자리에 높이가 다른 두 길이 겹친다.
+ * "새 길" 을 누르면 갈래를 하나 더 그린다. 첫 번째 갈래가 본길(출발~도착)이다.
  */
+
 
 import { STAGES } from '../../src/data/stages.js';
 import { build } from '../../src/systems/StageBuilder.js';
+
+/** 갈래마다 다른 색으로 그린다 */
+const PATH_COLORS = ['#8fd0ff', '#7fd6a0', '#e0a0d8', '#e6c07b', '#a0a8ff'];
 
 const TOOLS = [
   { id: 'route', name: '경로' },
@@ -29,12 +38,16 @@ const state = {
   stage: 1,
   tool: 'route',
   view: { x: -60, y: -60, scale: 0.34 },
-  seed: { route: [], saves: [], keeps: [] },
+  seed: { paths: [[]], saves: [], keeps: [] },
+  path: 0,
   layout: null,
   dragging: null,
 };
 
 const stageDef = () => STAGES.find((s) => s.id === state.stage);
+
+// 콘솔에서 들여다보기 위한 통로 (관리 툴은 개발용이라 그대로 열어 둔다)
+window.__editor = state;
 
 /* ---------------------------------------------------------------- 화면 */
 
@@ -124,18 +137,33 @@ function draw() {
     state.layout.keepsakes.forEach((k) => dot(k.x, k.y, '#c79bff'));
   }
 
-  state.seed.route.forEach((r, i) => {
-    if (i) {
-      const a = toScreen(state.seed.route[i - 1].x, state.seed.route[i - 1].y);
-      const b = toScreen(r.x, r.y);
-      ctx.strokeStyle = '#2f4f66';
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-    const last = state.seed.route.length - 1;
-    dot(r.x, r.y, '#8fd0ff', i === 0 ? '출발' : i === last ? '도착' : String(i));
+  state.seed.paths.forEach((path, pi) => {
+    const color = PATH_COLORS[pi % PATH_COLORS.length];
+    path.forEach((r, i) => {
+      if (i) {
+        const a = toScreen(path[i - 1].x, path[i - 1].y);
+        const b = toScreen(r.x, r.y);
+        ctx.strokeStyle = pi === state.path ? color : '#39404e';
+        ctx.lineWidth = pi === state.path ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        // 진행 방향 화살표 — 되돌아가는 구간이 보여야 한다
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx - 9 * Math.cos(ang - 0.4), my - 9 * Math.sin(ang - 0.4));
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx - 9 * Math.cos(ang + 0.4), my - 9 * Math.sin(ang + 0.4));
+        ctx.stroke();
+      }
+      const last = path.length - 1;
+      const label = pi === 0 && i === 0 ? '출발' : pi === 0 && i === last ? '도착' : String(i + 1);
+      dot(r.x, r.y, color, label);
+    });
   });
   state.seed.saves.forEach((s, i) => dot(s.x, s.y, '#f5c86b', '세이브 ' + (i + 1)));
   state.seed.keeps.forEach((k, i) => dot(k.x, k.y, '#c79bff', '기억 ' + (i + 1)));
@@ -150,17 +178,17 @@ canvas.addEventListener('mousedown', (e) => {
   }
   const wp = toWorld(e.offsetX, e.offsetY);
   const all = [
-    ...state.seed.route.map((p, i) => ({ p, list: 'route', i })),
-    ...state.seed.saves.map((p, i) => ({ p, list: 'saves', i })),
-    ...state.seed.keeps.map((p, i) => ({ p, list: 'keeps', i })),
+    ...state.seed.paths.flatMap((path, pi) => path.map((p, i) => ({ p, list: path, i, pi }))),
+    ...state.seed.saves.map((p, i) => ({ p, list: state.seed.saves, i })),
+    ...state.seed.keeps.map((p, i) => ({ p, list: state.seed.keeps, i })),
   ];
   const near = all.find((a) => Math.hypot(a.p.x - wp.x, a.p.y - wp.y) < 40 / state.view.scale);
 
   if (state.tool === 'erase') {
-    if (near) state.seed[near.list].splice(near.i, 1);
+    if (near) near.list.splice(near.i, 1);
   } else if (state.tool === 'route') {
-    state.seed.route.push(wp);
-    state.seed.route.sort((a, b) => a.x - b.x);
+    // **정렬하지 않는다.** 찍은 순서가 지나가는 순서다
+    state.seed.paths[state.path].push(wp);
   } else if (state.tool === 'save') {
     state.seed.saves.push(wp);
   } else if (state.tool === 'keep') {
@@ -201,7 +229,7 @@ function seedFor(def) {
     seedNumber: Number($('seedNumber').value) || 1,
     peaceful: !!def.peaceful,
     groundH: 90,
-    route: state.seed.route,
+    paths: state.seed.paths.filter((p) => p.length >= 2),
     keepsakes: state.seed.keeps.map((k, i) => ({
       x: k.x,
       y: k.y,
@@ -213,15 +241,21 @@ function seedFor(def) {
 
 function generate() {
   const def = stageDef();
-  if (state.seed.route.length < 2) {
+  if (!state.seed.paths.some((p) => p.length >= 2)) {
     $('stats').textContent = '경로 앵커를 두 개 이상 찍어야 한다.';
     return;
   }
-  state.layout = build(seedFor(def));
+  try {
+    state.layout = build(seedFor(def));
+  } catch (err) {
+    // 생성기가 터지면 조용히 실패하지 않고 그대로 보여 준다
+    $('stats').innerHTML = '<span class="bad">생성 실패: ' + err.message + '</span>';
+    return;
+  }
   const st = state.layout.stats;
   const broken = st['끊긴것'] || [];
   $('stats').innerHTML =
-    '길이 <b>' + st['길이'] + '</b>   발판 <b>' + st['발판'] + '</b>   높이차 <b>' +
+    '길이 <b>' + st['길이'] + '</b>   갈래 <b>' + st['갈래'] + '</b>   발판 <b>' + st['발판'] + '</b>   높이차 <b>' +
     st['최고높이'] + '</b>   기억 <b>' + st['기억'] + '</b>   ' +
     '<span class="' + (broken.length ? 'bad' : '') + '">' + st['이어짐'] + '</span>' +
     (broken.length ? '\n끊긴 곳: ' + broken.join(', ') : '');
@@ -234,7 +268,8 @@ async function commit() {
     generate();
     return;
   }
-  const last = state.seed.route[state.seed.route.length - 1];
+  const main = state.seed.paths[0] || [];
+  const last = main[main.length - 1];
   const body = {
     stage: def.id,
     seed: Object.assign(seedFor(def), { saves: state.seed.saves }),
@@ -243,7 +278,7 @@ async function commit() {
       ledges: state.layout.ledges,
       scent: state.layout.scent,
       keepsakes: state.layout.keepsakes,
-      start: state.seed.route[0],
+      start: main[0],
       goal: { x: last.x, y: last.y - 90, h: 320 },
       saves: state.seed.saves,
       width: state.layout.stats['길이'],
@@ -262,14 +297,17 @@ async function commit() {
 async function loadStage(id) {
   state.stage = id;
   state.layout = null;
-  state.seed = { route: [], saves: [], keeps: [] };
+  state.seed = { paths: [[]], saves: [], keeps: [] };
+  state.path = 0;
 
   try {
     const res = await fetch('/__stage/load?stage=' + id);
     if (res.ok) {
       const saved = await res.json();
       if (saved && saved.seed) {
-        state.seed.route = saved.seed.route || [];
+        state.seed.paths = saved.seed.paths?.length
+          ? saved.seed.paths
+          : [saved.seed.route || []];
         state.seed.keeps = (saved.seed.keepsakes || []).map((k) => ({
           x: k.x,
           y: k.y,
@@ -287,10 +325,12 @@ async function loadStage(id) {
 
   // 저장본이 없으면 **지금 손으로 짜 둔 배치**를 앵커로 되살려서 시작점으로 준다
   const def = stageDef();
-  state.seed.route = [{ x: def.start.x, y: def.start.y }]
-    .concat(def.ground.map((g) => ({ x: Math.round(g.x + g.w / 2), y: g.y })))
-    .concat([{ x: def.goal.x, y: def.goal.y + 90 }])
-    .sort((a, b) => a.x - b.x);
+  state.seed.paths = [
+    [{ x: def.start.x, y: def.start.y }]
+      .concat(def.ground.map((g) => ({ x: Math.round(g.x + g.w / 2), y: g.y })))
+      .concat([{ x: def.goal.x, y: def.goal.y + 90 }])
+      .sort((a, b) => a.x - b.x),
+  ];
   state.seed.saves = def.savePoint ? [{ x: def.savePoint.x, y: def.savePoint.y }] : [];
   state.seed.keeps = (def.keepsakes || []).map((k) => ({ x: k.x, y: k.y + 60, dir: 'right' }));
   draw();
@@ -321,8 +361,29 @@ $('stage').onchange = (e) => loadStage(Number(e.target.value));
 $('gen').onclick = generate;
 $('commit').onclick = commit;
 $('clear').onclick = () => {
-  state.seed = { route: [], saves: [], keeps: [] };
+  state.seed = { paths: [[]], saves: [], keeps: [] };
+  state.path = 0;
   state.layout = null;
+  updatePathLabel();
+  draw();
+};
+
+/** 갈래를 하나 더 그린다 — 같은 x 에 다른 높이의 길을 놓을 때 쓴다 */
+function newPath() {
+  state.seed.paths.push([]);
+  state.path = state.seed.paths.length - 1;
+  updatePathLabel();
+  draw();
+}
+
+function updatePathLabel() {
+  $('pathLabel').textContent = '지금 갈래 ' + (state.path + 1) + ' / ' + state.seed.paths.length;
+  $('pathLabel').style.color = PATH_COLORS[state.path % PATH_COLORS.length];
+}
+$('newPath').onclick = newPath;
+$('prevPath').onclick = () => {
+  state.path = (state.path + state.seed.paths.length - 1) % state.seed.paths.length;
+  updatePathLabel();
   draw();
 };
 $('revert').onclick = async () => {
@@ -331,8 +392,9 @@ $('revert').onclick = async () => {
   $('stats').textContent = '저장본을 지웠다. 게임은 손으로 짠 배치로 돌아간다.';
 };
 $('hint').textContent =
-  '좌클릭 = 앵커 찍기 · Shift+드래그 = 화면 이동 · 휠 = 확대  |  ' +
-  '경로 앵커의 높이를 크게 벌려 찍으면 지그재그 탑이 세워진다';
+  '좌클릭 = 앵커 찍기 (찍은 순서대로 이어진다) · Shift+드래그 = 화면 이동 · 휠 = 확대  |  ' +
+  '앞으로 갔다가 위로 올린 뒤 왔던 쪽으로 되돌려 찍으면 같은 자리에 두 층이 생긴다';
+updatePathLabel();
 
 window.addEventListener('resize', resize);
 resize();
