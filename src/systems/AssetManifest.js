@@ -133,6 +133,22 @@ export const ACTOR = {
   FLYER: 3, // 나는 것 — 참새 / 갈매기 / 부엉이 / 잠자리
 };
 
+/**
+ * 액터 칸(320px) 안에서 **그림이 실제로 차지하는 비율**.
+ *
+ * `do_actor_sheets()` 가 8프레임을 한 덩어리로 맞춰 넣기 때문에 칸에는 여백이 남는다.
+ * 높이를 지정할 때 이 비율을 쳐 주지 않으면, 자동차를 260px 로 세워도 화면에는
+ * 106px 로 나온다. `sizeToActor()` 가 이 표를 보고 환산한다.
+ *
+ * 값은 `public/assets/props/actors_*.png` 에서 잰 것이다 (칸 320px 기준 세로 비율).
+ */
+export const ACTOR_FILL = {
+  city: { mover: 0.42, faller: 0.73, puff: 0.73, flyer: 0.58 },
+  coast: { mover: 0.51, faller: 0.32, puff: 0.80, flyer: 0.54 },
+  mountain: { mover: 0.51, faller: 0.74, puff: 0.31, flyer: 0.80 },
+  field: { mover: 0.74, faller: 0.80, puff: 0.60, flyer: 0.56 },
+};
+
 /** 역할 한 줄에 들어 있는 프레임 수 */
 export const ACTOR_FRAMES = 8;
 

@@ -6,8 +6,8 @@
  */
 
 import Phaser from 'phaser';
-import { sizeTo } from '../systems/Layout.js';
-import { actorAnim, actorFrame } from '../systems/AssetManifest.js';
+import { sizeTo, sizeToActor, GROUND_SINK } from '../systems/Layout.js';
+import { ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
 export class ScentTrail {
   /**
@@ -131,12 +131,19 @@ export function placeProp(scene, def) {
 
   prop.setOrigin(def.originX ?? 0.5, def.originY ?? 1);
   prop.setDepth(def.depth ?? 8);
-  if (def.height) prop.setScale(def.height / prop.height);
+
+  // 액터 시트는 칸 안에 여백이 있으므로 비율을 쳐서 환산한다
+  const theme = def.atlas && def.atlas.startsWith('actors_') ? def.atlas.replace('actors_', '') : null;
+  const fill = theme ? ACTOR_FILL[theme]?.[ACTOR_SLOTS[def.frame ?? 0]] : null;
+  if (def.height) sizeToActor(prop, { height: def.height }, fill);
   if (def.scale) prop.setScale(def.scale);
   if (def.alpha != null) prop.setAlpha(def.alpha);
   if (def.flip) prop.setFlipX(true);
   if (def.tint != null) prop.setTint(def.tint);
   if (def.scrollFactor != null) prop.setScrollFactor(def.scrollFactor);
+
+  // 지면에 서는 것은 살짝 파묻는다. 타일 윗면에 딱 올리면 붕 떠 보인다
+  if ((def.originY ?? 1) === 1 && !def.bob && !def.drift) prop.y += def.sink ?? GROUND_SINK;
 
   if (def.bob) {
     scene.tweens.add({

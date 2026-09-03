@@ -90,7 +90,7 @@ export default {
    */
   hazards: [
     // 하수구 증기 — 위로 밀어 올리는 리프트. 위험이 아니라 도구다
-    { type: 'steam', x: 3340, y: GY, interval: 2400, activeTime: 1400, power: -430 },
+    { type: 'steam', x: 3340, y: GY, interval: 2400, warnTime: 700, activeTime: 1400, power: -430 },
 
     // 떨어지는 화분 — 한 개만 둔다. 둘을 붙여 두면 처음 배우는 사람에게 너무 빠르다
     { type: 'rock', x: 3980, y: 120, groundY: GY - 10, interval: 3000, delay: 900 },

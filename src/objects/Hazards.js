@@ -10,9 +10,22 @@
  */
 
 import Phaser from 'phaser';
-import { ACTOR, actorAnim, actorFrame } from '../systems/AssetManifest.js';
-import { sizeTo } from '../systems/Layout.js';
+import { ACTOR, ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
+import { sizeTo, sizeToActor, GROUND_SINK } from '../systems/Layout.js';
 
+/** 그 시트·역할의 칸 채움 비율 (`actors_city` → city) */
+function fillOf(sheetKey, slot) {
+  const theme = String(sheetKey).replace('actors_', '');
+  return ACTOR_FILL[theme]?.[ACTOR_SLOTS[slot]] ?? null;
+}
+
+/**
+ * 크기 기준.
+ *
+ * 강아지 그림이 화면에서 71px 이고 실제로 0.4m 쯤 되므로 **1m 는 약 178px** 이다.
+ * 위험 요소도 이 자로 재야 강아지 옆에 놓였을 때 크기가 맞아 보인다.
+ * 예전 값(자동차 96px = 0.54m)은 강아지보다 조금 큰 정도라 장난감 같았다.
+ */
 class HazardBase extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, def, defaultSlot) {
     const key = def.texture || def.actors;
@@ -27,7 +40,8 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
     this.def = def;
     this.effect = def.effect || 'kill';
     this.setDepth(def.depth ?? 18);
-    if (def.height) sizeTo(this, { height: def.height });
+    // height 는 **화면에서 그림이 차지할 높이**다. 칸 안 여백은 여기서 쳐 준다
+    if (def.height) sizeToActor(this, { height: def.height }, def.texture ? null : fillOf(key, slot));
 
     if (!def.texture) {
       const anim = actorAnim(key, slot);
@@ -42,7 +56,7 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
 /** 주기적으로 화면을 가로지르는 자동차 */
 export class Car extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 96, ...def }, ACTOR.MOVER);
+    super(scene, { height: 220, ...def }, ACTOR.MOVER); // 자동차 1.25m
     this.dir = def.dir ?? -1;
     this.speed = def.speed ?? 260;
     this.fromX = def.fromX ?? def.x;
@@ -86,7 +100,7 @@ export class Car extends HazardBase {
 /** 위에서 떨어지는 돌 / 화분 — 그림자로 0.5초 예고 */
 export class FallingRock extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 56, ...def }, ACTOR.FALLER);
+    super(scene, { height: 82, ...def }, ACTOR.FALLER); // 떨어지는 것 0.45m
     this.startY = def.y;
     this.groundY = def.groundY ?? def.y + 300;
     this.interval = def.interval ?? 2600;
@@ -141,7 +155,7 @@ export class FallingRock extends HazardBase {
 /** 멧돼지 — 땅 긁기 0.7초 후 직선 돌진, 이후 경직 */
 export class Boar extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 110, ...def }, ACTOR.MOVER);
+    super(scene, { height: 145, ...def }, ACTOR.MOVER); // 멧돼지 0.8m
     this.homeX = def.x;
     this.range = def.range ?? 420;
     this.speed = def.speed ?? 420;
@@ -199,7 +213,7 @@ export class Boar extends HazardBase {
 /** 밀려왔다 빠지는 파도 — 닿으면 뒤로 밀려난다 */
 export class Wave extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 150, ...def, effect: 'push' }, ACTOR.FALLER);
+    super(scene, { height: 190, ...def, effect: 'push' }, ACTOR.FALLER); // 파도 1.05m
     this.setOrigin(0.5, 1);
     this.restX = def.x;
     this.reachX = def.reachX ?? def.x + 420;
@@ -227,35 +241,75 @@ export class Wave extends HazardBase {
   }
 }
 
-/** 하수구 증기 — 위험이 아니라 위로 밀어 올리는 리프트 */
+/**
+ * 하수구 증기 — 위로 밀어 올린다.
+ *
+ * **나오기 전에 빨간 네모로 자리를 알려 준다.** 예고 없이 뿜으면 외워서 피하는 수밖에
+ * 없지만, 자리를 먼저 보여 주면 보고 판단할 수 있다.
+ *
+ *   조용함  →  빨간 네모 깜빡임(예고)  →  뿜는 동안만 판정  →  다시 조용함
+ *
+ * 판정은 **뿜는 동안에만** 켠다. 예전에는 보이지 않는 동안에도 몸이 살아 있어서,
+ * 아무것도 없는 자리에서 갑자기 떠올랐다.
+ */
 export class SteamVent extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 140, ...def, effect: 'lift' }, ACTOR.PUFF);
+    super(scene, { height: 290, ...def, effect: 'lift' }, ACTOR.PUFF); // 증기 기둥 1.6m
     this.setOrigin(0.5, 1);
     this.setDepth(def.depth ?? 12);
     this.setAlpha(0);
     this.body.setSize(70, this.displayHeight * 0.9, true);
+    this.body.setEnable(false);
+
     this.liftPower = def.power ?? -430;
     this.interval = def.interval ?? 2400;
+    this.warnTime = def.warnTime ?? 700;
     this.activeTime = def.activeTime ?? 1200;
     this.timer = def.delay ?? 0;
-    this.blowing = false;
+    this.phase = 'idle';
     this.baseScaleY = this.scaleY;
+
+    // 예고용 빨간 네모 — 뿜어 나올 자리를 그대로 두른다
+    this.warning = scene.add
+      .rectangle(this.x, this.y - this.displayHeight / 2, 74, this.displayHeight, 0xff4d4d, 0)
+      .setStrokeStyle(2, 0xff4d4d, 0.9)
+      .setDepth((def.depth ?? 12) + 1)
+      .setVisible(false);
+  }
+
+  setPhase(phase) {
+    this.phase = phase;
+    this.warning.setVisible(phase === 'warn');
+    this.body.setEnable(phase === 'blow');
   }
 
   tick(time, delta) {
     this.timer -= delta;
     if (this.timer > 0) return;
 
-    this.blowing = !this.blowing;
-    this.timer = this.blowing ? this.activeTime : this.interval;
+    if (this.phase === 'idle') {
+      this.setPhase('warn');
+      this.timer = this.warnTime;
+      this.warnTween = this.scene.tweens.add({
+        targets: this.warning,
+        alpha: 0.35,
+        duration: 160,
+        yoyo: true,
+        repeat: -1,
+      });
+      return;
+    }
 
-    if (this.blowing) {
+    if (this.phase === 'warn') {
+      this.warnTween?.remove();
+      this.warning.setAlpha(1);
+      this.setPhase('blow');
+      this.timer = this.activeTime;
       this.scene.audio?.play('sfx_steam', { volume: 0.35 });
       this.setScale(this.scaleX, this.baseScaleY * 0.3);
       this.scene.tweens.add({
         targets: this,
-        alpha: 0.75,
+        alpha: 0.8,
         scaleY: this.baseScaleY,
         duration: 260,
         ease: 'Quad.easeOut',
@@ -263,6 +317,8 @@ export class SteamVent extends HazardBase {
       return;
     }
 
+    this.setPhase('idle');
+    this.timer = this.interval;
     this.scene.tweens.add({ targets: this, alpha: 0, duration: 320 });
   }
 }

@@ -7,14 +7,14 @@
 
 import Phaser from 'phaser';
 import { PALETTE } from '../config.js';
-import { sizeTo, UI_SIZE } from '../systems/Layout.js';
+import { sizeTo, UI_SIZE, GROUND_SINK } from '../systems/Layout.js';
 
 export class SavePoint extends Phaser.GameObjects.Container {
   /**
    * @param {object} def { id, x, y, prop, motion, motionDuration, label }
    */
   constructor(scene, def) {
-    super(scene, def.x, def.y);
+    super(scene, def.x, def.y + GROUND_SINK);
     scene.add.existing(this);
 
     this.def = def;

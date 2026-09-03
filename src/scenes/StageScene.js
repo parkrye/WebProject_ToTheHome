@@ -141,10 +141,11 @@ export default class StageScene extends Phaser.Scene {
 
     this.scentTrail = new ScentTrail(this, def.scent || []);
 
-    if (def.savePoint) {
-      this.savePoint = new SavePoint(this, def.savePoint);
-      this.saved = this.save.data.checkpoint === def.savePoint.id;
-    }
+    // 세이브 포인트는 여러 개일 수 있다. 가까운 것 하나만 활성으로 잡는다
+    const points = def.savePoints?.length ? def.savePoints : def.savePoint ? [def.savePoint] : [];
+    this.savePoints = points.map((p) => new SavePoint(this, p));
+    this.savePoint = this.savePoints[0] || null;
+    this.saved = points.some((p) => this.save.data.checkpoint === p.id);
 
     this.goal = new StageGoal(this, def.goal);
 
@@ -162,6 +163,13 @@ export default class StageScene extends Phaser.Scene {
     this.events_ = (def.events || []).map((e) => ({ ...e, fired: false }));
   }
 
+  /** 지금 저장되어 있는 세이브 포인트의 정의 */
+  checkpointDef() {
+    const def = this.def;
+    const points = def.savePoints?.length ? def.savePoints : def.savePoint ? [def.savePoint] : [];
+    return points.find((p) => p.id === this.save.data.checkpoint) || null;
+  }
+
   buildPlayer() {
     const spawn = this.resolveSpawn();
     this.dog = new Dog(this, spawn.x, spawn.y);
@@ -170,9 +178,8 @@ export default class StageScene extends Phaser.Scene {
 
   resolveSpawn() {
     const def = this.def;
-    if (this.fromCheckpoint && def.savePoint && this.save.data.checkpoint === def.savePoint.id) {
-      return { x: def.savePoint.x, y: def.savePoint.y - 60 };
-    }
+    const at = this.checkpointDef();
+    if (this.fromCheckpoint && at) return { x: at.x, y: at.y - 60 };
     return def.start;
   }
 
@@ -239,7 +246,7 @@ export default class StageScene extends Phaser.Scene {
     if (!this.dog.isControllable && hazard.effect !== 'lift') return;
 
     if (hazard.effect === 'lift') {
-      if (hazard.blowing) this.dog.body.setVelocityY(hazard.liftPower);
+      if (hazard.phase === 'blow') this.dog.body.setVelocityY(hazard.liftPower);
       return;
     }
 
@@ -272,9 +279,8 @@ export default class StageScene extends Phaser.Scene {
 
   checkpointPosition() {
     const def = this.def;
-    if (def.savePoint && this.save.data.checkpoint === def.savePoint.id) {
-      return { x: def.savePoint.x, y: def.savePoint.y - 60 };
-    }
+    const at = this.checkpointDef();
+    if (at) return { x: at.x, y: at.y - 60 };
     return { x: def.start.x, y: def.start.y };
   }
 
@@ -285,7 +291,7 @@ export default class StageScene extends Phaser.Scene {
 
     const isNew = this.save.saveCheckpoint(this.stageId, point.id);
     this.audio.duck(this, point.motionDuration + 400);
-    if (this.def.savePoint.sfx) this.audio.play(this.def.savePoint.sfx, { volume: 0.5 });
+    if (point.def.sfx) this.audio.play(point.def.sfx, { volume: 0.5 });
 
     await this.dog.playMotion(point.motion, point.motionDuration);
 
@@ -406,11 +412,19 @@ export default class StageScene extends Phaser.Scene {
   }
 
   updateSavePoint(time) {
-    if (!this.savePoint || !this.dog) return;
-    const near = Math.abs(this.dog.x - this.savePoint.x) < 110 && Math.abs(this.dog.y - this.savePoint.y) < 160;
-    this.savePoint.showPrompt(near && this.dog.isControllable);
+    if (!this.savePoints?.length || !this.dog) return;
 
-    if (near && this.input_.interactPressed) this.useSavePoint();
+    // 여러 개 중 **지금 닿을 수 있는 것**을 활성으로 삼는다
+    this.savePoint = null;
+    this.savePoints.forEach((point) => {
+      const near =
+        Math.abs(this.dog.x - point.x) < 110 && Math.abs(this.dog.y - point.y) < 160;
+      point.showPrompt(near && this.dog.isControllable);
+      if (near) this.savePoint = point;
+    });
+
+    // 가까운 것이 있을 때만 상호작용을 받는다
+    if (this.savePoint && this.input_.interactPressed) this.useSavePoint();
   }
 
   updateSigns() {

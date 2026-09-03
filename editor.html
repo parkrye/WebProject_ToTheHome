@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ToTheHome — 맵 관리 툴</title>
+    <link rel="stylesheet" href="/tools/editor/editor.css" />
+  </head>
+  <body>
+    <header>
+      <strong>맵 관리 툴</strong>
+      <label>스테이지 <select id="stage"></select></label>
+      <span class="tools" id="tools"></span>
+      <label>씨앗 <input id="seedNumber" type="number" value="7" min="1" max="9999" /></label>
+      <button id="gen" class="primary">생성</button>
+      <button id="commit">확정</button>
+      <button id="revert">되돌리기</button>
+      <button id="clear">앵커 비우기</button>
+    </header>
+    <div id="hint"></div>
+    <canvas id="view"></canvas>
+    <footer id="stats">스테이지를 고르고 캔버스를 클릭해 앵커를 찍는다.</footer>
+    <script type="module" src="/tools/editor/main.js"></script>
+  </body>
+</html>
