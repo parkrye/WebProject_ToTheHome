@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 import { HOME } from '../systems/AssetManifest.js';
+import { STAGES } from '../data/stages.js';
 import { isReal } from '../systems/AssetLoader.js';
 
 /**
@@ -27,8 +28,16 @@ const FLOOR_Y = GAME_HEIGHT - 70; // 방바닥 (침대 쪽. 문보다 카메라�
 const BED_X = GAME_WIDTH - 250;
 const ADULT_H = 376; // 1.75m
 const DOG_H = 104; // 어깨높이 0.48m — 실제보다 조금 키워야 문 너머에서 눈에 든다
-/** 그림 속 방석 — 강아지가 자고 있는 채로 그려져 있어 덮어야 한다 */
-const CUSHION = { x: 709, y: 481, w: 250, h: 74 };
+/**
+ * 그림 속 방석 — 강아지가 자고 있는 채로 그려져 있어 덮어야 한다.
+ *
+ * 주의: `props_home` 은 384px 정사각 칸 안에 그림이 **바닥 가운데로** 앉아 있는 시트다.
+ * `setDisplaySize` 는 칸 전체를 늘이므로, 그림만 원하는 크기로 만들려면 여백까지 쳐서
+ * 환산해야 한다. 방석 그림은 칸 안에서 300 x 173 이다.
+ *   가로 384 x (270/300) = 346,  세로 384 x (108/173) = 240
+ * 덮어야 할 자리는 그림 좌표로 x 587~853, 바닥 y 513.
+ */
+const CUSHION = { x: 720, y: 513, w: 346, h: 240 };
 /**
  * 방 부품에 씌우는 색.
  *
@@ -104,6 +113,40 @@ export default class EndingScene extends Phaser.Scene {
     this.doorLight = null;
     this.doorway = null;
     this.door = null;
+  }
+
+  /**
+   * 벽의 빈 액자 자리에 주워 온 기억만큼 빛이 하나씩 켜진다.
+   *
+   * 액자는 배경 그림에 이미 걸려 있다. 그 위에 옅은 빛만 얹으면 "채워졌다"로 읽힌다.
+   * 문자도 숫자도 쓰지 않고, 하나도 못 모았으면 아무 일도 일어나지 않는다.
+   */
+  showKeepsakes() {
+    const save = this.registry.get('save');
+    const count = save ? save.keepsakeCount : 0;
+    if (!count) return;
+
+    // 배경 그림에서 빈 액자가 걸려 있는 자리 (960 x 540 기준). 그림에서 직접 쟀다
+    const spots = [
+      { x: 450, y: 118 }, { x: 533, y: 132 }, { x: 379, y: 141 },
+      { x: 436, y: 183 }, { x: 563, y: 199 }, { x: 493, y: 205 },
+    ];
+
+    // 액자보다 기억 조각이 많으므로 **비율로** 켠다. 다 모으면 액자가 다 켜진다
+    const total = STAGES.reduce((n, st) => n + (st.keepsakes || []).length, 0) || count;
+    const lit = Math.max(1, Math.min(spots.length, Math.round((spots.length * count) / total)));
+
+    spots.slice(0, lit).forEach((p, i) => {
+      const light = sizeTo(
+        this.add
+          .image(p.x, p.y, 'ui_scent_mote')
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setDepth(24)
+          .setAlpha(0),
+        { height: 44 }
+      );
+      this.tweens.add({ targets: light, alpha: 0.62, duration: 900, delay: 260 * i, ease: 'Sine.easeOut' });
+    });
   }
 
   wait(ms) {
@@ -195,7 +238,11 @@ export default class EndingScene extends Phaser.Scene {
     await this.fadeIn(2600);
     await this.wait(2600);
 
-    // 10. 문 쪽을 바라본다 — 문 앞 바닥에 냄새 입자 하나
+    // 10. 모아 온 기억이 벽의 빈 액자 위로 돌아온다.
+    //     숫자를 쓸 수 없으므로 **주운 개수만큼 빛이 하나씩 뜬다.** 못 모았으면 조용하다.
+    this.showKeepsakes();
+
+    // 11. 문 쪽을 바라본다 — 문 앞 바닥에 냄새 입자 하나
     const mote = sizeTo(
       this.add
         .image(DOOR.x + 40, DOOR.y - 8, 'ui_scent_mote')

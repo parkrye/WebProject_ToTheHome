@@ -28,7 +28,12 @@ const GROUND_Y = 478;
  */
 const FLOOR_Y = 487;
 const ADULT_H = 376; // 1.75m
-const CUSHION = { x: 709, y: 481, w: 250, h: 74 };
+/**
+ * 배경 그림 속 방석을 덮는 값.
+ * `props_home` 은 384px 칸에 그림이 바닥 가운데로 앉아 있어, 여백까지 쳐서 환산한다
+ * (방석 그림은 칸 안에서 300 x 173).
+ */
+const CUSHION = { x: 720, y: 513, w: 346, h: 240 };
 /** 방 부품은 밝은 램프빛 아래에서 그려졌다. 밤 방 밝기에 맞춰 눌러 준다 */
 const ROOM_TINT = 0x8b7d6d;
 
@@ -208,7 +213,7 @@ export default class PrologueScene extends Phaser.Scene {
           .setTint(ROOM_TINT)
       );
 
-      const dog = this.add.sprite(CUSHION.x, CUSHION.y - 12, 'dog_sleep').setOrigin(0.5, 1);
+      const dog = this.add.sprite(CUSHION.x, CUSHION.y - 22, 'dog_sleep').setOrigin(0.5, 1);
       sizeTo(dog, { width: 200 });
       dog.play('dog_sleep');
       this.layerGroup.add(dog);

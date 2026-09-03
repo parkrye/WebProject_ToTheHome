@@ -11,6 +11,7 @@ const DEFAULT_SAVE = {
   checkpoint: null, // 스테이지 내 세이브포인트 id
   prologueSeen: false,
   clearedStages: [],
+  keepsakes: [], // 주운 기억 조각의 id
   customSprites: false,
   muted: false,
 };
@@ -58,6 +59,26 @@ export class SaveSystem {
     const isNew = !(this.data.stage === stage && this.data.checkpoint === checkpointId);
     this.set({ stage, checkpoint: checkpointId });
     return isNew;
+  }
+
+  hasKeepsake(id) {
+    return this.data.keepsakes.includes(id);
+  }
+
+  /** 기억 조각을 주웠다. 이미 가진 것이면 false */
+  collectKeepsake(id) {
+    if (this.hasKeepsake(id)) return false;
+    this.set({ keepsakes: [...this.data.keepsakes, id] });
+    return true;
+  }
+
+  /** 그 스테이지에서 주운 개수 */
+  keepsakesIn(stageId) {
+    return this.data.keepsakes.filter((id) => id.startsWith(`s${stageId}_`)).length;
+  }
+
+  get keepsakeCount() {
+    return this.data.keepsakes.length;
   }
 
   enterStage(stage) {

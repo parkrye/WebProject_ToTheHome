@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, MIX } from '../config.js';
 import { getStage, LAST_STAGE } from '../data/stages.js';
 import { Dog } from '../objects/Dog.js';
 import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../objects/Platforms.js';
+import { Keepsake, KeepsakeRow } from '../objects/Keepsake.js';
 import { HAZARD_TYPES } from '../objects/Hazards.js';
 import { SavePoint } from '../objects/SavePoint.js';
 import { ScentTrail, SignBoard, placeProp, StageGoal } from '../objects/Decor.js';
@@ -147,6 +148,15 @@ export default class StageScene extends Phaser.Scene {
 
     this.goal = new StageGoal(this, def.goal);
 
+    // 기억 조각 — 이미 주운 것은 다시 놓지 않는다
+    const spots = def.keepsakes || [];
+    this.keepsakeGroup = this.physics.add.group({ allowGravity: false });
+    spots.forEach((k) => {
+      if (this.save.hasKeepsake(k.id)) return;
+      this.keepsakeGroup.add(new Keepsake(this, k));
+    });
+    this.keepsakeRow = new KeepsakeRow(this, spots.length, this.save.keepsakesIn(def.id));
+
     // 스테이지 4 의 회상 실루엣
     this.memories = (def.memories || []).map((m) => ({ ...m, fired: false }));
     this.events_ = (def.events || []).map((e) => ({ ...e, fired: false }));
@@ -186,6 +196,8 @@ export default class StageScene extends Phaser.Scene {
     this.physics.add.overlap(this.dog, this.staticHazardGroup, (dog, hazard) => this.onHazard(hazard));
 
     this.physics.add.overlap(this.dog, this.goal, () => this.onClear());
+
+    this.physics.add.overlap(this.dog, this.keepsakeGroup, (dog, item) => this.onKeepsake(item));
   }
 
   buildCamera() {
@@ -285,6 +297,14 @@ export default class StageScene extends Phaser.Scene {
     }
 
     point.busy = false;
+  }
+
+  /** 기억 조각을 주웠다 */
+  onKeepsake(item) {
+    if (!item.take()) return;
+    this.save.collectKeepsake(item.id);
+    this.keepsakeRow.light(this);
+    this.audio?.play('sfx_ui_select', { volume: 0.5 });
   }
 
   onClear() {
