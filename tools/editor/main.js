@@ -121,7 +121,19 @@ function draw() {
 
   if (state.layout) {
     state.layout.ground.forEach((g) => box(g.x, g.y, g.w, g.h || 90, '#3a4a3f', '#5d7a66'));
-    state.layout.ledges.forEach((l) => box(l.x, l.y, l.w, 18, '#4a4460', '#7b6fa6'));
+    // 타일 종류가 보이게 그린다 — 땅 / 연석 / 얇은 발판
+    state.layout.ledges.forEach((l) => {
+      const land = l.frame <= 3;
+      const curb = l.frame === 7;
+      box(
+        l.x,
+        l.y,
+        l.w,
+        l.h || 18,
+        land ? '#3f4b3d' : curb ? '#4a4a52' : '#4a4460',
+        land ? '#6b8a5e' : curb ? '#767a88' : '#7b6fa6'
+      );
+    });
     ctx.fillStyle = '#6b6350';
     state.layout.scent.forEach((s) => {
       const p = toScreen(s.x, s.y);

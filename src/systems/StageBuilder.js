@@ -32,6 +32,8 @@
  * 나오게 한다. 같은 씨앗이면 언제나 같은 지형이다.
  */
 
+import { TILE } from './AssetManifest.js';
+
 /** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
 export const REACH = {
   rise: 84,
@@ -108,11 +110,21 @@ const allPads = (out) => [
   ...out.ledges.map((l) => ({ ...l, kind: '턱' })),
 ];
 
-/** 이미 놓인 발판과 너무 가까우면 겹쳐 보인다 */
+/**
+ * 이미 놓인 발판과 너무 가까우면 겹쳐 보인다.
+ *
+ * 위아래로 88px 은 띄운다. 여럿이 모인 자리는 **두껍게** 깔 것이므로, 그만한 두께가
+ * 들어갈 자리를 미리 비워 두어야 아래 발판을 덮지 않는다.
+ */
 function tooClose(out, x, y, w) {
-  return allPads(out).some(
-    (p) => Math.abs(p.y - y) < 46 && x < p.x + p.w + 40 && p.x < x + w + 40
-  );
+  return allPads(out).some((p) => {
+    const dy = Math.abs(p.y - y);
+    if (dy >= 88) return false;
+    // **같은 줄에서 옆에 나란히 놓는 것은 막지 않는다.** 그래야 줄지어 이어진 땅이 된다.
+    // 막을 것은 실제로 겹치는 경우뿐이다
+    const margin = dy < 30 ? 6 : 40;
+    return x < p.x + p.w + margin && p.x < x + w + margin;
+  });
 }
 
 /**
@@ -191,7 +203,8 @@ function scatter(out, rand, area, amount) {
 
   for (let i = 0; i < amount; i += 1) {
     const c = centers[Math.floor(rand() * centers.length)];
-    const len = 1 + Math.floor(rand() * 3);
+    // 3~5 개를 한 줄로. 짧으면 연석에 그치고, 길어야 **높은 데 있는 땅**이 된다
+    const len = 3 + Math.floor(rand() * 3);
     // 가운데로 몰리도록 두 번 뽑아 평균낸다
     const jx = (rand() + rand() - 1) * c.rx;
     const jy = (rand() + rand() - 1) * c.ry;
@@ -309,6 +322,82 @@ function hopDistances(pads) {
   });
 }
 
+/* ------------------------------------------------------------------ 두께 */
+
+/** 지면 윗면 타일 네 종류. 자리마다 다른 것을 써서 같은 무늬가 반복되지 않게 한다 */
+const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
+
+/**
+ * 몇 개가 모였는지에 따라 **어떤 타일을 쓸지** 정한다.
+ *
+ * 타일셋에는 쓰임이 다른 칸이 여럿 있는데, 전부 얇은 발판(6번)으로만 깔면 공중에 판자만
+ * 잔뜩 떠 있는 것처럼 보인다.
+ *
+ *   1개      얇은 발판 (6번, 18px) — 딛고 지나가는 판자
+ *   2개      연석·계단 (7번, 40px) — 낮은 턱
+ *   3개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
+ *
+ * 이어진 것은 **하나로 합친다.** 나란한 세 덩어리보다 이어진 한 덩어리가 땅처럼 보인다.
+ * 두께는 바로 아래 발판을 덮지 않는 선까지만 준다. 땅으로 깔 만큼 자리가 없으면
+ * 연석으로 낮춰 쓴다 — 아래를 가리는 것보다 낫다.
+ */
+function thicken(out) {
+  const rows = new Map();
+  out.ledges.forEach((l) => {
+    const key = Math.round(l.y / 12);
+    if (!rows.has(key)) rows.set(key, []);
+    rows.get(key).push(l);
+  });
+
+  const merged = [];
+  rows.forEach((row) => {
+    row.sort((a, b) => a.x - b.x);
+    let run = [row[0]];
+    const flush = () => {
+      const first = run[0];
+      const last = run[run.length - 1];
+      merged.push({
+        x: first.x,
+        y: Math.round(run.reduce((n, p) => n + p.y, 0) / run.length),
+        w: last.x + last.w - first.x,
+        count: run.length,
+      });
+    };
+    for (let i = 1; i < row.length; i += 1) {
+      const prev = run[run.length - 1];
+      const gap = row[i].x - (prev.x + prev.w);
+      if (gap <= 46) run.push(row[i]);
+      else {
+        flush();
+        run = [row[i]];
+      }
+    }
+    flush();
+  });
+
+  out.ledges = merged.map((m) => {
+    // 바로 아래 발판까지의 여유. 이보다 두꺼우면 아래를 덮어 버린다
+    let clearance = 9999;
+    merged.forEach((o) => {
+      if (o === m || o.y <= m.y + 8) return;
+      if (o.x > m.x + m.w || o.x + o.w < m.x) return;
+      clearance = Math.min(clearance, o.y - m.y);
+    });
+    const room = Math.min(9999, clearance - 14);
+
+    const land = (m.count >= 3 || m.w >= 430) && room >= 68;
+    const curb = !land && (m.count >= 2 || m.w >= 300) && room >= 34;
+
+    if (land) {
+      // 자리마다 다른 윗면 타일 — 같은 무늬가 이어지면 붙여 놓은 티가 난다
+      const pick = TOP_VARIANTS[Math.abs(Math.round(m.x / 137) + Math.round(m.y / 71)) % 4];
+      return { x: m.x, y: m.y, w: m.w, h: Math.min(room, 120), frame: pick };
+    }
+    if (curb) return { x: m.x, y: m.y, w: m.w, h: Math.min(room, 40), frame: TILE.WALL };
+    return { x: m.x, y: m.y, w: m.w, h: 18, frame: TILE.LEDGE };
+  });
+}
+
 /* ------------------------------------------------------------------ 만들기 */
 
 /** 점 하나를 발판 하나로 바꾼다 */
@@ -386,8 +475,22 @@ export function build(seed) {
   const minX = Math.min(...pts.map((p) => p.x)) - 340;
   const maxX = Math.max(...pts.map((p) => p.x)) + 420;
 
-  // 1. 바닥을 쭉 깐다. 구멍이 있으면 그 자리가 곧 "떨어지면 죽는 자리"가 된다
-  out.ground.push({ x: round(minX), y: round(baseY), w: round(maxX - minX), h: groundH });
+  // 1. 바닥을 쭉 깐다. 구멍이 있으면 그 자리가 곧 "떨어지면 죽는 자리"가 된다.
+  //    한 덩어리로 깔지 않고 몇 조각으로 나눠 **윗면 타일을 바꿔 가며** 깐다.
+  //    같은 무늬가 끝까지 이어지면 바닥이 그려 놓은 띠처럼 보인다
+  const floorSpan = maxX - minX;
+  const chunks = clamp(round(floorSpan / 700), 1, 8);
+  for (let i = 0; i < chunks; i += 1) {
+    const x = minX + (floorSpan * i) / chunks;
+    const w = floorSpan / chunks;
+    out.ground.push({
+      x: round(x),
+      y: round(baseY),
+      w: round(w) + 1,
+      h: groundH,
+      frame: TOP_VARIANTS[Math.floor(rand() * 4)],
+    });
+  }
 
   // 2. 찍은 점마다 발판을 놓는다
   const place = (point, width) => {
@@ -417,7 +520,7 @@ export function build(seed) {
   // 3. 살을 붙인다 — 찍지 않은 자리와 가장자리 너머까지
   const span = maxX - minX;
   const height = Math.max(200, baseY - topY);
-  const amount = clamp(round(((span * height) / 220000) * richness), 0, 60);
+  const amount = clamp(round(((span * height) / 150000) * richness), 0, 70);
   scatter(out, rand, { x0: minX + 60, x1: maxX - 200, top: topY - 240, base: baseY }, amount);
 
   // 4. 전부 오갈 수 있게 잇는다
@@ -430,7 +533,10 @@ export function build(seed) {
     connectAll(out, rand); // 곁길이 외톨이가 되지 않도록 한 번 더 훑는다
   }
 
-  // 6. 길잡이 냄새
+  // 6. 몇 개가 모였는지에 따라 두께를 정하고, 이어진 것은 하나로 합친다
+  thicken(out);
+
+  // 7. 길잡이 냄새
   scentPath(
     out,
     startPad.onGround ? out.ground[0] : startPad,
