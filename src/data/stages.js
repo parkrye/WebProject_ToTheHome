@@ -42,10 +42,40 @@ function reanchor(items, ground, key = 'y') {
     .filter(Boolean);
 }
 
+/**
+ * 관리 툴에서 그린 좌표를 **0 부터 시작하도록 옮긴다.**
+ *
+ * 툴에서는 화면을 왼쪽·위로 밀면서 음수 자리에도 찍을 수 있다. 그런데 게임 월드는
+ * (0, 0) 에서 시작하므로, 음수 자리에 있는 지형은 경계 밖이 되어 카메라가 따라가지
+ * 못하고 강아지가 벽에 갇힌다. 그림은 그대로 두고 **전체를 통째로 밀어** 맞춘다.
+ */
+function normalize(L) {
+  const pads = [...L.ground, ...(L.ledges || [])];
+  if (!pads.length) return L;
+
+  const margin = 160;
+  const dx = margin - Math.min(...pads.map((p) => p.x));
+  const dy = margin - Math.min(...pads.map((p) => p.y));
+  if (dx === 0 && dy === 0) return L;
+
+  const move = (list) => (list || []).map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
+  return {
+    ...L,
+    ground: move(L.ground),
+    ledges: move(L.ledges),
+    scent: move(L.scent),
+    keepsakes: move(L.keepsakes),
+    saves: move(L.saves),
+    start: L.start ? { ...L.start, x: L.start.x + dx, y: L.start.y + dy } : L.start,
+    goal: L.goal ? { ...L.goal, x: L.goal.x + dx, y: L.goal.y + dy } : L.goal,
+    width: (L.width ?? 0) + dx,
+  };
+}
+
 /** 손으로 짠 스테이지 위에 관리 툴 배치를 덮는다 */
 function applyLayout(base, saved) {
-  const L = saved.layout;
-  if (!L || !L.ground?.length) return base;
+  if (!saved.layout || !saved.layout.ground?.length) return base;
+  const L = normalize(saved.layout);
 
   // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다
   const savePoints = (L.saves || []).map((s, i) => ({
@@ -55,12 +85,15 @@ function applyLayout(base, saved) {
     y: s.y ?? groundTopAt(L.ground, s.x) ?? base.savePoint?.y,
   }));
 
-  // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다
+  // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다.
+  // 폭·높이는 **실제로 놓인 지형**에서 재야 경계 밖으로 삐져나오지 않는다
+  const all = [...L.ground, ...(L.ledges || [])];
   const lowest = Math.max(...L.ground.map((g) => g.y + (g.h ?? 90)));
+  const rightmost = Math.max(...all.map((p) => p.x + p.w));
 
   return {
     ...base,
-    width: L.width ?? base.width,
+    width: Math.max(L.width ?? 0, rightmost + 200),
     height: Math.max(base.height, lowest + 60),
     killY: lowest + 90,
     ground: L.ground,
@@ -77,7 +110,9 @@ function applyLayout(base, saved) {
     // 발판 **윗면** 좌표다. 거기에 그대로 놓으면 몸이 지면에 박혀 못 움직인다
     start: L.start ? { x: L.start.x, y: L.start.y - 70 } : base.start,
     goal: { ...base.goal, ...(L.goal || {}) },
-    savePoint: savePoints[0] || base.savePoint,
+    // 배치에 세이브를 안 찍었으면 **없는 것으로 둔다.** 손으로 짠 자리를 남겨 두면
+    // 지형이 통째로 바뀐 자리에 세이브 소품만 공중에 떠 있게 된다
+    savePoint: savePoints[0] || null,
     savePoints,
     generated: true,
   };
