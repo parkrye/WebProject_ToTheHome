@@ -47,9 +47,21 @@ export function createGround(scene, group, def, tileKey) {
   return body;
 }
 
-/** 위에서만 밟히는 얇은 발판 */
+/**
+ * 이 두께까지만 "위에서만 밟히는 판자"로 본다.
+ *
+ * 생성기는 몇 개가 모였는지에 따라 판자(18) · 연석(40) · 땅(최대 120) 을 같은 목록에
+ * 담아 준다. 전부 위에서만 밟히게 두면 **두꺼운 땅덩어리를 옆에서 뚫고 들어가고,
+ * 그 밑면에는 착지 판정이 없다.** 다리처럼 두꺼운 것은 사방이 막혀야 한다.
+ */
+const ONE_WAY_MAX_H = 24;
+
+/** 얇으면 위에서만 밟히는 발판, 두꺼우면 사방이 막힌 땅 */
 export function createLedge(scene, group, def, tileKey) {
-  const ledge = createGround(scene, group, { frame: TILE.LEDGE, ...def, h: def.h ?? 18 }, tileKey);
+  const h = def.h ?? 18;
+  const ledge = createGround(scene, group, { frame: TILE.LEDGE, ...def, h }, tileKey);
+  if (h > ONE_WAY_MAX_H) return ledge;
+
   // 위에서만 밟히므로 아래 + 점프로 통과해 내려갈 수 있다 (Dog.handleDrop)
   ledge.oneWay = true;
   ledge.body.checkCollision.down = false;

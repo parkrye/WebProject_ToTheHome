@@ -268,6 +268,9 @@ const seedFor = (def) => ({
   // 살 — 찍지 않은 자리에 지형을 얼마나 붙일지. 0 이면 점만 잇는다
   richness: Number($('richness').value) / 100,
   groundH: 90,
+  // 소품·액터를 어느 시트에서 꺼낼지. 스테이지마다 다르다
+  props: `props_${def.theme}`,
+  actors: def.actors,
   start: state.seed.start,
   goal: state.seed.goal,
   pads: state.seed.pads,
@@ -319,6 +322,7 @@ async function commit() {
       scent: L.scent,
       keepsakes: L.keepsakes,
       saves: L.saves,
+      props: L.props,
       start: L.start,
       goal: { x: L.goal.x, y: L.goal.y - 90, h: 320 },
       width: L.width,

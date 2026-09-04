@@ -32,7 +32,7 @@
  * 나오게 한다. 같은 씨앗이면 언제나 같은 지형이다.
  */
 
-import { TILE } from './AssetManifest.js';
+import { TILE, PROP, ACTOR } from './AssetManifest.js';
 
 /** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
 export const REACH = {
@@ -127,12 +127,62 @@ function tooClose(out, x, y, w) {
   });
 }
 
+/** 계단 한 칸의 가로 폭. 한 번에 뛸 수 있는 거리 안이어야 한다 */
+const STAIR_X = REACH.hop - 40;
+
+/** 이 가로 간격 안에서 이만큼 올라가야 하면 제자리 오르기다 — 계단으로 돌려 놓는다 */
+const STEEP_X = 320;
+const STEEP_Y = REACH.rise * 1.5;
+
 /**
- * 두 발판 사이에 사다리를 놓는다.
+ * 제자리에서 올라가야 할 때 **길게 계단식으로** 돌려 놓는다.
  *
- * 한 칸의 높이차와 가로 간격이 한계를 넘지 않도록 잘게 나눈다.
- * 거의 수직이면 좌우로 흔들어 지그재그로 만든다 — 그래야 착지할 자리가 생기고,
- * 올려다봤을 때 길이 보인다.
+ * 좌우좌우로 흔들어 올리면 같은 자리에서 방향만 바꿔 가며 오르게 된다. 오르기도
+ * 답답하고, 지형이 아니라 사다리를 세워 둔 것으로 보인다.
+ *
+ * 대신 **한 방향으로 쭉 가면서 오르고, 끝에서 꺾어 되돌아오면서 더 오른다.**
+ * 다 오르면 목표 x 까지 같은 높이로 걸어가는 다리를 놓아 자리를 맞춘다.
+ * 산길의 갈지자 등산로와 같은 모양이다.
+ */
+function switchback(a, b, out, rand) {
+  const ax = a.x + a.w / 2;
+  const bx = b.x + b.w / 2;
+  const dy = b.y - a.y;
+
+  const steps = Math.max(2, Math.ceil(Math.abs(dy) / (REACH.rise - 8)));
+  const rise = dy / steps;
+  // 한 다리(leg)의 길이. 길수록 "쭉 가서 올라간다"가 된다
+  const perLeg = 3 + Math.floor(rand() * 2);
+  // 목표 쪽으로 먼저 뻗는 편이 되돌아오는 길이 짧다
+  let dir = Math.abs(bx - ax) > STAIR_X ? Math.sign(bx - ax) : rand() < 0.5 ? -1 : 1;
+
+  let x = ax;
+  for (let i = 1; i <= steps; i += 1) {
+    x += dir * STAIR_X;
+    out.ledges.push({
+      x: round(x - PAD_W.link / 2),
+      y: round(a.y + rise * i),
+      w: PAD_W.link,
+    });
+    if (i % perLeg === 0) dir = -dir; // 끝에서 꺾어 되돌아온다
+  }
+
+  // 다 올라온 자리에서 목표 x 까지 같은 높이로 이어 준다
+  const runSteps = Math.ceil(Math.abs(bx - x) / STAIR_X);
+  for (let k = 1; k < runSteps; k += 1) {
+    out.ledges.push({
+      x: round(x + ((bx - x) * k) / runSteps - PAD_W.link / 2),
+      y: round(b.y),
+      w: PAD_W.link,
+    });
+  }
+}
+
+/**
+ * 두 발판 사이에 길을 놓는다.
+ *
+ * 가로로 벌어져 있으면 균등하게 나눠 딛고 갈 자리를 만들고, 거의 제자리에서 올라가야
+ * 하면 계단식으로 돌려 놓는다 (switchback 주석 참고).
  */
 function ladder(a, b, out, rand) {
   const ax = a.x + a.w / 2;
@@ -140,20 +190,22 @@ function ladder(a, b, out, rand) {
   const dx = bx - ax;
   const dy = b.y - a.y;
 
+  if (rand && Math.abs(dx) < STEEP_X && Math.abs(dy) > STEEP_Y) {
+    switchback(a, b, out, rand);
+    return;
+  }
+
   const steps = Math.max(
     Math.ceil(Math.abs(dx) / (REACH.hop - 30)),
     Math.ceil(Math.abs(dy) / (REACH.rise - 8)),
     1
   );
-  const vertical = Math.abs(dx) < 140;
-  const side = rand && rand() < 0.5 ? -1 : 1;
 
   for (let i = 1; i < steps; i += 1) {
     const t = i / steps;
-    const zig = vertical ? side * (i % 2 ? 82 : -82) : 0;
     const jitter = rand ? (rand() - 0.5) * 40 : 0;
     out.ledges.push({
-      x: round(ax + dx * t + zig + jitter - PAD_W.link / 2),
+      x: round(ax + dx * t + jitter - PAD_W.link / 2),
       y: round(a.y + dy * t),
       w: PAD_W.link,
     });
@@ -398,6 +450,96 @@ function thicken(out) {
   });
 }
 
+/* ------------------------------------------------------------------ 소품 */
+
+/**
+ * 지형 위에 놓을 소품 목록.
+ *
+ * 칸 번호는 네 스테이지가 같은 자리에 같은 역할을 둔다 (AssetManifest.PROP).
+ * 큰 것은 드물게, 작은 것은 자주 나오도록 무게를 준다.
+ */
+const PROP_KIT = [
+  { frame: PROP.A, height: 210, weight: 3 },
+  { frame: PROP.B, height: 230, weight: 2 },
+  { frame: PROP.C, height: 120, weight: 3 },
+  { frame: PROP.D, height: 80, weight: 4 },
+  { frame: PROP.E, height: 90, weight: 4 },
+  { frame: PROP.F, height: 95, weight: 4 },
+  { frame: PROP.G, height: 100, weight: 3 },
+  { frame: PROP.H, height: 190, weight: 2 },
+  { frame: PROP.I, height: 110, weight: 3 },
+  { frame: PROP.J, height: 110, weight: 3 },
+  { frame: PROP.TREE, height: 250, weight: 1 },
+];
+
+const KIT_TOTAL = PROP_KIT.reduce((n, p) => n + p.weight, 0);
+
+/** 무게를 반영해 소품 하나를 뽑는다 */
+function pickProp(rand) {
+  let t = rand() * KIT_TOTAL;
+  for (let i = 0; i < PROP_KIT.length; i += 1) {
+    t -= PROP_KIT[i].weight;
+    if (t <= 0) return PROP_KIT[i];
+  }
+  return PROP_KIT[PROP_KIT.length - 1];
+}
+
+/**
+ * 지형 위에 소품을 세우고 하늘에 나는 것을 띄운다.
+ *
+ * 지형만 깔면 회색 판자밖에 없어서 어디가 어딘지 읽히지 않는다. 그런데 아무 데나
+ * 놓으면 길을 막으므로, **딛고 설 만큼 넓은 자리**(바닥과 두껍게 깔린 땅)에만 놓는다.
+ * 얇은 판자 위에는 놓지 않는다 — 거기는 지나가는 길이다.
+ */
+function decorate(out, rand, seed, area) {
+  const props = [];
+  if (!seed.props) return props;
+
+  const spots = [
+    ...out.ground.map((g) => ({ x: g.x, y: g.y, w: g.w, floor: true })),
+    ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 260),
+  ];
+
+  spots.forEach((spot) => {
+    const count = clamp(round(spot.w / 420), spot.floor ? 1 : 0, 6);
+    for (let i = 0; i < count; i += 1) {
+      const kit = pickProp(rand);
+      // 칸을 나눠 그 안에서 흔든다. 가운데가 비어야 지나다닐 길이 남는다
+      const t = (i + 0.2 + rand() * 0.6) / count;
+      props.push({
+        x: round(spot.x + spot.w * t),
+        y: round(spot.y),
+        atlas: seed.props,
+        frame: kit.frame,
+        height: kit.height,
+        depth: 6 + (rand() < 0.5 ? 0 : 1),
+      });
+    }
+  });
+
+  // 하늘을 나는 것 — 지형과 상관없이 위쪽에 띄운다.
+  // drift 가 있으면 placeProp 이 지면에 앉히지 않고 그대로 둔다
+  if (seed.actors) {
+    const span = area.x1 - area.x0;
+    const flyers = clamp(round(span / 2200), 1, 6);
+    for (let i = 0; i < flyers; i += 1) {
+      props.push({
+        x: round(area.x0 + (span * (i + 0.5)) / flyers),
+        y: round(area.top - 80 - rand() * 200),
+        atlas: seed.actors,
+        frame: ACTOR.FLYER,
+        height: 44,
+        depth: 7,
+        drift: round(180 + rand() * 220),
+        driftDuration: round(7000 + rand() * 4000),
+        bob: 14,
+      });
+    }
+  }
+
+  return props;
+}
+
 /* ------------------------------------------------------------------ 만들기 */
 
 /** 점 하나를 발판 하나로 바꾼다 */
@@ -454,7 +596,7 @@ export function build(seed) {
   const rand = rng(seed.seedNumber ?? 1);
   const groundH = seed.groundH ?? 90;
   const richness = seed.richness ?? 1; // 살을 얼마나 붙일지 (0 = 점만 잇는다)
-  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [] };
+  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [] };
 
   const start = seed.start;
   const goal = seed.goal;
@@ -536,6 +678,9 @@ export function build(seed) {
   // 6. 몇 개가 모였는지에 따라 두께를 정하고, 이어진 것은 하나로 합친다
   thicken(out);
 
+  // 6-1. 지형이 확정된 뒤에 소품을 세운다. 두께를 알아야 넓은 자리를 고를 수 있다
+  out.props = decorate(out, rand, seed, { x0: minX, x1: maxX, top: topY, base: baseY });
+
   // 7. 길잡이 냄새
   scentPath(
     out,
@@ -559,6 +704,7 @@ export function build(seed) {
       높이차: Math.max(...tops) - Math.min(...tops),
       세이브: out.saves.length,
       기억: out.keepsakes.length,
+      소품: out.props.length,
       이어짐: connected && groups.length === 1 ? '전부 오갈 수 있다' : `덩어리 ${groups.length}개로 갈라짐`,
       갈라진덩어리: groups.length,
     },

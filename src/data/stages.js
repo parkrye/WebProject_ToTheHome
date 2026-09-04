@@ -66,10 +66,37 @@ function normalize(L) {
     scent: move(L.scent),
     keepsakes: move(L.keepsakes),
     saves: move(L.saves),
+    props: move(L.props),
     start: L.start ? { ...L.start, x: L.start.x + dx, y: L.start.y + dy } : L.start,
     goal: L.goal ? { ...L.goal, x: L.goal.x + dx, y: L.goal.y + dy } : L.goal,
     width: (L.width ?? 0) + dx,
   };
+}
+
+/**
+ * 맵 양끝을 지면으로 막는다.
+ *
+ * 생성기는 찍은 점 범위보다 조금 넓게 바닥을 깔지만, 월드 폭은 그보다 더 넓게 잡힌다.
+ * 그 차이만큼 양 끝에 바닥이 없어서 **끝까지 걸어가면 그대로 떨어진다.**
+ * 가장 바깥 바닥 조각을 경계까지 늘려 막는다 — 구멍을 새로 파지 않으니 안전하다.
+ */
+function sealEdges(ground, width) {
+  if (!ground.length) return ground;
+  const out = ground.map((g) => ({ ...g }));
+
+  let left = out[0];
+  let right = out[0];
+  out.forEach((g) => {
+    if (g.x < left.x) left = g;
+    if (g.x + g.w > right.x + right.w) right = g;
+  });
+
+  if (left.x > 0) {
+    left.w += left.x;
+    left.x = 0;
+  }
+  if (right.x + right.w < width) right.w = width - right.x;
+  return out;
 }
 
 /** 손으로 짠 스테이지 위에 관리 툴 배치를 덮는다 */
@@ -90,13 +117,14 @@ function applyLayout(base, saved) {
   const all = [...L.ground, ...(L.ledges || [])];
   const lowest = Math.max(...L.ground.map((g) => g.y + (g.h ?? 90)));
   const rightmost = Math.max(...all.map((p) => p.x + p.w));
+  const width = Math.max(L.width ?? 0, rightmost + 200);
 
   return {
     ...base,
-    width: Math.max(L.width ?? 0, rightmost + 200),
+    width,
     height: Math.max(base.height, lowest + 60),
     killY: lowest + 90,
-    ground: L.ground,
+    ground: sealEdges(L.ground, width),
     ledges: L.ledges || [],
     // 지형이 바뀌었으므로 지형에 매달려 있던 것들은 버린다.
     // 관리 툴로 만든 지도는 지형과 냄새와 기억으로만 이루어진다
@@ -106,7 +134,8 @@ function applyLayout(base, saved) {
     signs: [],
     scent: L.scent || [],
     keepsakes: L.keepsakes || [],
-    props: reanchor(base.props, L.ground),
+    // 생성기가 소품까지 만들어 주면 그것을 쓴다. 없으면 손으로 놓은 것을 새 지면에 앉힌다
+    props: L.props?.length ? L.props : reanchor(base.props, L.ground),
     // 발판 **윗면** 좌표다. 거기에 그대로 놓으면 몸이 지면에 박혀 못 움직인다
     start: L.start ? { x: L.start.x, y: L.start.y - 70 } : base.start,
     goal: { ...base.goal, ...(L.goal || {}) },
