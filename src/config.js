@@ -26,7 +26,7 @@ export const DOG = {
   bodyHeight: 40,
   // 발이 지면 그림 속으로 조금 들어가야 땅에 붙은 것으로 읽힌다.
   // 타일 윗면에 정확히 올려 놓으면 오히려 붕 떠 보인다 (화면 px)
-  footPadding: 9,
+  footPadding: 16,
   displaySize: 96,
 };
 

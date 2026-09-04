@@ -6,7 +6,7 @@
  */
 
 import Phaser from 'phaser';
-import { sizeTo, sizeToActor, GROUND_SINK } from '../systems/Layout.js';
+import { sizeTo, sizeToActor, GROUND_SINK, PROP_DEPTH } from '../systems/Layout.js';
 import { ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
 export class ScentTrail {
@@ -130,7 +130,13 @@ export function placeProp(scene, def) {
   }
 
   prop.setOrigin(def.originX ?? 0.5, def.originY ?? 1);
-  prop.setDepth(def.depth ?? 8);
+
+  // 지면에 서는 소품은 타일보다 위에 그린다. 데이터에 적힌 낮은 depth 는 소품끼리의
+  // 앞뒤 순서를 정하려던 것이므로, 그 순서는 지킨 채 타일 위로 올린다.
+  // 떠 있는 것(새·구름)은 적힌 그대로 둔다 — 그건 정말 뒤에 있어야 한다
+  const grounded = (def.originY ?? 1) === 1 && !def.drift && !def.bob;
+  const depth = def.depth ?? PROP_DEPTH;
+  prop.setDepth(grounded && depth < PROP_DEPTH ? PROP_DEPTH + depth / 100 : depth);
 
   // 액터 시트는 칸 안에 여백이 있으므로 비율을 쳐서 환산한다
   const theme = def.atlas && def.atlas.startsWith('actors_') ? def.atlas.replace('actors_', '') : null;
@@ -143,7 +149,7 @@ export function placeProp(scene, def) {
   if (def.scrollFactor != null) prop.setScrollFactor(def.scrollFactor);
 
   // 지면에 서는 것은 살짝 파묻는다. 타일 윗면에 딱 올리면 붕 떠 보인다
-  if ((def.originY ?? 1) === 1 && !def.bob && !def.drift) prop.y += def.sink ?? GROUND_SINK;
+  if (grounded) prop.y += def.sink ?? GROUND_SINK;
 
   if (def.bob) {
     scene.tweens.add({

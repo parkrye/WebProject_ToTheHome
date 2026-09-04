@@ -128,7 +128,7 @@ export default {
     { x: 1330, y: GY, atlas: 'props_city', frame: PROP.F, height: 95, depth: 7 },
     { x: 2260, y: GY, atlas: 'props_city', frame: PROP.A, height: 210, depth: 7 },
     { x: 2350, y: GY, atlas: 'props_city', frame: PROP.D, height: 80, depth: 7 },
-    { x: 3020, y: GY, atlas: 'props_city', frame: PROP.TREE, height: 250, depth: 6 },
+    { x: 3020, y: GY, atlas: 'props_city', frame: PROP.TREE, height: 250, depth: 6, sink: 30 },
     { x: 3120, y: GY, atlas: 'props_city', frame: PROP.J, height: 110, depth: 7 },
     { x: 3980, y: GY, atlas: 'props_city', frame: PROP.G, height: 100, depth: 7 },
     { x: 4460, y: GY, atlas: 'props_city', frame: PROP.B, height: 230, depth: 7 },

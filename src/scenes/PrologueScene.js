@@ -17,7 +17,16 @@ import { isReal } from '../systems/AssetLoader.js';
 
 // 배경 그림에 이미 들판이 그려져 있으므로 지면을 따로 깔지 않는다.
 // 이 값은 인물이 풀 사이에 서 보이는 높이다.
-const GROUND_Y = 478;
+const GROUND_Y = 496;
+
+/**
+ * 강아지만 조금 띄운다.
+ *
+ * 앞쪽 풀(`bg_field_near`)이 인물보다 **앞에** 그려지는데, 강아지는 아이보다 훨씬 작아서
+ * 같은 지면선에 두면 머리까지 풀에 잠겨 아예 안 보인다. 둘 다 풀 사이를 달리는 그림이라
+ * 이 정도 차이는 높이 차로 읽히지 않는다.
+ */
+const PUPPY_LIFT = 26;
 
 /**
  * 밤 컷(집 안)의 기준 치수. 화면은 960 x 540 이다.
@@ -26,7 +35,7 @@ const GROUND_Y = 478;
  * 사람도 강아지도 이 자로 재야 방 안에 같이 있는 것으로 보인다.
  * 예전 값(어른 210px)은 1m 도 안 돼서 인형처럼 보였다.
  */
-const FLOOR_Y = 487;
+const FLOOR_Y = 505;
 const ADULT_H = 376; // 1.75m
 /**
  * 배경 그림 속 방석을 덮는 값.
@@ -130,7 +139,7 @@ export default class PrologueScene extends Phaser.Scene {
     owner.play('owner_child_run');
     owner.setTint(cut.tint);
 
-    const dog = this.add.sprite(dogX, GROUND_Y + 10, 'dog_puppy_run').setOrigin(0.5, 1);
+    const dog = this.add.sprite(dogX, GROUND_Y + 10 - PUPPY_LIFT, 'dog_puppy_run').setOrigin(0.5, 1);
     sizeTo(dog, { height: 84 });
     dog.play('dog_puppy_run');
     dog.setTint(cut.tint);
@@ -150,10 +159,10 @@ export default class PrologueScene extends Phaser.Scene {
     this.scrollers.push({ tile: near, speed: 150 });
 
     // 달리는 상하 진동
-    [owner, dog].forEach((sprite, i) => {
+    [[owner, 0], [dog, PUPPY_LIFT]].forEach(([sprite, lift], i) => {
       this.tweens.add({
         targets: sprite,
-        y: GROUND_Y + 2,
+        y: GROUND_Y + 2 - lift,
         duration: 260 + i * 30,
         yoyo: true,
         repeat: -1,

@@ -7,6 +7,7 @@
 
 import Phaser from 'phaser';
 import { TILE } from '../systems/AssetManifest.js';
+import { TILE_DEPTH } from '../systems/Layout.js';
 
 /** 타일 한 칸이 화면에서 차지할 크기 (아틀라스 프레임은 128px) */
 const TILE_SCALE = 0.5;
@@ -21,7 +22,7 @@ const TOP_FRAMES = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
 export function createGround(scene, group, def, tileKey) {
   const key = def.tile || tileKey;
   const frame = def.frame ?? TILE.TOP;
-  const depth = def.depth ?? 10;
+  const depth = def.depth ?? TILE_DEPTH;
 
   // 윗면 칸을 사각형 높이만큼 반복하면 **잔디가 중간에 한 번 더 나온다.**
   // 두 칸 이상 두꺼운 지면은 윗면을 맨 위 한 줄만 깔고 그 아래는 속을 채운다.
