@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, MIX } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, MIX } from '../config.js';
 import { getStage, LAST_STAGE } from '../data/stages.js';
 import { Dog } from '../objects/Dog.js';
 import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../objects/Platforms.js';
@@ -65,20 +65,23 @@ export default class StageScene extends Phaser.Scene {
     const { layers } = this.def;
     this.bgLayers = [];
 
-    const add = (key, factor, depth) => {
+    const add = (key, factor, depth, drop = 0) => {
       if (!key || !this.textures.exists(key)) return;
       const tile = this.add
         .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, key)
         .setOrigin(0)
         .setScrollFactor(0)
         .setDepth(depth);
-      this.bgLayers.push({ tile, factor });
+      this.bgLayers.push({ tile, factor, drop });
     };
 
     add(layers.sky, PARALLAX.sky, 0);
     add(layers.far, PARALLAX.far, 1);
-    add(layers.mid, PARALLAX.mid, 2);
-    add(layers.near, PARALLAX.near, 3);
+    add(layers.mid, PARALLAX.mid, 2, PARALLAX_DROP.mid);
+    add(layers.near, PARALLAX.near, 3, PARALLAX_DROP.near);
+
+    // 카메라가 가장 아래에 있을 때의 스크롤 값. 여기서 얼마나 올라왔는지로 레이어를 내린다
+    this.floorScrollY = Math.max(0, (this.def.height ?? GAME_HEIGHT) - GAME_HEIGHT);
 
     this.vignette = this.add
       .image(0, 0, 'ui_vignette')
@@ -394,6 +397,7 @@ export default class StageScene extends Phaser.Scene {
 
     if (this.dog) this.dog.update(time, delta, input);
 
+    this.updateCamera();
     this.updateParallax();
     this.hazards.forEach((hazard) => hazard.tick(time, delta));
     this.updateSavePoint(time);
@@ -411,9 +415,36 @@ export default class StageScene extends Phaser.Scene {
     // 배경 그림은 가로로만 이어지도록 그려져 있어서, 세로로 밀면 위아래로 **반복되어**
     // 같은 건물이 층층이 쌓여 보인다. 위로 한참 올라가는 지도에서 특히 티가 난다.
     // 먼 배경은 원래 잘 안 움직이는 것이므로 가만히 두는 편이 자연스럽다.
-    this.bgLayers.forEach(({ tile, factor }) => {
+    // 다만 **높이 올라가면 가까운 레이어는 발밑으로 내려간다.** 반복해 그리는 게 아니라
+    // 통째로 화면 아래로 밀어내는 것이므로 같은 건물이 층층이 쌓이지 않는다.
+    const rise = Math.max(0, this.floorScrollY - cam.scrollY);
+
+    this.bgLayers.forEach(({ tile, factor, drop }) => {
       tile.tilePositionX = cam.scrollX * factor;
+      if (drop) tile.y = Math.min(rise * drop, GAME_HEIGHT);
     });
+  }
+
+  /**
+   * 떨어지는 동안 카메라를 조인다.
+   *
+   * 낙하 속도가 빠를수록 추적을 빠르게, 세로 여유를 좁게 만든다. 평소 값 그대로 두면
+   * 강아지가 화면 아래 끝에 걸린 채 덜컥거린다 (config.CAMERA 주석 참고).
+   */
+  updateCamera() {
+    if (!this.dog) return;
+    const cam = this.cameras.main;
+    const t = Phaser.Math.Clamp(
+      (this.dog.body.velocity.y - CAMERA.fallFrom) / (CAMERA.fallTo - CAMERA.fallFrom),
+      0,
+      1
+    );
+
+    cam.setLerp(CAMERA.lerp, Phaser.Math.Linear(CAMERA.lerp, CAMERA.fallLerp, t));
+    cam.setDeadzone(
+      CAMERA.deadzoneWidth,
+      Phaser.Math.Linear(CAMERA.deadzoneHeight, CAMERA.fallDeadzoneHeight, t)
+    );
   }
 
   updateSavePoint(time) {
