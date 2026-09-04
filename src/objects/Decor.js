@@ -2,10 +2,11 @@
  * 길 안내와 배치용 장식.
  *
  * ScentTrail 은 이 게임에서 언어를 대신해 길을 알려주는 유일한 장치다.
- * 평소에는 옅게 떠 있고, 냄새 맡기(↓)를 하면 몇 초간 밝아진다.
+ * 평소에는 아예 보이지 않고, 냄새 맡기(E)를 유지하는 동안에만 반짝인다.
  */
 
 import Phaser from 'phaser';
+import { SCENT } from '../config.js';
 import { sizeTo, sizeToActor, GROUND_SINK, PROP_DEPTH } from '../systems/Layout.js';
 import { ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
@@ -16,15 +17,18 @@ export class ScentTrail {
    */
   constructor(scene, points) {
     this.scene = scene;
+    this.active = false;
     this.motes = points.map((p, i) => {
       const mote = scene.add
         .image(p.x, p.y, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(14)
-        .setAlpha(0.22);
+        .setVisible(false);
       sizeTo(mote, { height: (p.scale ?? 1) * 40 });
+      mote.baseScale = mote.scaleX;
 
-      // 그림은 한 장이고, 떠오르는 것과 깜박이는 것은 코드가 준다
+      // 그림은 한 장이고, 떠오르는 것은 코드가 준다.
+      // 꺼져 있는 동안에도 계속 돌지만 그려지지 않으므로 켜는 순간 어색하지 않다
       scene.tweens.add({
         targets: mote,
         y: p.y - 10,
@@ -33,37 +37,40 @@ export class ScentTrail {
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
-      scene.tweens.add({
+      return mote;
+    });
+  }
+
+  /**
+   * 켜고 끄기.
+   *
+   * 켜져 있는 동안만 반짝인다. 냄새 맡기를 유지하는 동안에만 켜지므로, 손을 떼면
+   * 길 안내가 곧바로 사라진다 (config.SCENT 주석 참고).
+   */
+  setActive(on) {
+    if (this.active === on) return;
+    this.active = on;
+
+    this.motes.forEach((mote, i) => {
+      mote.twinkle?.remove();
+      mote.twinkle = null;
+
+      if (!on) {
+        mote.setVisible(false).setScale(mote.baseScale);
+        return;
+      }
+
+      mote.setVisible(true).setAlpha(SCENT.lowAlpha);
+      mote.twinkle = this.scene.tweens.add({
         targets: mote,
-        alpha: 0.34,
-        duration: 900 + (i % 7) * 130,
+        alpha: SCENT.highAlpha,
+        scaleX: mote.baseScale * SCENT.grow,
+        scaleY: mote.baseScale * SCENT.grow,
+        duration: SCENT.twinkle,
+        delay: i * 26,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
-      });
-      return mote;
-    });
-    this.boostUntil = 0;
-  }
-
-  /** 냄새 맡기 — 3초간 밝아진다 */
-  boost(time) {
-    this.boostUntil = time + 3000;
-    this.motes.forEach((mote, i) => {
-      const base = mote.scaleX;
-      this.scene.tweens.add({
-        targets: mote,
-        alpha: 0.95,
-        scaleX: base * 1.3,
-        scaleY: base * 1.3,
-        duration: 220,
-        delay: i * 18,
-        yoyo: true,
-        hold: 2400,
-        onComplete: () => {
-          mote.setAlpha(0.22);
-          mote.setScale(base);
-        },
       });
     });
   }

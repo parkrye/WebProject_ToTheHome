@@ -64,9 +64,12 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
 
     if (onGround) this.lastGroundedAt = time;
 
+    if (!onGround) this.standingOn = null;
+
     if (this.state_ === DogState.NORMAL) {
       this.handleMove(time, delta, input, onGround);
-      this.handleJump(time, input, onGround);
+      // 아래 + 점프는 점프가 아니라 내려가기다. 둘 다 일어나면 안 된다
+      if (!this.handleDrop(input, onGround)) this.handleJump(time, input, onGround);
     } else if (this.state_ !== DogState.CUTSCENE) {
       body.setVelocityX(0);
     }
@@ -104,6 +107,33 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
       body.setAccelerationX(0);
       body.setDragX(onGround ? DOG.drag : DOG.drag * DOG.airDragScale);
     }
+  }
+
+  /**
+   * 아래 + 점프 = 딛고 선 발판을 통과해 내려간다.
+   *
+   * **그 발판의 윗면 충돌만** 잠깐 끈다. 강아지 쪽 충돌을 끄면 맨 아래 지면까지
+   * 뚫고 나가 버린다. 이 방식이면 통짜 지면 위에서는 아무 일도 일어나지 않는다 —
+   * 열어 줄 발판이 없기 때문이다. 즉 "가장 낮은 자리에서는 못 내려간다"가 저절로 된다.
+   *
+   * @returns {boolean} 내려가기가 일어났으면 true (그 프레임의 점프는 건너뛴다)
+   */
+  handleDrop(input, onGround) {
+    if (!onGround || !input.down || !input.jumpPressed) return false;
+
+    const platform = this.standingOn;
+    if (!platform?.oneWay || !platform.body) return false;
+
+    platform.body.checkCollision.up = false;
+    this.jumpBufferedAt = -9999; // 버퍼에 남아 다음 프레임에 점프로 새지 않게
+    this.standingOn = null;
+    this.anims.play('dog_jump', true);
+    this.scene.audio?.play('sfx_jump', { volume: 0.5 });
+
+    this.scene.time.delayedCall(DOG.dropThroughTime, () => {
+      if (platform.body) platform.body.checkCollision.up = true;
+    });
+    return true;
   }
 
   handleJump(time, input, onGround) {

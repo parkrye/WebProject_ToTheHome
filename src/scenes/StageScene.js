@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, MIX } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, SCENT, MIX } from '../config.js';
 import { getStage, LAST_STAGE } from '../data/stages.js';
 import { Dog } from '../objects/Dog.js';
 import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../objects/Platforms.js';
@@ -187,12 +187,19 @@ export default class StageScene extends Phaser.Scene {
   }
 
   buildCollisions() {
+    // 딛고 선 발판을 기억해 둔다. 아래 + 점프로 통과할 때 그 발판만 열기 위해서다
+    const stand = (dog, platform) => {
+      if (dog.body.touching.down) dog.standingOn = platform;
+    };
+
     this.physics.add.collider(this.dog, this.groundGroup, (dog, platform) => {
       if (platform.surface) dog.setSurface(platform.surface);
+      stand(dog, platform);
     });
 
     this.physics.add.collider(this.dog, this.movingGroup, (dog, platform) => {
       if (platform.surface) dog.setSurface(platform.surface);
+      stand(dog, platform);
       // 발판을 따라 움직이도록 수평 이동분을 더해준다
       if (platform.body.velocity.x) dog.x += platform.body.velocity.x * (this.game.loop.delta / 1000);
     });
@@ -397,13 +404,13 @@ export default class StageScene extends Phaser.Scene {
 
     if (this.dog) this.dog.update(time, delta, input);
 
-    this.updateCamera();
+    this.updateCamera(delta);
     this.updateParallax();
     this.hazards.forEach((hazard) => hazard.tick(time, delta));
     this.updateSavePoint(time);
     this.updateSigns();
     this.updateZones();
-    this.updateSniff(time);
+    this.updateSniff(time, delta);
     this.checkFall();
   }
 
@@ -431,11 +438,13 @@ export default class StageScene extends Phaser.Scene {
    * 낙하 속도가 빠를수록 추적을 빠르게, 세로 여유를 좁게 만든다. 평소 값 그대로 두면
    * 강아지가 화면 아래 끝에 걸린 채 덜컥거린다 (config.CAMERA 주석 참고).
    */
-  updateCamera() {
+  updateCamera(delta) {
     if (!this.dog) return;
     const cam = this.cameras.main;
+    const body = this.dog.body;
+
     const t = Phaser.Math.Clamp(
-      (this.dog.body.velocity.y - CAMERA.fallFrom) / (CAMERA.fallTo - CAMERA.fallFrom),
+      (body.velocity.y - CAMERA.fallFrom) / (CAMERA.fallTo - CAMERA.fallFrom),
       0,
       1
     );
@@ -445,6 +454,17 @@ export default class StageScene extends Phaser.Scene {
       CAMERA.deadzoneWidth,
       Phaser.Math.Linear(CAMERA.deadzoneHeight, CAMERA.fallDeadzoneHeight, t)
     );
+
+    // 아래쪽 보기 — 서서 ↓ 를 쥐고 있으면 카메라가 스르륵 내려가 발밑을 비춘다.
+    // 떨어지는 중에는 낙하 추적이 우선이므로 원래 자리로 돌아온다
+    const onGround = body.blocked.down || body.touching.down;
+    const looking =
+      this.dog.isControllable && onGround && this.input_.down && Math.abs(body.velocity.x) < 30;
+    this.lookDownHold = looking ? (this.lookDownHold ?? 0) + delta : 0;
+
+    const target =
+      this.lookDownHold >= CAMERA.lookDownHold ? CAMERA.lookDownOffset : CAMERA.followOffsetY;
+    cam.followOffset.y = Phaser.Math.Linear(cam.followOffset.y, target, CAMERA.lookDownLerp);
   }
 
   updateSavePoint(time) {
@@ -482,14 +502,27 @@ export default class StageScene extends Phaser.Scene {
     });
   }
 
-  updateSniff(time) {
-    if (!this.dog || !this.dog.isControllable) return;
-    const sniffing = this.input_.down && Math.abs(this.dog.body.velocity.x) < 30;
+  /**
+   * 냄새 맡기 — E 를 쥐고 있으면 한다.
+   *
+   * 세이브 포인트 앞에서는 E 가 상호작용이므로 냄새를 맡지 않는다.
+   * 냄새(길찾기)는 1초 이상 유지해야 켜지고, **쥐고 있는 동안만** 반짝인다.
+   */
+  updateSniff(time, delta) {
+    if (!this.dog) return;
+
+    const canSniff =
+      this.dog.isControllable && !this.savePoint && Math.abs(this.dog.body.velocity.x) < 30;
+    const sniffing = canSniff && this.input_.interactHeld;
+
+    this.sniffHold = sniffing ? (this.sniffHold ?? 0) + delta : 0;
     this.dog.setSniffing(sniffing);
 
-    if (sniffing && time > (this.nextSniff ?? 0)) {
-      this.nextSniff = time + 3200;
-      this.scentTrail.boost(time);
+    const show = this.sniffHold >= SCENT.holdToShow;
+    this.scentTrail.setActive(show);
+
+    if (show && time > (this.nextSniff ?? 0)) {
+      this.nextSniff = time + 1600;
       this.audio.play('sfx_sniff', { volume: 0.4 });
     }
   }

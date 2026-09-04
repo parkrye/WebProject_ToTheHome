@@ -50,6 +50,8 @@ export function createGround(scene, group, def, tileKey) {
 /** 위에서만 밟히는 얇은 발판 */
 export function createLedge(scene, group, def, tileKey) {
   const ledge = createGround(scene, group, { frame: TILE.LEDGE, ...def, h: def.h ?? 18 }, tileKey);
+  // 위에서만 밟히므로 아래 + 점프로 통과해 내려갈 수 있다 (Dog.handleDrop)
+  ledge.oneWay = true;
   ledge.body.checkCollision.down = false;
   ledge.body.checkCollision.left = false;
   ledge.body.checkCollision.right = false;
