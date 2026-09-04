@@ -95,6 +95,20 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
 
     if (onGround) this.lastGroundedAt = time;
 
+    // 떨어진 높이 = **가장 높았던 자리에서 지금까지의 낙차.**
+    //
+    // 속도로 "지금 내려가는 중인가"를 보면 순간이동처럼 속도 없이 자리가 바뀌는
+    // 경우를 놓친다. 지금이 기준점보다 위이면 거기가 곧 새 기준점이다.
+    if (this.fallFromY == null || this.y < this.fallFromY) this.fallFromY = this.y;
+
+    // 재는 것이 리셋보다 **먼저**여야 한다. 착지하는 프레임에 기준점부터 옮기면
+    // 그 프레임의 낙하 높이가 0 이 되어 버린다
+    this.fallHeight = this.y - this.fallFromY;
+    this.justLanded = onGround && !this.wasOnGround;
+    if (this.justLanded) this.landFallHeight = this.fallHeight;
+
+    if (onGround) this.fallFromY = this.y;
+
     if (!onGround) this.standingOn = null;
 
     if (this.state_ === DogState.NORMAL) {

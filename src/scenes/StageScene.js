@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, SCENT, MIX } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, SCENT, DOG, MIX } from '../config.js';
 import { getStage, LAST_STAGE } from '../data/stages.js';
 import { Dog } from '../objects/Dog.js';
 import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../objects/Platforms.js';
 import { Keepsake, KeepsakeRow } from '../objects/Keepsake.js';
 import { HAZARD_TYPES } from '../objects/Hazards.js';
 import { SavePoint } from '../objects/SavePoint.js';
-import { ScentTrail, SignBoard, placeProp, StageGoal } from '../objects/Decor.js';
+import { ScentTrail, SignBoard, placeProp, StageGoal, Marker } from '../objects/Decor.js';
+import { linked } from '../systems/StageBuilder.js';
 
 /**
  * 스테이지 공용 씬. 레벨은 전부 src/data/stage*.js 의 데이터로 만들어진다.
@@ -147,7 +148,8 @@ export default class StageScene extends Phaser.Scene {
 
     this.signs = (def.signs || []).map((s) => new SignBoard(this, s));
 
-    this.scentTrail = new ScentTrail(this, def.scent || []);
+    this.scentTrail = new ScentTrail(this);
+    this.buildPathGraph();
 
     // 세이브 포인트는 여러 개일 수 있다. 가까운 것 하나만 활성으로 잡는다
     const points = def.savePoints?.length ? def.savePoints : def.savePoint ? [def.savePoint] : [];
@@ -156,6 +158,11 @@ export default class StageScene extends Phaser.Scene {
     this.saved = points.some((p) => this.save.data.checkpoint === p.id);
 
     this.goal = new StageGoal(this, def.goal);
+
+    // 어디서 시작해 어디로 가야 하는지 보이게 한다 (플레이 리뷰 15)
+    const spawn = this.resolveSpawn();
+    this.startMarker = new Marker(this, spawn.x, spawn.y + 70, 'start');
+    this.goalMarker = new Marker(this, def.goal.x, def.goal.y + (def.goal.h ?? 300) / 2, 'goal');
 
     // 기억 조각 — 이미 주운 것은 다시 놓지 않는다
     const spots = def.keepsakes || [];
@@ -169,6 +176,90 @@ export default class StageScene extends Phaser.Scene {
     // 스테이지 4 의 회상 실루엣
     this.memories = (def.memories || []).map((m) => ({ ...m, fired: false }));
     this.events_ = (def.events || []).map((e) => ({ ...e, fired: false }));
+  }
+
+  /**
+   * 길찾기용 발판 그래프.
+   *
+   * 냄새는 미리 그려 둔 한 줄기를 켜는 게 아니라, **맡을 때마다 지금 자리에서**
+   * 도착까지의 최단 경로를 찾아 준다 (플레이 리뷰 20). 그러려면 발판 사이가 어떻게
+   * 이어져 있는지를 알아야 한다.
+   *
+   * 이어짐의 규칙은 생성기와 **같은 함수**(StageBuilder.linked)를 쓴다. 생성기가
+   * "오갈 수 있다"고 보고 이은 길이 곧 여기서 찾는 길이어야 하기 때문이다.
+   */
+  buildPathGraph() {
+    const def = this.def;
+    this.pathPads = [...(def.ground || []), ...(def.ledges || [])].map((p) => ({
+      x: p.x,
+      y: p.y,
+      w: p.w,
+      cx: p.x + p.w / 2,
+    }));
+
+    // 인접 목록을 한 번만 만들어 둔다. 매번 O(n²) 로 재면 맡을 때마다 버벅인다
+    this.pathAdj = this.pathPads.map(() => []);
+    for (let i = 0; i < this.pathPads.length; i += 1) {
+      for (let j = i + 1; j < this.pathPads.length; j += 1) {
+        if (!linked(this.pathPads[i], this.pathPads[j])) continue;
+        this.pathAdj[i].push(j);
+        this.pathAdj[j].push(i);
+      }
+    }
+
+    this.goalPad = this.nearestPad(def.goal.x, def.goal.y + (def.goal.h ?? 300) / 2);
+  }
+
+  /** 그 자리에 가장 가까운 발판 번호. 없으면 -1 */
+  nearestPad(x, y) {
+    let best = -1;
+    let bestD = Infinity;
+    this.pathPads.forEach((p, i) => {
+      // 발판 폭 안이면 가로 거리는 0 이다 — 위에 서 있는 발판이 먼저 잡힌다
+      const dx = Math.max(0, Math.max(p.x - x, x - (p.x + p.w)));
+      const d = dx * dx + (p.y - y) * (p.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    return best;
+  }
+
+  /**
+   * 지금 자리에서 도착까지의 최단 경로를 낸다.
+   *
+   * @returns {{x:number,y:number}[]} 앞쪽 몇 걸음 (config.SCENT.lookahead)
+   */
+  scentRoute() {
+    if (!this.pathPads?.length || this.goalPad < 0) return [];
+    const from = this.nearestPad(this.dog.x, this.dog.body.bottom);
+    if (from < 0) return [];
+
+    const prev = new Array(this.pathPads.length).fill(-1);
+    const seen = new Array(this.pathPads.length).fill(false);
+    const queue = [from];
+    seen[from] = true;
+
+    for (let head = 0; head < queue.length; head += 1) {
+      const cur = queue[head];
+      if (cur === this.goalPad) break;
+      this.pathAdj[cur].forEach((j) => {
+        if (seen[j]) return;
+        seen[j] = true;
+        prev[j] = cur;
+        queue.push(j);
+      });
+    }
+    if (!seen[this.goalPad]) return [];
+
+    const route = [];
+    for (let at = this.goalPad; at >= 0; at = prev[at]) route.unshift(at);
+
+    // 지금 서 있는 칸은 빼고, 앞쪽 몇 걸음만 보여 준다
+    return route
+      .slice(1, 1 + SCENT.lookahead)
+      .map((i) => ({ x: this.pathPads[i].cx, y: this.pathPads[i].y - 62 }));
   }
 
   /** 지금 저장되어 있는 세이브 포인트의 정의 */
@@ -216,8 +307,6 @@ export default class StageScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.dog, this.hazardGroup, (dog, hazard) => this.onHazard(hazard));
     this.physics.add.overlap(this.dog, this.staticHazardGroup, (dog, hazard) => this.onHazard(hazard));
-
-    this.physics.add.overlap(this.dog, this.goal, () => this.onClear());
 
     this.physics.add.overlap(this.dog, this.keepsakeGroup, (dog, item) => this.onKeepsake(item));
   }
@@ -432,6 +521,7 @@ export default class StageScene extends Phaser.Scene {
     this.updateSavePoint(time);
     this.updateSigns();
     this.updateZones();
+    this.updateGoal();
     this.updateSniff(time, delta);
     this.checkFall();
   }
@@ -533,24 +623,65 @@ export default class StageScene extends Phaser.Scene {
   updateSniff(time, delta) {
     if (!this.dog) return;
 
+    const busy = this.savePoint || this.atGoal; // 그 앞에서는 E 가 상호작용이다
     const canSniff =
-      this.dog.isControllable && !this.savePoint && Math.abs(this.dog.body.velocity.x) < 30;
+      this.dog.isControllable && !busy && Math.abs(this.dog.body.velocity.x) < 30;
     const sniffing = canSniff && this.input_.interactHeld;
 
     this.sniffHold = sniffing ? (this.sniffHold ?? 0) + delta : 0;
     this.dog.setSniffing(sniffing);
 
-    const show = this.sniffHold >= SCENT.holdToShow;
-    this.scentTrail.setActive(show);
-
-    if (show && time > (this.nextSniff ?? 0)) {
-      this.nextSniff = time + 1600;
-      this.audio.play('sfx_sniff', { volume: 0.4 });
+    if (this.sniffHold < SCENT.holdToShow) {
+      this.scentTrail.hide();
+      return;
     }
+
+    // 맡고 있는 동안에도 자리가 바뀌므로 이따금 다시 찾는다
+    if (time > (this.nextSniff ?? 0)) {
+      this.nextSniff = time + 1600;
+      this.scentTrail.showRoute(this.scentRoute());
+      this.audio.play('sfx_sniff', { volume: 0.4 });
+      return;
+    }
+    if (!this.scentTrail.active) this.scentTrail.showRoute(this.scentRoute());
   }
 
+  /**
+   * 도착 지점 — 닿는 것만으로는 넘어가지 않는다.
+   *
+   * 지나가다 끝나 버리면 "도착했다"가 아니라 "끝났다"가 된다. 여기서 상호작용해야
+   * 다음으로 넘어간다 (플레이 리뷰 15).
+   */
+  updateGoal() {
+    if (!this.dog || this.cleared || this.dying) return;
+
+    // 도착 구역에 몸이 걸치면 된다. 구역은 움직이지 않으므로 한 번만 재 둔다
+    if (!this.goalBounds) {
+      this.goalBounds = this.goal.getBounds();
+      Phaser.Geom.Rectangle.Inflate(this.goalBounds, 70, 40);
+    }
+    const near = Phaser.Geom.Rectangle.Overlaps(this.goalBounds, this.dog.getBounds());
+
+    this.atGoal = near && this.dog.isControllable;
+    this.goalMarker?.showPrompt(this.atGoal);
+
+    if (this.atGoal && this.input_.interactPressed) this.onClear();
+  }
+
+  /**
+   * 떨어져서 죽는 두 가지.
+   *
+   *   낙사선 아래로 나갔다        — 지도 밖으로 떨어진 것
+   *   너무 높은 데서 떨어져 닿았다 — 착지하는 순간 판정한다 (플레이 리뷰 17)
+   */
   checkFall() {
     if (!this.dog || this.dying || this.cleared) return;
-    if (this.dog.y > this.def.killY) this.killDog();
+
+    if (this.dog.y > this.def.killY) {
+      this.killDog();
+      return;
+    }
+
+    if (this.dog.justLanded && this.dog.landFallHeight > DOG.killFallHeight) this.killDog();
   }
 }

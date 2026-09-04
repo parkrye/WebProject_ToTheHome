@@ -7,60 +7,53 @@
 
 import Phaser from 'phaser';
 import { SCENT } from '../config.js';
-import { sizeTo, sizeToActor, GROUND_SINK, PROP_DEPTH } from '../systems/Layout.js';
+import { sizeTo, sizeToActor, GROUND_SINK, PROP_DEPTH, UI_SIZE } from '../systems/Layout.js';
 import { ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
 export class ScentTrail {
   /**
+   * 입자를 미리 만들어 두고 돌려 쓴다.
+   *
+   * 길은 맡을 때마다 다시 찾으므로 어디에 몇 개가 필요할지 미리 알 수 없다.
+   * 최대 개수만큼 만들어 두고 경로 길이에 맞춰 꺼내 쓴다.
+   *
    * @param {Phaser.Scene} scene
-   * @param {{x:number,y:number}[]} points
    */
-  constructor(scene, points) {
+  constructor(scene) {
     this.scene = scene;
     this.active = false;
-    this.motes = points.map((p, i) => {
+    this.motes = [];
+
+    for (let i = 0; i < SCENT.maxMotes; i += 1) {
       const mote = scene.add
-        .image(p.x, p.y, 'ui_scent_mote')
+        .image(0, 0, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(14)
         .setVisible(false);
-      sizeTo(mote, { height: (p.scale ?? 1) * 40 });
+      sizeTo(mote, { height: 40 });
       mote.baseScale = mote.scaleX;
-
-      // 그림은 한 장이고, 떠오르는 것은 코드가 준다.
-      // 꺼져 있는 동안에도 계속 돌지만 그려지지 않으므로 켜는 순간 어색하지 않다
-      scene.tweens.add({
-        targets: mote,
-        y: p.y - 10,
-        duration: 1800 + (i % 5) * 220,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-      return mote;
-    });
+      this.motes.push(mote);
+    }
   }
 
   /**
-   * 켜고 끄기.
+   * 이 경로를 따라 냄새를 켠다. 손을 떼면 hide() 로 곧바로 꺼진다.
    *
-   * 켜져 있는 동안만 반짝인다. 냄새 맡기를 유지하는 동안에만 켜지므로, 손을 떼면
-   * 길 안내가 곧바로 사라진다 (config.SCENT 주석 참고).
+   * @param {{x:number,y:number}[]} points 지금 자리에서 도착까지의 최단 경로
    */
-  setActive(on) {
-    if (this.active === on) return;
-    this.active = on;
+  showRoute(points) {
+    this.active = true;
 
     this.motes.forEach((mote, i) => {
-      mote.twinkle?.remove();
-      mote.twinkle = null;
-
-      if (!on) {
-        mote.setVisible(false).setScale(mote.baseScale);
+      const p = points[i];
+      if (!p) {
+        this.stop(mote);
         return;
       }
 
-      mote.setVisible(true).setAlpha(SCENT.lowAlpha);
+      mote.setPosition(p.x, p.y).setVisible(true).setAlpha(SCENT.lowAlpha);
+      if (mote.twinkle) return; // 이미 반짝이는 중이면 자리만 옮긴다
+
       mote.twinkle = this.scene.tweens.add({
         targets: mote,
         alpha: SCENT.highAlpha,
@@ -73,6 +66,18 @@ export class ScentTrail {
         ease: 'Sine.easeInOut',
       });
     });
+  }
+
+  hide() {
+    if (!this.active) return;
+    this.active = false;
+    this.motes.forEach((mote) => this.stop(mote));
+  }
+
+  stop(mote) {
+    mote.twinkle?.remove();
+    mote.twinkle = null;
+    mote.setVisible(false).setScale(mote.baseScale);
   }
 }
 
@@ -183,7 +188,85 @@ export function placeProp(scene, def) {
   return prop;
 }
 
-/** 스테이지 끝 — 여기 닿으면 클리어 */
+/**
+ * 스테이지의 출발 지점과 도착 지점 표시.
+ *
+ * 문자를 쓰지 않으므로 그림과 빛으로만 알린다. 출발은 **바닥에 남은 발자국**,
+ * 도착은 **집 그림과 빛기둥**이다. 어느 쪽이 어디인지 한눈에 읽혀야 한다.
+ */
+export class Marker {
+  /** @param {'start'|'goal'} kind */
+  constructor(scene, x, y, kind) {
+    this.scene = scene;
+    this.x = x;
+    this.y = y;
+
+    const goal = kind === 'goal';
+    const icon = goal ? 'ui_icon_house' : 'ui_icon_paw';
+
+    // 빛기둥 — 멀리서도 보이라고 세로로 길게 깐다
+    this.glow = scene.add
+      .image(x, y + GROUND_SINK, 'ui_save_glow')
+      .setOrigin(0.5, 1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(PROP_DEPTH + 1)
+      .setAlpha(goal ? 0.55 : 0.3);
+    sizeTo(this.glow, { height: goal ? 190 : 110 });
+
+    this.icon = scene.add
+      .image(x, y - (goal ? 96 : 6), icon)
+      .setOrigin(0.5, goal ? 1 : 0.5)
+      .setDepth(PROP_DEPTH + 2)
+      .setAlpha(goal ? 0.95 : 0.55);
+    sizeTo(this.icon, { height: goal ? 96 : 44 });
+
+    scene.tweens.add({
+      targets: this.glow,
+      alpha: goal ? 0.85 : 0.45,
+      duration: goal ? 1400 : 2200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    if (!goal) return;
+
+    // 도착은 상호작용해야 통과다. 가까이 가면 안내가 떠오른다
+    this.prompt = scene.add
+      .image(x, y - 210, 'ui_prompt_interact')
+      .setOrigin(0.5, 1)
+      .setDepth(PROP_DEPTH + 3)
+      .setAlpha(0);
+    sizeTo(this.prompt, { height: UI_SIZE.prompt });
+    scene.tweens.add({
+      targets: this.icon,
+      y: this.icon.y - 10,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  showPrompt(on) {
+    if (!this.prompt || this.promptOn === on) return;
+    this.promptOn = on;
+    this.scene.tweens.add({
+      targets: this.prompt,
+      alpha: on ? 1 : 0,
+      y: this.y - (on ? 220 : 210),
+      duration: 200,
+      ease: 'Sine.easeOut',
+    });
+  }
+}
+
+/**
+ * 스테이지 끝.
+ *
+ * 닿기만 해도 넘어가면 "지나가다 끝났다"가 된다. 여기서 **상호작용해야** 통과다
+ * (플레이 리뷰 15). 그래서 이 구역은 판정만 하고, 넘길지는 StageScene 이 정한다.
+ */
 export class StageGoal extends Phaser.GameObjects.Zone {
   constructor(scene, def) {
     super(scene, def.x, def.y, def.w ?? 80, def.h ?? 300);

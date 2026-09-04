@@ -75,7 +75,7 @@ function rng(seed) {
 /* ------------------------------------------------------------------ 그래프 */
 
 /** 두 발판이 **서로** 오갈 수 있는가 (올라갈 수 있으면 내려오는 것은 저절로 된다) */
-function linked(a, b) {
+export function linked(a, b) {
   const gap = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
   if (gap > REACH.hop) return false;
   return Math.abs(a.y - b.y) <= REACH.rise;
