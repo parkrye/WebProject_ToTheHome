@@ -7,6 +7,7 @@
 
 import Phaser from 'phaser';
 import { DOG } from '../config.js';
+import { SHEET_FILL } from '../systems/AssetManifest.js';
 
 export const DogState = {
   NORMAL: 'normal',
@@ -21,15 +22,8 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // 충돌 박스는 "화면에서 몇 px 인지"로 정한다.
-    // 스프라이트 프레임 크기는 에셋마다 다를 수 있으므로 실제 프레임에서 역산한다.
-    this.setDisplaySize(DOG.displaySize, DOG.displaySize);
-    const frameSize = this.frame.realWidth || this.frame.width || DOG.displaySize;
-    const toFrame = frameSize / DOG.displaySize; // 화면 px → 프레임 px
-    const bw = DOG.bodyWidth * toFrame;
-    const bh = DOG.bodyHeight * toFrame;
-    this.body.setSize(bw, bh);
-    this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame);
+    this.sheetDisplay = DOG.displaySize;
+    this.applySheetSize(this.texture.key);
     this.body.setMaxVelocity(DOG.runSpeed * 1.6, 1200);
     // 중력은 월드(main.js 의 arcade.gravity)에서만 받는다.
     // 여기서 setGravityY 를 또 걸면 두 배가 되어 점프 높이가 절반으로 줄어든다.
@@ -58,9 +52,46 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
 
   /* ------------------------------------------------------------- */
 
+  /**
+   * 시트가 바뀌어도 강아지가 같은 크기로 보이게 맞춘다.
+   *
+   * 시트마다 칸 안 여백이 달라서(AssetManifest.SHEET_FILL 주석 참고) 칸 크기로만
+   * 표시 크기를 정하면 모션이 바뀔 때마다 커졌다 작아진다. idle 을 기준으로 되돌린다.
+   *
+   * 충돌 박스는 "화면에서 몇 px 인지"로 정하므로, 표시 크기가 바뀐 만큼 프레임
+   * 좌표로 되돌려 다시 잡는다. 그리고 발 위치가 튀지 않도록 중심을 그만큼 올린다.
+   */
+  applySheetSize(key) {
+    if (this.sheetKey === key) return;
+    this.sheetKey = key;
+
+    const fill = SHEET_FILL[key] ?? SHEET_FILL._default;
+    // 여백이 유난히 넓은 시트를 과하게 키우지 않도록 위쪽을 막아 둔다
+    const boost = Phaser.Math.Clamp(SHEET_FILL.dog_idle / fill, 1, 1.35);
+    const display = DOG.displaySize * boost;
+    const prev = this.sheetDisplay ?? display;
+
+    this.setDisplaySize(display, display);
+    this.sheetDisplay = display;
+
+    const frameSize = this.frame.realWidth || this.frame.width || display;
+    const toFrame = frameSize / display; // 화면 px → 프레임 px
+    const bw = DOG.bodyWidth * toFrame;
+    const bh = DOG.bodyHeight * toFrame;
+    this.body.setSize(bw, bh);
+    this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame);
+
+    // 발끝(body 아랫면)은 중심에서 display/2 - footPadding 만큼 아래다.
+    // 크기가 바뀌면 그만큼 중심을 옮겨야 발이 제자리에 남는다
+    this.y += (prev - display) / 2;
+  }
+
   update(time, delta, input) {
     const body = this.body;
     const onGround = body.blocked.down || body.touching.down;
+
+    // 재생 중인 시트에 맞춰 크기를 유지한다. 모든 모션이 이 경로를 지난다
+    this.applySheetSize(this.texture.key);
 
     if (onGround) this.lastGroundedAt = time;
 
@@ -240,6 +271,39 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
         if (this.state_ === DogState.MOTION) this.anims.play(outKey, true);
       });
     }
+
+    return new Promise((resolve) => {
+      this.scene.time.delayedCall(durationMs, () => {
+        if (this.state_ === DogState.MOTION) this.state_ = DogState.NORMAL;
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * 잠들어 있는다 — 스테이지 시작 연출용.
+   *
+   * `dog_sleep` 은 앞 세 칸이 눕는 동작이고 그 뒤가 자는 고리다. 기본 키가 곧
+   * 고리이므로 그대로 재생하면 **자는 부분만** 반복된다.
+   */
+  sleep() {
+    this.state_ = DogState.CUTSCENE;
+    this.body.setVelocityX(0);
+    this.anims.play('dog_sleep', true);
+  }
+
+  /**
+   * 잠자는 시트를 거꾸로 돌려 일어난다.
+   *
+   * 눕는 동작을 뒤집으면 그대로 기상 동작이 된다. 따로 그린 시트가 필요 없다.
+   */
+  wakeUp(durationMs) {
+    if (this.state_ === DogState.DEAD) return Promise.resolve();
+    this.state_ = DogState.MOTION;
+    this.body.setVelocityX(0);
+
+    const bank = this.scene.anims;
+    this.anims.playReverse(bank.exists('dog_sleep_in') ? 'dog_sleep_in' : 'dog_sleep');
 
     return new Promise((resolve) => {
       this.scene.time.delayedCall(durationMs, () => {

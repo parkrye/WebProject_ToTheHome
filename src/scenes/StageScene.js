@@ -50,7 +50,12 @@ export default class StageScene extends Phaser.Scene {
     this.audio.playBgm(this, def.bgm);
     this.audio.playAmbience(this, def.ambience);
 
-    if (def.intro && this.textures.exists(def.intro.texture)) {
+    // 세이브 포인트에서 이어할 때는 이미 깨어 있다. 처음부터 시작할 때만 깨어난다.
+    // resolveSpawn() 과 같은 판단이어야 자다 깬 자리가 곧 출발 지점이 된다
+    const atCheckpoint = this.fromCheckpoint && this.checkpointDef();
+    if (def.wake && !atCheckpoint) {
+      this.playWake(def.wake);
+    } else if (def.intro && this.textures.exists(def.intro.texture)) {
       this.playIntro(def.intro);
     } else {
       this.cameras.main.fadeIn(700, 0, 0, 0);
@@ -221,6 +226,23 @@ export default class StageScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.startFollow(this.dog, true, CAMERA.lerp, CAMERA.lerp, 0, CAMERA.followOffsetY);
     cam.setDeadzone(CAMERA.deadzoneWidth, CAMERA.deadzoneHeight);
+  }
+
+  /**
+   * 잠에서 깨어나며 시작하는 연출.
+   *
+   * 페이드인이 도는 동안 **자는 부분만** 돌리고, 다 밝아진 뒤 잠시 있다가 그 시트를
+   * 거꾸로 돌려 일어난다. 어디에서 왔는지 말하지 않고 그냥 눈을 뜬다.
+   */
+  playWake(wake) {
+    const fade = wake.fade ?? 900;
+    this.dog.sleep();
+    this.cameras.main.fadeIn(fade, 0, 0, 0);
+
+    this.time.delayedCall(fade + (wake.hold ?? 1200), () => {
+      if (this.cleared || this.dying) return;
+      this.dog.wakeUp(wake.rise ?? 1100);
+    });
   }
 
   playIntro(intro) {

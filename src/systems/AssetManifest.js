@@ -22,6 +22,31 @@ const AUDIO_DIR = 'assets/audio/';
  * 정말로 프레임마다 형태가 달라지는 것만 여기 둔다. 자동차나 돌처럼 모양은 그대로고
  * 위치나 각도만 바뀌는 것은 정적 그림 하나로 두고 코드가 움직인다 (ACTORS).
  */
+/**
+ * 칸 안에서 그림이 실제로 차지하는 가로 비율.
+ *
+ * 전처리는 시트마다 **원본 칸 폭**을 기준으로 맞추므로, 원본에서 여백을 넓게 두고 그린
+ * 시트는 같은 칸에 담겨도 강아지가 작다. 표시 크기를 칸 크기로만 정하면 모션이 바뀔
+ * 때마다 강아지가 커졌다 작아진다 — 땅파기(0.74)가 idle(0.96) 옆에서 눈에 띄게 작았다.
+ *
+ * Dog 가 이 값으로 되돌려서 **어떤 모션에서도 같은 크기로 보이게** 한다.
+ * 소품 아틀라스의 ACTOR_FILL 과 같은 개념이다.
+ */
+export const SHEET_FILL = {
+  _default: 0.96,
+  dog_idle: 0.96, // 기준
+  dog_walk: 0.96,
+  dog_run: 0.91,
+  dog_jump: 0.81,
+  dog_sniff: 0.92,
+  dog_dispel: 0.76,
+  dog_dig: 0.74,
+  dog_sleep: 0.95,
+  dog_splash: 0.89,
+  dog_ball_nudge: 0.84,
+  dog_puppy_run: 0.89,
+};
+
 export const SPRITE_SHEETS = [
   { key: 'dog_idle', file: 'dog_idle.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogIdle' },
   { key: 'dog_walk', file: 'dog_walk.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogWalk' },

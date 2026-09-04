@@ -9,6 +9,7 @@
  * 4) 애니메이션은 실제/플레이스홀더 구분 없이 동일하게 등록된다.
  */
 
+import { ANIM } from '../config.js';
 import {
   SPRITE_SHEETS, BACKGROUNDS, ATLASES, CUTSCENES, IMAGES, AUDIO, DIRS,
   ACTOR_SLOTS, ACTOR_FRAMES, ACTOR_FPS, actorAnim, actorFrame,
@@ -169,10 +170,15 @@ export function registerAnimations(scene) {
     const from = def.loop ? Math.min(def.loopFrom ?? 0, end) : 0;
     const to = def.loop ? Math.min(def.loopTo ?? end, end) : end;
 
+    // 시트의 일부만 도는 고리는 느리게 돌린다 (config.ANIM 주석 참고).
+    // 앞뒤 동작은 제 속도 그대로다
+    const partial = from > 0 || to < end;
+    const loopFps = partial ? Math.max(2, Math.round(def.fps * ANIM.loopSlow)) : def.fps;
+
     scene.anims.create({
       key: def.key,
       frames: scene.anims.generateFrameNumbers(def.key, { start: from, end: to }),
-      frameRate: def.fps,
+      frameRate: loopFps,
       repeat: def.loop ? -1 : 0,
     });
 
