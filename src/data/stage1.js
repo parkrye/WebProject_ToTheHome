@@ -105,10 +105,20 @@ export default {
     { type: 'car', x: 4200, y: GY - 34, fromX: 4200, toX: 5700, dir: 1, speed: 250, interval: 6200, delay: 3800 },
   ],
 
+  /**
+   * 안내판 — 걸어가며 만나는 순서가 곧 배우는 순서다.
+   *
+   * 배열 순서를 그대로 쓰는 곳이 하나 더 있다. 관리 툴로 만든 지형을 쓸 때는 여기 적은
+   * x 가 뜻을 잃으므로, `stages.js` 가 **이 순서대로** 출발 지점 앞에 다시 늘어놓는다.
+   */
   signs: [
     { x: 320, y: GY, texture: 'prop_sign_move', height: 165 },
     { x: 700, y: GY, texture: 'prop_sign_jump', height: 165 },
     { x: 1380, y: GY, texture: 'prop_sign_run', height: 165 },
+    // 담장에 오르기 직전 — 올라간 발판에서 다시 내려오는 법
+    { x: 2400, y: GY, texture: 'prop_sign_jumpdown', height: 165 },
+    // 갓길 틈 앞 — 발밑을 살펴야 내려갈 자리가 보인다
+    { x: 4120, y: GY, texture: 'prop_sign_lookdown', height: 165 },
   ],
 
   savePoint: {

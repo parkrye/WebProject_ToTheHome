@@ -32,6 +32,7 @@
  * 나오게 한다. 같은 씨앗이면 언제나 같은 지형이다.
  */
 
+import { TERRAIN } from '../config.js';
 import { TILE, PROP, ACTOR } from './AssetManifest.js';
 
 /** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
@@ -135,6 +136,95 @@ const STEEP_X = 320;
 const STEEP_Y = REACH.rise * 1.5;
 
 /**
+ * **높이가 달라지는 두 칸이 x 를 나눠 가져도 되는 길이.**
+ *
+ * 오르는 길에서 윗칸이 아랫칸 위를 덮으면 계단이 아니라 사다리가 된다. 아랫칸에
+ * 서면 머리 위가 막혀 있고, 위로 뛰려면 옆으로 비켜설 자리가 없다. 한 칸 오를
+ * 때마다 **반드시 옆으로 비켜서게** 한다 — 겹침은 맞닿는 정도까지만.
+ *
+ * 같은 높이끼리는 상관없다. 나란히 이어 붙어야 한 덩어리 땅이 되기 때문이다.
+ */
+const MAX_STEP_OVERLAP = 1;
+
+/** 그래서 높이가 달라지는 두 칸은 x 가 최소 이만큼 벌어져야 한다 */
+const STEP_X_MIN = PAD_W.link - MAX_STEP_OVERLAP;
+
+/**
+ * 같은 줄에서 이만큼 붙어 있으면 한 덩어리로 합친다 (thicken).
+ *
+ * 계단 자리를 고를 때도 이 값을 봐야 한다. 합쳐지고 나면 없어질 틈에 칸을 놓으면,
+ * 놓을 때는 안 겹쳤는데 합친 뒤에 덮이기 때문이다.
+ */
+const MERGE_GAP = 46;
+
+/** 두 칸이 가로로 나눠 가진 길이 */
+function overlapX(a, ax, aw) {
+  return Math.min(a.x + a.w, ax + aw) - Math.max(a.x, ax);
+}
+
+/** [x, x+w] 가 **높이가 다른** 이미 놓인 칸을 덮는가 (한 번에 뛸 만한 높이차 안에서만) */
+function coversNeighbour(pads, x, y, w) {
+  return pads.some((p) => {
+    const dy = Math.abs(p.y - y);
+    if (dy === 0 || dy > REACH.rise) return false;
+    return overlapX(p, x, w) > MAX_STEP_OVERLAP;
+  });
+}
+
+/** 이 칸에서 뛰어 닿을 수 있는 자리인가 */
+function withinHop(prev, x, w) {
+  if (!prev) return true;
+  return Math.max(0, Math.max(prev.x, x) - Math.min(prev.x + prev.w, x + w)) <= REACH.hop;
+}
+
+/** 옆으로 얼마나까지 밀어 볼지. 이보다 멀리 밀면 길이 엉뚱한 데로 샌다 */
+const NUDGE_MAX = STAIR_X * 2;
+const NUDGE_STEP = 24;
+
+/**
+ * 길을 놓는 모든 칸이 지나는 자리.
+ *
+ * **높이가 달라지는 칸은 아래 칸 위를 덮지 않는다.** 덮으면 계단이 아니라 사다리가
+ * 되기 때문이다 (MAX_STEP_OVERLAP 주석 참고). 덮게 생겼으면 옆으로 비켜세운다.
+ *
+ * 볼 것이 둘이다. 바로 앞 칸은 반드시 피해야 하므로 먼저 맞닿는 자리까지 밀고,
+ * 그 다음 **이미 깔려 있는 칸들**도 덮지 않는 가장 가까운 자리를 찾는다. 뒤쪽은
+ * 뛸 거리 안에서만 찾고, 못 찾으면 원래 자리에 둔다 — 길이 끊기는 것보다 낫다.
+ *
+ * @returns {object} 실제로 놓인 칸. 다음 칸의 `prev` 가 된다
+ */
+function stepPad(out, prev, x, y, w = PAD_W.link) {
+  let px = x;
+
+  // 1. 바로 앞 칸 — 맞닿는 자리까지 밀어도 뛸 거리를 넘지 않는다
+  if (prev && round(prev.y) !== round(y) && overlapX(prev, px, w) > MAX_STEP_OVERLAP) {
+    const toRight = px + w / 2 >= prev.x + prev.w / 2;
+    px = toRight ? prev.x + prev.w - MAX_STEP_OVERLAP : prev.x - w + MAX_STEP_OVERLAP;
+  }
+
+  // 2. 이미 깔린 칸 — 가까운 쪽부터 번갈아 찾아본다
+  const pads = allPads(out);
+  if (coversNeighbour(pads, px, y, w)) {
+    for (let d = NUDGE_STEP; d <= NUDGE_MAX; d += NUDGE_STEP) {
+      const tries = [px + d, px - d].filter(
+        (t) =>
+          withinHop(prev, t, w) &&
+          (!prev || round(prev.y) === round(y) || overlapX(prev, t, w) <= MAX_STEP_OVERLAP)
+      );
+      const found = tries.find((t) => !coversNeighbour(pads, t, y, w));
+      if (found !== undefined) {
+        px = found;
+        break;
+      }
+    }
+  }
+
+  const pad = { x: round(px), y: round(y), w };
+  out.ledges.push(pad);
+  return pad;
+}
+
+/**
  * 제자리에서 올라가야 할 때 **길게 계단식으로** 돌려 놓는다.
  *
  * 좌우좌우로 흔들어 올리면 같은 자리에서 방향만 바꿔 가며 오르게 된다. 오르기도
@@ -156,25 +246,21 @@ function switchback(a, b, out, rand) {
   // 목표 쪽으로 먼저 뻗는 편이 되돌아오는 길이 짧다
   let dir = Math.abs(bx - ax) > STAIR_X ? Math.sign(bx - ax) : rand() < 0.5 ? -1 : 1;
 
+  // 한 칸의 가로 폭(150)이 칸 너비(120)보다 넓으므로 계단은 저절로 옆으로 비켜선다.
+  // 꺾이는 자리도 마찬가지다 — 되돌아오는 첫 칸은 직전 칸에서 150 떨어진다
   let x = ax;
+  let prev = a;
   for (let i = 1; i <= steps; i += 1) {
     x += dir * STAIR_X;
-    out.ledges.push({
-      x: round(x - PAD_W.link / 2),
-      y: round(a.y + rise * i),
-      w: PAD_W.link,
-    });
+    prev = stepPad(out, prev, x - PAD_W.link / 2, a.y + rise * i);
+    x = prev.x + PAD_W.link / 2; // 밀렸으면 그만큼 따라간다
     if (i % perLeg === 0) dir = -dir; // 끝에서 꺾어 되돌아온다
   }
 
-  // 다 올라온 자리에서 목표 x 까지 같은 높이로 이어 준다
+  // 다 올라온 자리에서 목표 x 까지 **같은 높이로** 이어 준다 (겹쳐도 되는 구간이다)
   const runSteps = Math.ceil(Math.abs(bx - x) / STAIR_X);
   for (let k = 1; k < runSteps; k += 1) {
-    out.ledges.push({
-      x: round(x + ((bx - x) * k) / runSteps - PAD_W.link / 2),
-      y: round(b.y),
-      w: PAD_W.link,
-    });
+    prev = stepPad(out, prev, x + ((bx - x) * k) / runSteps - PAD_W.link / 2, b.y);
   }
 }
 
@@ -185,30 +271,31 @@ function switchback(a, b, out, rand) {
  * 하면 계단식으로 돌려 놓는다 (switchback 주석 참고).
  */
 function ladder(a, b, out, rand) {
+  const r = rand || (() => 0.5);
   const ax = a.x + a.w / 2;
   const bx = b.x + b.w / 2;
   const dx = bx - ax;
   const dy = b.y - a.y;
 
-  if (rand && Math.abs(dx) < STEEP_X && Math.abs(dy) > STEEP_Y) {
-    switchback(a, b, out, rand);
+  const riseSteps = Math.ceil(Math.abs(dy) / (REACH.rise - 8));
+  // 한 칸 오를 때마다 옆으로 비켜서야 하므로, **오를 칸 수만큼 가로 자리가 있어야**
+  // 곧은 계단이 된다. 자리가 모자라면 윗칸이 아랫칸을 덮게 되므로 갈지자로 돌린다
+  const roomSteps = Math.floor(Math.abs(dx) / STEP_X_MIN);
+  const steep = Math.abs(dx) < STEEP_X && Math.abs(dy) > STEEP_Y;
+
+  if (dy !== 0 && (riseSteps > roomSteps || steep)) {
+    switchback(a, b, out, r);
     return;
   }
 
-  const steps = Math.max(
-    Math.ceil(Math.abs(dx) / (REACH.hop - 30)),
-    Math.ceil(Math.abs(dy) / (REACH.rise - 8)),
-    1
-  );
+  const steps = Math.max(Math.ceil(Math.abs(dx) / (REACH.hop - 30)), riseSteps, 1);
 
+  let prev = a;
   for (let i = 1; i < steps; i += 1) {
     const t = i / steps;
-    const jitter = rand ? (rand() - 0.5) * 40 : 0;
-    out.ledges.push({
-      x: round(ax + dx * t + jitter - PAD_W.link / 2),
-      y: round(a.y + dy * t),
-      w: PAD_W.link,
-    });
+    // 높이가 달라지는 길에는 흔들림을 주지 않는다. 20px 만 밀려도 윗칸이 아랫칸을 덮는다
+    const jitter = dy === 0 ? (r() - 0.5) * 40 : 0;
+    prev = stepPad(out, prev, ax + dx * t + jitter - PAD_W.link / 2, a.y + dy * t);
   }
 }
 
@@ -284,7 +371,7 @@ function spurs(out, rand, count) {
     let x = from.x + from.w / 2;
     let y = from.y;
     for (let k = 0; k < steps; k += 1) {
-      x += dir * (120 + rand() * 60);
+      x += dir * (STEP_X_MIN + 1 + rand() * 60); // 높이가 달라지므로 반드시 옆으로 비켜선다
       y += (up ? -1 : 1) * (50 + rand() * 30);
       if (tooClose(out, x - PAD_W.link / 2, y, PAD_W.link)) break;
       out.ledges.push({ x: round(x - PAD_W.link / 2), y: round(y), w: PAD_W.link });
@@ -418,7 +505,7 @@ function thicken(out) {
     for (let i = 1; i < row.length; i += 1) {
       const prev = run[run.length - 1];
       const gap = row[i].x - (prev.x + prev.w);
-      if (gap <= 46) run.push(row[i]);
+      if (gap <= MERGE_GAP) run.push(row[i]);
       else {
         flush();
         run = [row[i]];
@@ -427,25 +514,35 @@ function thicken(out) {
     flush();
   });
 
+  // **바닥도 "아래에 있는 발판"이다.**
+  // 이걸 빼먹으면 바닥 바로 위 120px 자리에 120px 두께 솔리드가 앉아, 밑면이 바닥에
+  // 닿은 채 윗면은 점프(96)로 못 닿는 **넘을 수도 뚫을 수도 없는 벽**이 된다
+  const below = [...out.ground.map((g) => ({ x: g.x, y: g.y, w: g.w })), ...merged];
+
   out.ledges = merged.map((m) => {
-    // 바로 아래 발판까지의 여유. 이보다 두꺼우면 아래를 덮어 버린다
+    // 바로 아래 발판까지의 여유
     let clearance = 9999;
-    merged.forEach((o) => {
+    below.forEach((o) => {
       if (o === m || o.y <= m.y + 8) return;
       if (o.x > m.x + m.w || o.x + o.w < m.x) return;
       clearance = Math.min(clearance, o.y - m.y);
     });
-    const room = Math.min(9999, clearance - 14);
 
-    const land = (m.count >= 3 || m.w >= 430) && room >= 68;
-    const curb = !land && (m.count >= 2 || m.w >= 300) && room >= 34;
+    // 위에서만 밟히는 것(판자·연석)은 뚫고 지날 수 있으므로 **아래를 가리지만 않으면**
+    // 된다. 사방이 막히는 땅은 그 아래에 **설 자리와 뛸 자리**까지 비워 둬야 한다
+    const skin = clearance - 14;
+    const solid = clearance - TERRAIN.headroom;
+
+    const land = (m.count >= 3 || m.w >= 430) && solid >= 68;
+    const curb = !land && (m.count >= 2 || m.w >= 300) && skin >= 34;
 
     if (land) {
       // 자리마다 다른 윗면 타일 — 같은 무늬가 이어지면 붙여 놓은 티가 난다
       const pick = TOP_VARIANTS[Math.abs(Math.round(m.x / 137) + Math.round(m.y / 71)) % 4];
-      return { x: m.x, y: m.y, w: m.w, h: Math.min(room, 120), frame: pick };
+      return { x: m.x, y: m.y, w: m.w, h: Math.min(solid, 120), frame: pick };
     }
-    if (curb) return { x: m.x, y: m.y, w: m.w, h: Math.min(room, 40), frame: TILE.WALL };
+    // 연석은 위에서만 밟히는 두께(oneWayMaxH) 안에 머물러야 한다
+    if (curb) return { x: m.x, y: m.y, w: m.w, h: Math.min(skin, 40), frame: TILE.WALL };
     return { x: m.x, y: m.y, w: m.w, h: 18, frame: TILE.LEDGE };
   });
 }
@@ -691,6 +788,9 @@ export function build(seed) {
   const pads = allPads(out);
   const { groups } = components(pads);
   const tops = pads.map((p) => p.y);
+  // 두께를 정하는 규칙이 머리 공간을 보장하지만, 규칙을 고쳤을 때 바로 드러나도록 센다
+  const ceilings = lowCeilings(out);
+  const covered = coveredPads(out);
 
   return {
     ...out,
@@ -707,8 +807,64 @@ export function build(seed) {
       소품: out.props.length,
       이어짐: connected && groups.length === 1 ? '전부 오갈 수 있다' : `덩어리 ${groups.length}개로 갈라짐`,
       갈라진덩어리: groups.length,
+      머리공간: ceilings.length ? `막힌 자리 ${ceilings.length}곳` : '전부 뛸 수 있다',
+      막힌자리: ceilings.length,
+      계단: covered.length ? `덮인 발판 ${covered.length}곳` : '전부 옆으로 비켜선다',
+      덮인발판: covered.length,
     },
   };
+}
+
+/**
+ * **덮인 발판**을 찾는다 — 바로 위(한 번에 뛸 만한 높이차 안)에 x 를 나눠 가진 칸이
+ * 있는 자리.
+ *
+ * 계단은 한 칸 오를 때마다 옆으로 비켜서야 한다 (MAX_STEP_OVERLAP 주석 참고).
+ * 길을 놓는 자리는 stepPad 가 그걸 보장하지만, 이미 깔린 선반 밑을 길이 지나가는
+ * 것까지는 늘 피할 수 없다 — 얼마나 남았는지 세어 둔다.
+ *
+ * 같은 높이끼리 겹치는 것은 세지 않는다. 나란히 이어 붙어야 한 덩어리 땅이 된다.
+ * 바닥도 세지 않는다 — 바닥은 끊기지 않고 쭉 깔리므로 **바닥에서 올라가는 계단의 첫
+ * 칸은 반드시 바닥 위에 놓인다.** 그건 계단이지 막힌 자리가 아니다.
+ */
+export function coveredPads(layout) {
+  const pads = allPads(layout);
+  return pads
+    .filter((p) => p.kind !== '지면')
+    .filter((p) =>
+      pads.some(
+        (q) =>
+          q !== p &&
+          q.y < p.y &&
+          p.y - q.y <= REACH.rise &&
+          overlapX(q, p.x, p.w) > MAX_STEP_OVERLAP
+      )
+    )
+    .map((p) => `${p.kind}@${p.x},${p.y}`);
+}
+
+/**
+ * 낮은 천장을 찾는다 — **머리를 찧어 못 뛰는 자리.**
+ *
+ * 이어짐 검사는 발판의 **윗면 y 만** 본다. 그래서 사방이 막힌 땅이 아래 발판 바로
+ * 위를 덮고 있어도 "닿는다"고 통과한다. 실제로는 그 발판에 선 강아지가 천장에 걸려
+ * 뛰어오르지 못하므로, 갈 수 있다고 적어 놓고 갇히는 자리가 된다.
+ *
+ * 위에서만 밟히는 판자는 뚫고 지날 수 있으니 천장이 아니다. 두께로 가른다.
+ */
+export function lowCeilings(layout) {
+  const pads = allPads(layout);
+  const roofs = pads.filter((r) => (r.h ?? 18) > TERRAIN.oneWayMaxH);
+
+  return pads
+    .filter((p) =>
+      roofs.some((r) => {
+        if (r === p || r.y >= p.y) return false; // 발판보다 위에 있는 것만 천장이다
+        if (r.x > p.x + p.w || r.x + r.w < p.x) return false;
+        return p.y - (r.y + (r.h ?? 18)) < TERRAIN.headroom;
+      })
+    )
+    .map((p) => `${p.kind}@${p.x},${p.y}`);
 }
 
 /**
@@ -716,11 +872,22 @@ export function build(seed) {
  *
  * 잇는 연결이 전부 "올라갈 수 있는" 연결이므로, 하나로 이어져 있으면 어느 쪽으로든
  * 지날 수 있다. 방향을 따로 볼 필요가 없다.
+ *
+ * 다만 이어져 있다고 지날 수 있는 것은 아니다. 머리 위가 막혀 있으면 뛸 수 없으므로
+ * 낮은 천장도 같이 본다 (lowCeilings).
  */
 export function checkReach(layout) {
   const pads = allPads(layout);
-  if (!pads.length) return { ok: true, unreachable: [] };
+  if (!pads.length) return { ok: true, unreachable: [], ceilings: [], covered: [] };
   const { groups, of } = components(pads);
   const unreachable = pads.filter((_, i) => of[i] !== of[0]).map((p) => `${p.kind}@${p.x},${p.y}`);
-  return { ok: groups.length === 1, unreachable, groups: groups.length };
+  const ceilings = lowCeilings(layout);
+  const covered = coveredPads(layout);
+  return {
+    ok: groups.length === 1 && !ceilings.length,
+    unreachable,
+    ceilings,
+    covered,
+    groups: groups.length,
+  };
 }
