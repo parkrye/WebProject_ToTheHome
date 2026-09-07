@@ -6,6 +6,7 @@
  */
 
 import Phaser from 'phaser';
+import { TERRAIN } from '../config.js';
 import { TILE } from '../systems/AssetManifest.js';
 import { TILE_DEPTH } from '../systems/Layout.js';
 
@@ -48,13 +49,25 @@ export function createGround(scene, group, def, tileKey) {
 }
 
 /**
- * 이 두께까지만 "위에서만 밟히는 판자"로 본다.
+ * 이 두께까지는 "위에서만 밟히는 판자"로 본다.
  *
  * 생성기는 몇 개가 모였는지에 따라 판자(18) · 연석(40) · 땅(최대 120) 을 같은 목록에
- * 담아 준다. 전부 위에서만 밟히게 두면 **두꺼운 땅덩어리를 옆에서 뚫고 들어가고,
- * 그 밑면에는 착지 판정이 없다.** 다리처럼 두꺼운 것은 사방이 막혀야 한다.
+ * 담아 준다. 여기서 갈라지는 것이 **조작의 규칙**이다.
+ *
+ *   판자 · 연석  공중에 뜬 발판이다. 아래에서 뛰어 뚫고 올라갈 수 있고,
+ *                ↓ + 점프로 통과해 내려갈 수 있다
+ *   땅(68~120)   잔디 윗면을 쓰는 덩어리다. 바닥과 똑같이 사방이 막힌 **지형**이다
+ *
+ * 예전에는 24 여서 연석(40)까지 사방이 막혔다. 생김새는 판자와 다를 바 없는데
+ * 어떤 것은 뚫리고 어떤 것은 안 뚫려서, 무엇을 딛고 있는지 눈으로 알 수 없었다.
+ * 두께로 가르되 **경계를 생김새에 맞춘다** — 잔디가 얹힌 것만 지형이다.
+ *
+ * 두꺼운 것까지 위에서만 밟히게 두면 **땅덩어리를 옆에서 뚫고 들어가고, 그 속에
+ * 갇힌다.** 대신 생성기가 두꺼운 덩어리 밑에 머리 공간을 보장한다 (StageBuilder.thicken).
+ *
+ * 경계값은 생성기와 나눠 쓴다 (`config.TERRAIN`). 여기서만 고치면 어긋난다.
  */
-const ONE_WAY_MAX_H = 24;
+const ONE_WAY_MAX_H = TERRAIN.oneWayMaxH;
 
 /** 얇으면 위에서만 밟히는 발판, 두꺼우면 사방이 막힌 땅 */
 export function createLedge(scene, group, def, tileKey) {
