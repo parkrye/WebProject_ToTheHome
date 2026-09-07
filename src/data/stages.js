@@ -99,6 +99,34 @@ function sealEdges(ground, width) {
   return out;
 }
 
+/** 안내판을 세울 때 서로 겹치지 않는 간격 */
+const SIGN_STEP = 300;
+
+/**
+ * 튜토리얼 안내판을 새 지형의 **출발 지점 앞에** 다시 세운다.
+ *
+ * 지형이 통째로 바뀌면 손으로 잡아 둔 x 는 뜻을 잃는다. 그렇다고 버리면 조작을 알려
+ * 주는 것이 스테이지에서 통째로 사라진다 — 이 게임에는 글자가 없으므로 안내판이
+ * 유일한 설명이다.
+ *
+ * 그래서 x 대신 **순서**만 남긴다. 출발 지점에서 도착 쪽으로 한 장씩 늘어놓으면,
+ * 걸어가며 만나는 순서가 곧 배우는 순서(이동 → 점프 → 도움닫기 → …)가 된다.
+ * 지면이 없는 자리의 것은 세우지 않는다.
+ */
+function tutorialSigns(base, ground, start, goal) {
+  const signs = base.signs || [];
+  if (!signs.length || !start) return [];
+
+  const dir = goal && goal.x < start.x ? -1 : 1;
+  return signs
+    .map((sign, i) => {
+      const x = Math.round(start.x + dir * SIGN_STEP * (i + 1));
+      const top = groundTopAt(ground, x);
+      return top == null ? null : { ...sign, x, y: top };
+    })
+    .filter(Boolean);
+}
+
 /** 손으로 짠 스테이지 위에 관리 툴 배치를 덮는다 */
 function applyLayout(base, saved) {
   if (!saved.layout || !saved.layout.ground?.length) return base;
@@ -119,26 +147,32 @@ function applyLayout(base, saved) {
   const rightmost = Math.max(...all.map((p) => p.x + p.w));
   const width = Math.max(L.width ?? 0, rightmost + 200);
 
+  const ground = sealEdges(L.ground, width);
+  const start = L.start ? { x: L.start.x, y: L.start.y - 70 } : base.start;
+  const goal = { ...base.goal, ...(L.goal || {}) };
+
   return {
     ...base,
     width,
     height: Math.max(base.height, lowest + 60),
     killY: lowest + 90,
-    ground: sealEdges(L.ground, width),
+    ground,
     ledges: L.ledges || [],
     // 지형이 바뀌었으므로 지형에 매달려 있던 것들은 버린다.
     // 관리 툴로 만든 지도는 지형과 냄새와 기억으로만 이루어진다
     moving: [],
     crumble: [],
     hazards: [],
-    signs: [],
+    // 안내판만은 버리지 않는다 — 조작을 알려 주는 유일한 수단이다.
+    // 지형에 매달린 x 를 버리고 출발 지점 앞에 순서대로 다시 세운다
+    signs: tutorialSigns(base, ground, start, goal),
     scent: L.scent || [],
     keepsakes: L.keepsakes || [],
     // 생성기가 소품까지 만들어 주면 그것을 쓴다. 없으면 손으로 놓은 것을 새 지면에 앉힌다
     props: L.props?.length ? L.props : reanchor(base.props, L.ground),
     // 발판 **윗면** 좌표다. 거기에 그대로 놓으면 몸이 지면에 박혀 못 움직인다
-    start: L.start ? { x: L.start.x, y: L.start.y - 70 } : base.start,
-    goal: { ...base.goal, ...(L.goal || {}) },
+    start,
+    goal,
     // 배치에 세이브를 안 찍었으면 **없는 것으로 둔다.** 손으로 짠 자리를 남겨 두면
     // 지형이 통째로 바뀐 자리에 세이브 소품만 공중에 떠 있게 된다
     savePoint: savePoints[0] || null,
