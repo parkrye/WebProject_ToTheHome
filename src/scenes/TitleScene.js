@@ -1,11 +1,19 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, PALETTE } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DOG } from '../config.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
  * 타이틀. 문자를 쓰지 않으므로 메뉴는 픽토그램 세 개다.
  *   발자국 = 그냥 시작 / 뼈다귀 = 스프라이트 추가해서 시작 / 집 = 이어하기(저장이 있을 때만)
  */
+
+/**
+ * 선택 표시 강아지가 아이콘 사이를 옮겨 다니는 속도.
+ *
+ * 걸음 속도(160px/s) 그대로면 아이콘 하나 옮기는 데 1초가 걸려 메뉴가 답답하다.
+ * 대신 다리도 같은 배율로 빨리 놀려서 발이 미끄러져 보이지 않게 한다.
+ */
+const MARKER_SPEED = 320;
 export default class TitleScene extends Phaser.Scene {
   constructor() {
     super('Title');
@@ -123,15 +131,40 @@ export default class TitleScene extends Phaser.Scene {
       item.icon.setAlpha(on ? 1 : 0.72);
     });
 
-    if (this.marker) {
-      this.tweens.add({
-        targets: this.marker,
-        x: this.items[this.index].icon.x,
-        duration: 220,
-        ease: 'Sine.easeOut',
-      });
-    }
+    this.walkMarkerTo(this.items[this.index].icon.x);
     this.audio.play('sfx_ui_select', { volume: 0.4 });
+  }
+
+  /**
+   * 선택 표시 강아지가 **걸어서** 옮겨 간다.
+   *
+   * 위치만 트윈으로 밀면 앉은 자세 그대로 옆으로 슉 미끄러진다. 걷는 시트로 바꾸고
+   * **이전 위치 기준으로** 가는 쪽을 보게 뒤집어야 "저 아이콘까지 걸어갔다"로 읽힌다.
+   * 도착하면 다시 앉고, 보던 방향은 그대로 남는다.
+   *
+   * dog_idle 과 dog_walk 은 칸 안 여백이 같아서(SHEET_FILL 0.96) 시트를 바꿔도
+   * 크기가 튀지 않는다.
+   */
+  walkMarkerTo(x) {
+    const dog = this.marker;
+    if (!dog || Math.abs(x - dog.x) < 1) return;
+
+    // 옮기는 도중에 또 고르면 앞선 트윈이 남아 두 방향으로 끌린다
+    this.tweens.killTweensOf(dog);
+    dog.setFlipX(x < dog.x);
+    dog.play('dog_walk', true);
+    dog.anims.timeScale = MARKER_SPEED / DOG.walkSpeed;
+
+    this.tweens.add({
+      targets: dog,
+      x,
+      duration: Math.max(180, (Math.abs(x - dog.x) / MARKER_SPEED) * 1000),
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        dog.anims.timeScale = 1;
+        dog.play('dog_idle', true);
+      },
+    });
   }
 
   confirm() {
