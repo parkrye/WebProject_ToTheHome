@@ -20,13 +20,16 @@ import { isReal } from '../systems/AssetLoader.js';
 const GROUND_Y = 496;
 
 /**
- * 강아지만 조금 띄운다.
+ * 강아지는 아이보다 **조금 아래**를 딛는다.
  *
- * 앞쪽 풀(`bg_field_near`)이 인물보다 **앞에** 그려지는데, 강아지는 아이보다 훨씬 작아서
- * 같은 지면선에 두면 머리까지 풀에 잠겨 아예 안 보인다. 둘 다 풀 사이를 달리는 그림이라
- * 이 정도 차이는 높이 차로 읽히지 않는다.
+ * 앞쪽 풀(`bg_field_near`)은 y=525 부터 화면을 꽉 채우고, y=480 근처는 4분의 1밖에
+ * 덮지 않는다. 예전처럼 강아지를 띄워 두면 아이만 풀 사이에 서 있고 강아지는 그 위
+ * 허공을 나는 것으로 보였다. 발을 풀이 짙어지는 높이까지 내려야 땅을 딛은 것이 된다.
+ *
+ * 키가 84px 이라 이만큼 내려도 머리(y≈438)는 성긴 풀 위로 나온다. 아이보다 조금 앞
+ * 지면을 딛는 셈이라 오히려 앞뒤 거리로 읽힌다.
  */
-const PUPPY_LIFT = 26;
+const PUPPY_DROP = 16;
 
 /**
  * 밤 컷(집 안)의 기준 치수. 화면은 960 x 540 이다.
@@ -139,7 +142,7 @@ export default class PrologueScene extends Phaser.Scene {
     owner.play('owner_child_run');
     owner.setTint(cut.tint);
 
-    const dog = this.add.sprite(dogX, GROUND_Y + 10 - PUPPY_LIFT, 'dog_puppy_run').setOrigin(0.5, 1);
+    const dog = this.add.sprite(dogX, GROUND_Y + 10 + PUPPY_DROP, 'dog_puppy_run').setOrigin(0.5, 1);
     sizeTo(dog, { height: 84 });
     dog.play('dog_puppy_run');
     dog.setTint(cut.tint);
@@ -159,10 +162,10 @@ export default class PrologueScene extends Phaser.Scene {
     this.scrollers.push({ tile: near, speed: 150 });
 
     // 달리는 상하 진동
-    [[owner, 0], [dog, PUPPY_LIFT]].forEach(([sprite, lift], i) => {
+    [[owner, 0], [dog, PUPPY_DROP]].forEach(([sprite, drop], i) => {
       this.tweens.add({
         targets: sprite,
-        y: GROUND_Y + 2 - lift,
+        y: GROUND_Y + 2 + drop,
         duration: 260 + i * 30,
         yoyo: true,
         repeat: -1,
