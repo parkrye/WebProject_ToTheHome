@@ -115,6 +115,9 @@ function sealEdges(ground, width) {
 /** 안내판을 세울 때 서로 겹치지 않는 간격 */
 const SIGN_STEP = 300;
 
+/** 생성기가 놓은 세이브 소품의 높이. 손으로 짠 것(110~190)보다 작다 */
+const MID_SAVE_HEIGHT = 100;
+
 /**
  * 튜토리얼 안내판을 새 지형의 **출발 지점 앞에** 다시 세운다.
  *
@@ -145,12 +148,15 @@ function applyLayout(base, saved) {
   if (!saved.layout || !saved.layout.ground?.length) return base;
   const L = normalize(saved.layout);
 
-  // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다
+  // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다.
+  // 소품은 손으로 짠 것보다 **작게** 세운다 — 길 한복판에 놓이므로 원래 크기로는
+  // 지형을 가리고 혼자 튄다 (플레이 리뷰 3차 4)
   const savePoints = (L.saves || []).map((s, i) => ({
     ...(base.savePoint || {}),
     id: `s${base.id}_gen${i + 1}`,
     x: s.x,
     y: s.y ?? groundTopAt(L.ground, s.x) ?? base.savePoint?.y,
+    propHeight: Math.min(base.savePoint?.propHeight ?? MID_SAVE_HEIGHT, MID_SAVE_HEIGHT),
   }));
 
   // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다.

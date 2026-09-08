@@ -851,7 +851,8 @@ export function pathNodes(pads) {
     const w = p.w / parts;
     for (let i = 0; i < parts; i += 1) {
       const x = p.x + w * i;
-      nodes.push({ x, y: p.y, w, cx: x + w / 2 });
+      // 두께도 같이 들고 간다 — 중간 세이브는 두꺼운 자리에만 놓기 때문이다
+      nodes.push({ x, y: p.y, w, cx: x + w / 2, h: p.h ?? 18 });
     }
   });
   return nodes;
@@ -934,6 +935,27 @@ const MID_SAVE_AT = [1 / 3, 2 / 3];
 /** 이미 찍어 둔 세이브와 이만큼 안이면 겹치는 것으로 보고 놓지 않는다 */
 const SAVE_MIN_GAP = 700;
 
+/** 세이브를 놓아도 되는 두께 — 얇은 판자 위는 안 된다 */
+const SAVE_MIN_H = 40;
+
+/**
+ * 그 지점에서 가장 가까운 **두꺼운 자리**를 경로에서 찾는다.
+ *
+ * 쉬는 자리는 발밑이 든든해야 한다. 공중에 뜬 18px 판자 위에 놀이터를 놓으면
+ * 소품이 허공에 걸린 것처럼 보이고, 되살아나자마자 떨어지기도 한다
+ * (플레이 리뷰 3차 4). 앞뒤로 훑어 먼저 걸리는 두꺼운 칸을 쓴다.
+ */
+function thickNear(route, at) {
+  if (at < 0) return null;
+  for (let d = 0; d < route.length; d += 1) {
+    const back = route[at - d];
+    if (back && back.h >= SAVE_MIN_H) return back;
+    const ahead = route[at + d];
+    if (ahead && ahead.h >= SAVE_MIN_H) return ahead;
+  }
+  return route[at] || null;
+}
+
 /**
  * **최단 경로 1/3 지점마다 중간 세이브를 놓는다.**
  *
@@ -958,7 +980,7 @@ function midSaves(out, startPad, goalPad) {
   if (!total) return;
 
   MID_SAVE_AT.forEach((t) => {
-    const at = route[acc.findIndex((d) => d >= total * t)];
+    const at = thickNear(route, acc.findIndex((d) => d >= total * t));
     if (!at) return;
     if (out.saves.some((s) => Math.hypot(s.x - at.cx, s.y - at.y) < SAVE_MIN_GAP)) return;
     out.saves.push({ x: round(at.cx), y: round(at.y) });
