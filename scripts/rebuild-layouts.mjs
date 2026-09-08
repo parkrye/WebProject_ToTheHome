@@ -63,6 +63,7 @@ function rebuild(file) {
       keepsakes: L.keepsakes,
       saves: L.saves,
       props: L.props,
+      hazards: L.hazards,
       start: L.start,
       goal: { x: L.goal.x, y: L.goal.y - 90, h: 320 },
       width: L.width,
@@ -71,7 +72,7 @@ function rebuild(file) {
 
   const s = L.stats;
   console.log(
-    `[layout] ${file}  발판 ${s['발판']}  소품 ${s['소품']}  높이차 ${s['높이차']}  ${s['이어짐']}`
+    `[layout] ${file}  발판 ${s['발판']}  소품 ${s['소품']}  위험 ${s['위험']}  세이브 ${s['세이브']}  ${s['이어짐']}`
   );
 
   if (!dryRun) fs.writeFileSync(full, JSON.stringify(next, null, 2) + '\n', 'utf8');

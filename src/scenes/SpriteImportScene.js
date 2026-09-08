@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, PALETTE } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, PALETTE, FADE } from '../config.js';
 import { injectUserSprites } from '../systems/AssetLoader.js';
 import { SPRITE_SHEETS } from '../systems/AssetManifest.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
@@ -55,7 +55,7 @@ export default class SpriteImportScene extends Phaser.Scene {
     this.fileInput = this.createFileInput();
 
     this.keys = this.input.keyboard.addKeys('SPACE,ENTER,ESC,E');
-    this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.fadeIn(FADE.out, 0, 0, 0);
   }
 
   /** 8칸 격자 — "가로 8프레임 시트" 를 문자 없이 알린다 */
@@ -152,7 +152,7 @@ export default class SpriteImportScene extends Phaser.Scene {
     if (this.locked) return;
     this.locked = true;
     this.audio.play('sfx_page_turn');
-    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.fadeOut(FADE.out, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       const save = this.registry.get('save');
       save.set({ stage: 0, checkpoint: null, prologueSeen: false });

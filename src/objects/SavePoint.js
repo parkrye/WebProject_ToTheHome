@@ -31,19 +31,8 @@ export class SavePoint extends Phaser.GameObjects.Container {
       this.add(this.prop);
     }
 
-    // 바닥 오라
-    this.glow = scene.add.image(0, 6, 'ui_save_glow').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD);
-    sizeTo(this.glow, { height: 90 });
-    this.add(this.glow);
-    // 천천히 숨 쉬듯 밝아졌다 어두워진다
-    scene.tweens.add({
-      targets: this.glow,
-      alpha: 0.55,
-      duration: 1600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    // 바닥 오라는 두지 않는다 — 도착 지점과 같은 이유다 (Decor.GoalMarker 주석).
+    // 무엇을 할 수 있는 자리인지는 소품과 가까이 갔을 때 뜨는 안내로 충분하다
 
     // 상호작용 프롬프트
     this.prompt = scene.add.image(0, -110, 'ui_prompt_interact').setOrigin(0.5, 1).setAlpha(0);
@@ -69,26 +58,26 @@ export class SavePoint extends Phaser.GameObjects.Container {
     });
   }
 
-  /** 저장 성공 이펙트 */
+  /** 저장 성공 이펙트 — 저장됐다는 것만 알면 되므로 조용하게 */
   burst() {
     const burst = this.scene.add
       .image(this.x, this.y - 20, 'ui_save_burst')
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(30)
-      .setAlpha(0.9);
-    sizeTo(burst, { height: 150 });
+      .setAlpha(0.45);
+    sizeTo(burst, { height: 90 });
     const burstScale = burst.scaleX;
 
     this.scene.tweens.add({
       targets: burst,
-      scale: burstScale * 3.2,
+      scale: burstScale * 1.8,
       alpha: 0,
       duration: 900,
       ease: 'Cubic.easeOut',
       onComplete: () => burst.destroy(),
     });
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const mote = this.scene.add
         .image(this.x + Phaser.Math.Between(-40, 40), this.y - 10, 'ui_scent_mote')
         .setBlendMode(Phaser.BlendModes.ADD)

@@ -64,6 +64,17 @@ const game = new Phaser.Game(config);
 // 일부 자동화 도구는 페이지 전역에 접근하지 못하므로 DOM 속성으로도 남긴다.
 if (import.meta.env.DEV) {
   window.__game = game;
+
+  // 헤드리스 브라우저는 페이지의 전역(window.__game)을 못 보는 경우가 많다. DOM 은
+  // 공유하므로 **이벤트**로도 씬을 바꿀 수 있게 열어 둔다 — 타이틀부터 클릭해 들어가지
+  // 않고 곧바로 그 스테이지를 확인할 수 있다.
+  //
+  //   document.dispatchEvent(new CustomEvent('tothehome:goto', { detail: { stageId: 2 } }))
+  document.addEventListener('tothehome:goto', (e) => {
+    const { scene = 'Stage', ...data } = e.detail || {};
+    game.scene.scenes.filter((s) => s.scene.isActive()).forEach((s) => game.scene.stop(s.scene.key));
+    game.scene.start(scene, data);
+  });
   setInterval(() => {
     const active = game.scene.scenes.filter((s) => s.scene.isActive()).map((s) => s.scene.key);
     document.body.dataset.scenes = active.join(',');

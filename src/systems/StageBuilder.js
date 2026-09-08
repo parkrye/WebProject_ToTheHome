@@ -114,16 +114,17 @@ const allPads = (out) => [
 /**
  * 이미 놓인 발판과 너무 가까우면 겹쳐 보인다.
  *
- * 위아래로 88px 은 띄운다. 여럿이 모인 자리는 **두껍게** 깔 것이므로, 그만한 두께가
- * 들어갈 자리를 미리 비워 두어야 아래 발판을 덮지 않는다.
+ * 위아래로 110px 은 띄운다. 여럿이 모인 자리는 **두껍게** 깔 것이므로, 그만한 두께가
+ * 들어갈 자리를 미리 비워 두어야 아래 발판을 덮지 않는다. 옆으로도 넉넉히 벌린다 —
+ * 발판이 서로 붙어 있으면 계단이 아니라 겹쳐 놓은 판자로 보인다 (플레이 리뷰 3차 7).
  */
 function tooClose(out, x, y, w) {
   return allPads(out).some((p) => {
     const dy = Math.abs(p.y - y);
-    if (dy >= 88) return false;
+    if (dy >= 110) return false;
     // **같은 줄에서 옆에 나란히 놓는 것은 막지 않는다.** 그래야 줄지어 이어진 땅이 된다.
     // 막을 것은 실제로 겹치는 경우뿐이다
-    const margin = dy < 30 ? 6 : 40;
+    const margin = dy < 30 ? 6 : 64;
     return x < p.x + p.w + margin && p.x < x + w + margin;
   });
 }
@@ -155,7 +156,7 @@ const STEP_X_MIN = PAD_W.link - MAX_STEP_OVERLAP;
  * 계단 자리를 고를 때도 이 값을 봐야 한다. 합쳐지고 나면 없어질 틈에 칸을 놓으면,
  * 놓을 때는 안 겹쳤는데 합친 뒤에 덮이기 때문이다.
  */
-const MERGE_GAP = 46;
+const MERGE_GAP = 84;
 
 /** 두 칸이 가로로 나눠 가진 길이 */
 function overlapX(a, ax, aw) {
@@ -307,7 +308,8 @@ function ladder(a, b, out, rand) {
  * 발판을 하나씩 흩뿌리면 징검다리처럼 보이고, 줄로 놓아야 **지형**으로 읽힌다.
  */
 function shelf(out, rand, x, y, len) {
-  const step = 160 + rand() * 30;
+  // 칸 폭보다 조금만 벌린다. 틈이 MERGE_GAP 안이라야 한 덩어리로 합쳐진다
+  const step = PAD_W.shelf + rand() * 30;
   for (let i = 0; i < len; i += 1) {
     const px = round(x + i * step);
     if (tooClose(out, px, y, PAD_W.shelf)) continue;
@@ -472,9 +474,12 @@ const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
  * 타일셋에는 쓰임이 다른 칸이 여럿 있는데, 전부 얇은 발판(6번)으로만 깔면 공중에 판자만
  * 잔뜩 떠 있는 것처럼 보인다.
  *
- *   1개      얇은 발판 (6번, 18px) — 딛고 지나가는 판자
- *   2개      연석·계단 (7번, 40px) — 낮은 턱
- *   3개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
+ *   2개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
+ *   그 밖    연석·계단 (7번, 40px) — 낮은 턱
+ *   마지막   얇은 발판 (6번, 18px) — 연석조차 못 놓을 만큼 아래가 가까운 자리
+ *
+ * **자리가 허락하는 한 두껍게 깐다.** 예전에는 셋이 모여야 땅이었는데, 그러면 지도의
+ * 대부분이 공중에 뜬 18px 판자가 되어 지형으로 읽히지 않았다 (플레이 리뷰 3차 6).
  *
  * 이어진 것은 **하나로 합친다.** 나란한 세 덩어리보다 이어진 한 덩어리가 땅처럼 보인다.
  * 두께는 바로 아래 발판을 덮지 않는 선까지만 준다. 땅으로 깔 만큼 자리가 없으면
@@ -533,8 +538,10 @@ function thicken(out) {
     const skin = clearance - 14;
     const solid = clearance - TERRAIN.headroom;
 
-    const land = (m.count >= 3 || m.w >= 430) && solid >= 68;
-    const curb = !land && (m.count >= 2 || m.w >= 300) && skin >= 34;
+    // 얇은 판자가 공중에 잔뜩 떠 있으면 지형으로 안 읽힌다 (플레이 리뷰 3차 6).
+    // 자리가 허락하는 한 **땅으로, 안 되면 연석으로** 깐다. 판자는 마지막 수단이다
+    const land = (m.count >= 2 || m.w >= 300) && solid >= 68;
+    const curb = !land && skin >= 34;
 
     if (land) {
       // 자리마다 다른 윗면 타일 — 같은 무늬가 이어지면 붙여 놓은 티가 난다
@@ -571,14 +578,19 @@ const PROP_KIT = [
 
 const KIT_TOTAL = PROP_KIT.reduce((n, p) => n + p.weight, 0);
 
-/** 무게를 반영해 소품 하나를 뽑는다 */
-function pickProp(rand) {
-  let t = rand() * KIT_TOTAL;
-  for (let i = 0; i < PROP_KIT.length; i += 1) {
-    t -= PROP_KIT[i].weight;
-    if (t <= 0) return PROP_KIT[i];
+/** 좁은 자리에는 이보다 낮은 것만 세운다 — 큰 것은 길을 가린다 */
+const SMALL_PROP = 120;
+
+/** 무게를 반영해 소품 하나를 뽑는다. maxHeight 를 주면 그보다 낮은 것 중에서 고른다 */
+function pickProp(rand, maxHeight) {
+  const kit = maxHeight ? PROP_KIT.filter((p) => p.height <= maxHeight) : PROP_KIT;
+  const total = maxHeight ? kit.reduce((n, p) => n + p.weight, 0) : KIT_TOTAL;
+  let t = rand() * total;
+  for (let i = 0; i < kit.length; i += 1) {
+    t -= kit[i].weight;
+    if (t <= 0) return kit[i];
   }
-  return PROP_KIT[PROP_KIT.length - 1];
+  return kit[kit.length - 1];
 }
 
 /**
@@ -594,13 +606,16 @@ function decorate(out, rand, seed, area) {
 
   const spots = [
     ...out.ground.map((g) => ({ x: g.x, y: g.y, w: g.w, floor: true })),
-    ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 260),
+    // 두껍게 깔린 땅과 연석. **위로 올라가는 지도는 바닥을 떠나는 순간 아무것도
+    // 없어진다** (플레이 리뷰 3차 3). 좁은 자리도 쓰되 낮은 것만 세운다
+    ...out.ledges.filter((l) => (l.h ?? 18) >= 34 && l.w >= 220),
   ];
 
   spots.forEach((spot) => {
-    const count = clamp(round(spot.w / 420), spot.floor ? 1 : 0, 6);
+    const narrow = !spot.floor && spot.w < 380;
+    const count = clamp(round(spot.w / (narrow ? 300 : 420)), spot.floor ? 1 : 0, 6);
     for (let i = 0; i < count; i += 1) {
-      const kit = pickProp(rand);
+      const kit = pickProp(rand, narrow ? SMALL_PROP : null);
       // 칸을 나눠 그 안에서 흔든다. 가운데가 비어야 지나다닐 길이 남는다
       const t = (i + 0.2 + rand() * 0.6) / count;
       props.push({
@@ -614,15 +629,25 @@ function decorate(out, rand, seed, area) {
     }
   });
 
-  // 하늘을 나는 것 — 지형과 상관없이 위쪽에 띄운다.
+  // 하늘을 나는 것.
   // drift 가 있으면 placeProp 이 지면에 앉히지 않고 그대로 둔다
   if (seed.actors) {
-    const span = area.x1 - area.x0;
-    const flyers = clamp(round(span / 2200), 1, 6);
+    // **지나가는 길 바로 위**에 띄운다. 지도 꼭대기에 몰아 두면 위로 한참 올라가는
+    // 지도에서는 전부 화면 밖이라 한 마리도 못 보고 지나간다 (플레이 리뷰 3차 2·3).
+    // 그래서 x 로만 나누지 않고 **발판을 골라** 그 위에 띄운다 — 세로로 긴 지도에는
+    // 위쪽에도 걸린다. 마릿수도 가로·세로를 합친 길이로 잰다
+    const pads = allPads(out).sort((a, b) => a.x - b.x);
+    const reach = area.x1 - area.x0 + Math.max(0, area.base - area.top);
+    const flyers = clamp(round(reach / 1100), 3, 18);
     for (let i = 0; i < flyers; i += 1) {
+      const lo = Math.floor((pads.length * i) / flyers);
+      const hi = Math.max(lo + 1, Math.floor((pads.length * (i + 1)) / flyers));
+      const bucket = pads.slice(lo, hi);
+      const pad = bucket[Math.floor(rand() * bucket.length)] || pads[0];
+      if (!pad) break;
       props.push({
-        x: round(area.x0 + (span * (i + 0.5)) / flyers),
-        y: round(area.top - 80 - rand() * 200),
+        x: round(pad.x + pad.w / 2),
+        y: round(pad.y - 170 - rand() * 240),
         atlas: seed.actors,
         frame: ACTOR.FLYER,
         height: 44,
@@ -637,6 +662,299 @@ function decorate(out, rand, seed, area) {
   return props;
 }
 
+
+/* ------------------------------------------------------------------ 위험 */
+
+/**
+ * 테마마다 놓을 수 있는 위험과 밀도.
+ *
+ * **확정 배치를 쓰는 순간 손으로 찍어 둔 위험은 전부 버려진다** — 지형이 통째로
+ * 바뀌었으니 예전 좌표는 뜻이 없기 때문이다. 그렇다고 비워 두면 걸어가기만 하면
+ * 끝나는 산책로가 된다 (플레이 리뷰 3차 1). 그래서 위험도 지형처럼 **생성기가**
+ * 놓는다.
+ *
+ * 밀도는 손으로 짠 스테이지에서 쓰던 값 그대로다 — 도시 0.9, 해안 1.1, 산 1.5.
+ * 들판(4)에는 위험을 두지 않는다. 함께 살던 곳이라 아무 일도 일어나지 않는다.
+ *
+ * **한 테마 안에서 종류가 그림으로 구별되어야 한다.** 액터 시트는 한 줄이 한 역할이라
+ * (`ACTOR.MOVER/FALLER/PUFF`), 같은 줄을 쓰는 위험 둘을 한 테마에 넣으면 **생김새가
+ * 똑같은데 하나는 밀어내고 하나는 죽이는** 꼴이 된다. 해안의 파도와 낙석이 그랬다 —
+ * 둘 다 FALLER 줄(해안에서는 파도 그림)이라 낙석을 뺐다.
+ *
+ *   도시  증기(PUFF, 밀어 올림) · 화분(FALLER, 즉사) · 자동차(MOVER, 즉사)
+ *   해안  파도(FALLER, 밀어냄) · 물보라(PUFF, 밀어 올림) · 자동차(MOVER, 즉사)
+ *   산    낙석(FALLER, 즉사) · 멧돼지(MOVER, 즉사)
+ */
+const HAZARD_KIT = {
+  city: { per1000: 0.9, kinds: ['steam', 'rock', 'car'] },
+  coast: { per1000: 1.1, kinds: ['wave', 'steam', 'car'] },
+  mountain: { per1000: 1.5, kinds: ['rock', 'boar'] },
+  field: { per1000: 0, kinds: [] },
+};
+
+/** 출발 · 도착 · 세이브 · 기억 조각에서 이만큼은 떼어 놓는다 */
+const HAZARD_CLEAR = 460;
+
+/** 위험끼리도 이만큼은 벌린다 — 하나씩 보고 판단할 시간이 있어야 한다 */
+const HAZARD_GAP = 520;
+
+/** 자리 후보를 발판 위 몇 px 마다 잡을지 */
+const HAZARD_STEP = 560;
+
+/**
+ * 자동차가 달리는 **길 한 구간의 길이.**
+ *
+ * 예전에는 바닥 조각을 통째로 달리게 해서, 폭 2256px 짜리 바닥을 한 대가 7~9초에
+ * 걸쳐 지나갔다. 세 대가 주기 4~6초로 돌면 **길이 비는 순간이 없다.** 자동차는
+ * 뛰어넘을 수도(몸높이 154 > 점프 96) 따돌릴 수도(240~344 vs 달리기 300) 없으므로
+ * 유일한 대처가 "지금은 들어가지 않는다"인데, 들어갈 틈이 아예 없었던 것이다
+ * (방해 요소 기준 2).
+ *
+ * 그래서 길을 **정해진 구간**으로 자른다. 1300px 을 260~350 으로 지나가면 4~5초,
+ * 주기 4~6초와 맞물려 확실히 비는 때가 생긴다. 구간 양옆은 안전한 땅으로 남는다.
+ */
+const CAR_RUN = 1300;
+
+/** 자동차 구간 양옆에 남겨 둘 안전한 땅 */
+const CAR_SHOULDER = 350;
+
+/** 한 길에 다니는 자동차 대수 */
+const CAR_PER_LANE = 2;
+
+/**
+ * 자동차가 다 지나간 뒤 **길이 비어 있는 시간.**
+ *
+ * 강아지 달리기(300px/s)로 길 한 구간(1300px)을 지나는 데 4.3초가 걸린다.
+ * 그보다 넉넉해야 "지금 건넌다"는 판단이 성립한다.
+ */
+const CAR_CLEAR = 4800;
+
+/** 나란히 이어 붙은 바닥 조각을 한 덩어리로 본다 */
+function mergeFloors(ground) {
+  const rows = [...ground].sort((a, b) => a.x - b.x);
+  const out = [];
+  rows.forEach((g) => {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.y - g.y) <= 8 && g.x <= last.x + last.w + 8) {
+      last.w = Math.max(last.w, g.x + g.w - last.x);
+      return;
+    }
+    out.push({ ...g });
+  });
+  return out;
+}
+
+/** 위(아래)가 비어 있는가 — 낙석이 떨어져 내리고 증기가 뿜어 오를 자리 */
+function openSky(pads, pad, x, height = 380) {
+  return !pads.some((p) => p !== pad && p.x <= x && x <= p.x + p.w && p.y < pad.y && pad.y - p.y < height);
+}
+
+/** 이 자리에 놓을 수 있는 위험인가 */
+function hazardFits(kind, slot, pads, baseY) {
+  const pad = slot.pad;
+  // 길 구간과 갓길이 다 들어가는 바닥에만 — 피해 설 땅이 양옆에 남아야 한다
+  if (kind === 'car') return pad.floor && pad.w >= CAR_RUN + CAR_SHOULDER * 2;
+  // 파도는 바다가 있는 **가장 낮은 바닥**에만 밀려온다
+  if (kind === 'wave') return pad.floor && pad.y >= baseY - 8;
+  // 멧돼지는 돌진 거리(최대 520)가 발판 안에 들어가야 한다. 허공으로 달려 나가면
+  // 무엇을 하는 놈인지 읽히지 않는다
+  if (kind === 'boar') return pad.w >= 700;
+  if (kind === 'rock') return openSky(pads, pad, slot.x);
+  // 증기 기둥은 290px 이다. 머리 위가 막힌 자리에서 뿜으면 지형을 뚫고 나온다
+  if (kind === 'steam') return openSky(pads, pad, slot.x, 320);
+  return true;
+}
+
+/**
+ * 자동차가 달릴 구간을 잡는다.
+ *
+ * 가까이에 이미 길이 있으면 **그 길을 같이 쓴다.** 손으로 짠 횡단보도가 그랬듯이,
+ * 한 길 위로 여러 대가 서로 다른 주기로 지나가는 편이 길을 여러 개 내는 것보다
+ * 읽기 쉽다 — 위험한 자리는 하나고 언제 비는지만 보면 된다.
+ */
+function carLane(lanes, slot, rand) {
+  const pad = slot.pad;
+  const near = lanes.find((l) => l.pad === pad && Math.abs(l.cx - slot.x) < CAR_RUN * 1.5);
+  if (near) return near.cars.length < CAR_PER_LANE ? near : null;
+
+  const cx = clamp(slot.x, pad.x + CAR_SHOULDER + CAR_RUN / 2, pad.x + pad.w - CAR_SHOULDER - CAR_RUN / 2);
+  // 한 길을 다니는 차는 **속도가 같다.** 제각각이면 언제 오는지 셀 수 없다
+  const lane = {
+    pad,
+    cx,
+    x0: round(cx - CAR_RUN / 2),
+    x1: round(cx + CAR_RUN / 2),
+    speed: round(260 + rand() * 80),
+    cars: [],
+  };
+  lanes.push(lane);
+  return lane;
+}
+
+/**
+ * 길마다 **박자를 맞춘다.**
+ *
+ * 대수만큼 위상을 고르게 나누면 한 번에 한 대만 지나가고, 그 사이에 길이 비는
+ * 시간(CAR_CLEAR)이 반드시 생긴다. 주기가 제각각이면 언제 비는지 셀 수 없어서
+ * "기다렸다 건넌다"가 운에 맡기는 일이 된다 (방해 요소 기준 1·2).
+ */
+function timeLanes(lanes) {
+  lanes.forEach((lane) => {
+    const n = lane.cars.length;
+    if (!n) return;
+    const transit = (CAR_RUN / lane.speed) * 1000;
+    const period = n * (transit + CAR_CLEAR); // 한 대가 다시 오기까지
+    lane.cars.forEach((car, i) => {
+      car.speed = lane.speed;
+      car.interval = round(period - transit - car.warnTime);
+      car.delay = round((period * i) / n);
+    });
+  });
+}
+
+/** 위험 하나를 그 자리 좌표로 만든다 */
+function makeHazard(kind, slot, rand, lanes) {
+  const { x, pad } = slot;
+  const delay = round(rand() * 2600);
+
+  if (kind === 'car') {
+    const lane = carLane(lanes, slot, rand);
+    if (!lane) return null; // 이 길은 이미 찼다
+    const dir = rand() < 0.5 ? -1 : 1;
+    const fromX = dir < 0 ? lane.x1 : lane.x0;
+    const toX = dir < 0 ? lane.x0 : lane.x1;
+    // 속도·주기·출발 시각은 길 단위로 timeLanes() 가 다시 잡는다
+    const car = {
+      type: 'car',
+      x: fromX,
+      y: pad.y - 34,
+      fromX,
+      toX,
+      dir,
+      speed: lane.speed,
+      interval: 5000,
+      warnTime: 900,
+      delay,
+    };
+    lane.cars.push(car);
+    return car;
+  }
+
+  if (kind === 'rock') {
+    return {
+      type: 'rock',
+      x,
+      y: round(pad.y - 340),
+      groundY: pad.y - 10,
+      interval: round(2400 + rand() * 1200),
+      delay,
+    };
+  }
+
+  if (kind === 'boar') {
+    return {
+      type: 'boar',
+      x,
+      y: pad.y - 20,
+      range: round(380 + rand() * 140),
+      speed: round(380 + rand() * 90),
+      delay,
+    };
+  }
+
+  if (kind === 'wave') {
+    return {
+      type: 'wave',
+      x: x + 280,
+      y: pad.y + 120,
+      reachX: x - 60,
+      interval: round(3400 + rand() * 1600),
+      delay,
+      effect: 'push',
+    };
+  }
+
+  return {
+    type: 'steam',
+    x,
+    y: pad.y,
+    interval: round(2400 + rand() * 1000),
+    warnTime: 700,
+    activeTime: round(1200 + rand() * 400),
+    power: -430,
+  };
+}
+
+/**
+ * 지형 위에 위험을 놓는다.
+ *
+ * 놓을 자리는 소품과 같은 기준이다 — **딛고 설 만큼 넓은 자리**만 쓴다. 지나가는 길인
+ * 얇은 판자 위에 두면 피할 자리가 없어 외워서 뚫는 수밖에 없다.
+ *
+ * 출발·도착·세이브·기억 조각 둘레는 비워 둔다. 되살아나자마자 죽거나, 주우러 간
+ * 자리에서 죽으면 그건 어려운 게 아니라 억울한 것이다.
+ *
+ * @param safe 비워 둘 자리들 {x, y}
+ */
+function hazardize(out, rand, seed, safe, area) {
+  const theme = seed.actors ? String(seed.actors).replace('actors_', '') : null;
+  const kit = HAZARD_KIT[theme];
+  if (!kit || !kit.per1000) return [];
+
+  const pads = [
+    // 바닥은 **이어 붙여 하나로 본다.** 무늬를 바꾸려고 여러 조각으로 깔았을 뿐
+    // 실제로는 한 줄로 이어진 땅이라, 조각으로 보면 자동차가 달릴 길을 못 찾는다
+    ...mergeFloors(out.ground).map((g) => ({ ...g, floor: true })),
+    ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 380).map((l) => ({ ...l, floor: false })),
+  ];
+  if (!pads.length) return [];
+  const baseY = Math.max(...out.ground.map((g) => g.y));
+
+  // 넓은 발판을 일정 간격으로 쪼개 자리 후보를 만든다
+  const slots = [];
+  pads.forEach((pad) => {
+    const count = Math.floor(pad.w / HAZARD_STEP);
+    for (let i = 0; i < count; i += 1) {
+      const x = round(pad.x + (pad.w * (i + 0.5)) / count);
+      if (safe.some((s) => Math.abs(s.x - x) < HAZARD_CLEAR && Math.abs(s.y - pad.y) < 260)) continue;
+      slots.push({ x, pad, roll: rand() });
+    }
+  });
+
+  // 씨앗 난수로 섞어 앞에서부터 쓴다 — 같은 씨앗이면 언제나 같은 자리다
+  slots.sort((a, b) => a.roll - b.roll);
+
+  const budget = clamp(round(((area.x1 - area.x0) / 1000) * kit.per1000), 0, 40);
+  // **한 종류가 절반을 넘지 않게 한다.** 산에서 멧돼지 17 · 낙석 14 처럼 한쪽으로
+  // 쏠리면, 스테이지가 통째로 "멧돼지 스테이지"가 되어 종류를 나눈 뜻이 없어진다
+  const perKind = Math.max(2, Math.ceil((budget / kit.kinds.length) * 1.4));
+
+  const hazards = [];
+  const taken = [];
+  const lanes = [];
+  const used = {};
+
+  slots.forEach((slot) => {
+    if (hazards.length >= budget) return;
+    if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
+
+    const kinds = kit.kinds.filter(
+      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY)
+    );
+    if (!kinds.length) return;
+
+    const kind = kinds[Math.min(kinds.length - 1, Math.floor(rand() * kinds.length))];
+    const hazard = makeHazard(kind, slot, rand, lanes);
+    if (!hazard) return;
+
+    hazards.push(hazard);
+    used[kind] = (used[kind] ?? 0) + 1;
+    taken.push({ x: slot.x, y: slot.pad.y });
+  });
+
+  timeLanes(lanes);
+  return hazards;
+}
 /* --------------------------------------------------------------- 길찾기 노드 */
 
 /**
@@ -659,7 +977,8 @@ export function pathNodes(pads) {
     const w = p.w / parts;
     for (let i = 0; i < parts; i += 1) {
       const x = p.x + w * i;
-      nodes.push({ x, y: p.y, w, cx: x + w / 2 });
+      // 두께도 같이 들고 간다 — 중간 세이브는 두꺼운 자리에만 놓기 때문이다
+      nodes.push({ x, y: p.y, w, cx: x + w / 2, h: p.h ?? 18 });
     }
   });
   return nodes;
@@ -742,6 +1061,27 @@ const MID_SAVE_AT = [1 / 3, 2 / 3];
 /** 이미 찍어 둔 세이브와 이만큼 안이면 겹치는 것으로 보고 놓지 않는다 */
 const SAVE_MIN_GAP = 700;
 
+/** 세이브를 놓아도 되는 두께 — 얇은 판자 위는 안 된다 */
+const SAVE_MIN_H = 40;
+
+/**
+ * 그 지점에서 가장 가까운 **두꺼운 자리**를 경로에서 찾는다.
+ *
+ * 쉬는 자리는 발밑이 든든해야 한다. 공중에 뜬 18px 판자 위에 놀이터를 놓으면
+ * 소품이 허공에 걸린 것처럼 보이고, 되살아나자마자 떨어지기도 한다
+ * (플레이 리뷰 3차 4). 앞뒤로 훑어 먼저 걸리는 두꺼운 칸을 쓴다.
+ */
+function thickNear(route, at) {
+  if (at < 0) return null;
+  for (let d = 0; d < route.length; d += 1) {
+    const back = route[at - d];
+    if (back && back.h >= SAVE_MIN_H) return back;
+    const ahead = route[at + d];
+    if (ahead && ahead.h >= SAVE_MIN_H) return ahead;
+  }
+  return route[at] || null;
+}
+
 /**
  * **최단 경로 1/3 지점마다 중간 세이브를 놓는다.**
  *
@@ -766,7 +1106,7 @@ function midSaves(out, startPad, goalPad) {
   if (!total) return;
 
   MID_SAVE_AT.forEach((t) => {
-    const at = route[acc.findIndex((d) => d >= total * t)];
+    const at = thickNear(route, acc.findIndex((d) => d >= total * t));
     if (!at) return;
     if (out.saves.some((s) => Math.hypot(s.x - at.cx, s.y - at.y) < SAVE_MIN_GAP)) return;
     out.saves.push({ x: round(at.cx), y: round(at.y) });
@@ -829,7 +1169,7 @@ export function build(seed) {
   const rand = rng(seed.seedNumber ?? 1);
   const groundH = seed.groundH ?? 90;
   const richness = seed.richness ?? 1; // 살을 얼마나 붙일지 (0 = 점만 잇는다)
-  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [] };
+  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [], hazards: [] };
 
   const start = seed.start;
   const goal = seed.goal;
@@ -924,6 +1264,15 @@ export function build(seed) {
   // 8. 최단 경로 3분의 1마다 중간 세이브. 난수를 쓰지 않으므로 지형은 그대로다
   midSaves(out, startPad, goalPad);
 
+  // 9. 위험. 쉴 자리가 다 정해진 뒤라야 그 둘레를 비워 둘 수 있다
+  const safe = [
+    { x: start.x, y: startPad.y },
+    { x: goal.x, y: goalPad.y },
+    ...out.saves,
+    ...out.keepsakes,
+  ];
+  out.hazards = hazardize(out, rand, seed, safe, { x0: minX, x1: maxX });
+
   const pads = allPads(out);
   const { groups } = components(pads);
   const tops = pads.map((p) => p.y);
@@ -944,6 +1293,7 @@ export function build(seed) {
       세이브: out.saves.length,
       기억: out.keepsakes.length,
       소품: out.props.length,
+      위험: out.hazards.length,
       이어짐: connected && groups.length === 1 ? '전부 오갈 수 있다' : `덩어리 ${groups.length}개로 갈라짐`,
       갈라진덩어리: groups.length,
       머리공간: ceilings.length ? `막힌 자리 ${ceilings.length}곳` : '전부 뛸 수 있다',

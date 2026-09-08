@@ -519,6 +519,42 @@ function keyCap(ctx, x, y, size, drawGlyph) {
   ctx.restore();
 }
 
+/**
+ * 상호작용 버튼 그림.
+ *
+ * 이 게임에서 상호작용은 코 아이콘 하나로 말한다 (`ui_prompt_interact` 와 같은 그림).
+ * **꾹 누르는 것과 톡 누르는 것**만 구별해 주면 된다 — 꾹이면 둘레에 차오르는
+ * 게이지를, 톡이면 옆에 튀는 선을 그린다.
+ */
+function holdButton(ctx, x, y, size, hold) {
+  ctx.beginPath();
+  ctx.arc(x, y, size / 2, 0, TAU);
+  ctx.fillStyle = '#f6efe0';
+  ctx.fill();
+  ctx.strokeStyle = '#6b5a45';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(0.5, 0.5);
+  noseGlyph(ctx);
+  ctx.restore();
+
+  ctx.strokeStyle = '#c9a24a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  if (hold) {
+    ctx.arc(x, y, size / 2 + 5, -Math.PI / 2, Math.PI * 0.7);
+  } else {
+    ctx.moveTo(x + size / 2 + 5, y - 9);
+    ctx.lineTo(x + size / 2 + 11, y - 14);
+    ctx.moveTo(x + size / 2 + 6, y);
+    ctx.lineTo(x + size / 2 + 13, y);
+  }
+  ctx.stroke();
+}
+
 function arrowGlyph(dir) {
   return (ctx) => {
     ctx.beginPath();
@@ -727,6 +763,39 @@ const IMAGE_DRAWERS = {
       c.stroke();
       c.restore();
       keyCap(c, 0, 22, 26, arrowGlyph('down'));
+    }),
+
+  // 냄새 맡기 — 버튼을 **꾹 누르고 있으면** 갈 길이 반짝인다
+  signSniff: (ctx, w, h) =>
+    signBoard(ctx, w, h, (c) => {
+      c.save();
+      c.translate(-18, -16);
+      c.scale(0.85, 0.85);
+      noseGlyph(c);
+      c.restore();
+      // 코 앞으로 이어지는 냄새 입자
+      c.fillStyle = '#c9a24a';
+      [0, 1, 2].forEach((i) => {
+        c.beginPath();
+        c.arc(4 + i * 11, -22 - i * 5, 4 - i * 0.7, 0, TAU);
+        c.fill();
+      });
+      holdButton(c, 0, 22, 26, true);
+    }),
+
+  // 상호작용 — 쉬어 가는 자리에서 버튼을 톡
+  signInteract: (ctx, w, h) =>
+    signBoard(ctx, w, h, (c) => {
+      c.save();
+      c.translate(-14, -18);
+      dogGlyph(c, 0.5);
+      c.restore();
+      // 옆에 놓인 쉬어 가는 자리
+      c.fillStyle = '#8a6a45';
+      c.beginPath();
+      c.roundRect(8, -26, 26, 16, 4);
+      c.fill();
+      holdButton(c, 0, 22, 26, false);
     }),
 
   sandbox: (ctx, w, h) => {

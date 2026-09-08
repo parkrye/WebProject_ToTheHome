@@ -323,6 +323,7 @@ async function commit() {
       keepsakes: L.keepsakes,
       saves: L.saves,
       props: L.props,
+      hazards: L.hazards,
       start: L.start,
       goal: { x: L.goal.x, y: L.goal.y - 90, h: 320 },
       width: L.width,

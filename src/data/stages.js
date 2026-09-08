@@ -59,6 +59,18 @@ function normalize(L) {
   if (dx === 0 && dy === 0) return L;
 
   const move = (list) => (list || []).map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
+  // 위험은 x·y 말고도 **자기만의 좌표**를 들고 있다 (자동차가 오가는 두 끝, 파도가
+  // 닿는 자리, 돌이 떨어질 바닥). 같이 밀지 않으면 엉뚱한 데서 튀어나온다
+  const moveHazards = (list) =>
+    (list || []).map((h) => {
+      const moved = { ...h, x: h.x + dx, y: h.y + dy };
+      ['fromX', 'toX', 'reachX'].forEach((k) => {
+        if (h[k] != null) moved[k] = h[k] + dx;
+      });
+      if (h.groundY != null) moved.groundY = h.groundY + dy;
+      return moved;
+    });
+
   return {
     ...L,
     ground: move(L.ground),
@@ -67,6 +79,7 @@ function normalize(L) {
     keepsakes: move(L.keepsakes),
     saves: move(L.saves),
     props: move(L.props),
+    hazards: moveHazards(L.hazards),
     start: L.start ? { ...L.start, x: L.start.x + dx, y: L.start.y + dy } : L.start,
     goal: L.goal ? { ...L.goal, x: L.goal.x + dx, y: L.goal.y + dy } : L.goal,
     width: (L.width ?? 0) + dx,
@@ -102,6 +115,9 @@ function sealEdges(ground, width) {
 /** 안내판을 세울 때 서로 겹치지 않는 간격 */
 const SIGN_STEP = 300;
 
+/** 생성기가 놓은 세이브 소품의 높이. 손으로 짠 것(110~190)보다 작다 */
+const MID_SAVE_HEIGHT = 100;
+
 /**
  * 튜토리얼 안내판을 새 지형의 **출발 지점 앞에** 다시 세운다.
  *
@@ -127,17 +143,31 @@ function tutorialSigns(base, ground, start, goal) {
     .filter(Boolean);
 }
 
+/**
+ * 연출 이벤트를 새 지도의 **같은 비율 자리**로 옮긴다.
+ *
+ * 이벤트는 "지나가는 길의 어디쯤에서 터지는가"가 전부다. 손으로 잡은 x 는 예전
+ * 지도 기준이라, 폭이 두 배로 늘어난 지도에서는 시작하자마자 터져 버린다.
+ */
+function reanchorEvents(base, width) {
+  const scale = base.width ? width / base.width : 1;
+  return (base.events || []).map((e) => ({ ...e, x: Math.round(e.x * scale) }));
+}
+
 /** 손으로 짠 스테이지 위에 관리 툴 배치를 덮는다 */
 function applyLayout(base, saved) {
   if (!saved.layout || !saved.layout.ground?.length) return base;
   const L = normalize(saved.layout);
 
-  // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다
+  // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다.
+  // 소품은 손으로 짠 것보다 **작게** 세운다 — 길 한복판에 놓이므로 원래 크기로는
+  // 지형을 가리고 혼자 튄다 (플레이 리뷰 3차 4)
   const savePoints = (L.saves || []).map((s, i) => ({
     ...(base.savePoint || {}),
     id: `s${base.id}_gen${i + 1}`,
     x: s.x,
     y: s.y ?? groundTopAt(L.ground, s.x) ?? base.savePoint?.y,
+    propHeight: Math.min(base.savePoint?.propHeight ?? MID_SAVE_HEIGHT, MID_SAVE_HEIGHT),
   }));
 
   // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다.
@@ -159,13 +189,16 @@ function applyLayout(base, saved) {
     ground,
     ledges: L.ledges || [],
     // 지형이 바뀌었으므로 지형에 매달려 있던 것들은 버린다.
-    // 관리 툴로 만든 지도는 지형과 냄새와 기억으로만 이루어진다
     moving: [],
     crumble: [],
-    hazards: [],
+    // 위험만은 버리지 않는다. 예전 좌표는 뜻이 없으므로 **생성기가 새 지형을 보고
+    // 놓아 준 것**을 쓴다 — 비워 두면 걸어가기만 하면 끝나는 산책로가 된다
+    // (플레이 리뷰 3차 1)
+    hazards: L.hazards || [],
     // 안내판만은 버리지 않는다 — 조작을 알려 주는 유일한 수단이다.
     // 지형에 매달린 x 를 버리고 출발 지점 앞에 순서대로 다시 세운다
     signs: tutorialSigns(base, ground, start, goal),
+    events: reanchorEvents(base, width),
     scent: L.scent || [],
     keepsakes: L.keepsakes || [],
     // 생성기가 소품까지 만들어 주면 그것을 쓴다. 없으면 손으로 놓은 것을 새 지면에 앉힌다

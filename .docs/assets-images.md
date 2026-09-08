@@ -283,6 +283,24 @@ A sheet of separated meadow props for a side-scrolling platformer, painted in so
 A small pale blue compact hatchback car seen from the side, painted in soft hand-painted pixel art on a fully transparent background. Slightly dusty and well used with a faint dent on the rear door, a soft toy hanging from the rear view mirror visible through the window, and warm reflections along the body. The license plate is completely blank with no characters at all. Nostalgic family car feeling, warm pastel palette. No text, no letters, no numbers, no brand logos, no watermark.
 ```
 
+## 7.13 `prop_sign_sniff.png` (128×160, 투명) — 튜토리얼 안내판 ④ 냄새 맡기
+
+버튼을 **꾹 누르고 있는** 동작이다. 눌렀다 떼는 것과 구별되어야 하므로 버튼 둘레에
+차오르는 게이지 링을 그린다.
+
+```
+A small weathered wooden signboard on a single post, standing upright, painted in soft hand-painted pixel art on a fully transparent background. The board face shows only a wordless pictogram: a dog head in profile with its nose raised, and three small glowing motes drifting up and forward from the nose in a rising trail. Below them sits one round button symbol with a dog nose shape inside it, encircled by a partially filled ring gauge that reads as "press and hold". Absolutely no letters, no words, no numbers anywhere on the sign, purely symbolic. Warm faded wood tones with a soft golden glow on the motes, gentle storybook style, no watermark.
+```
+
+## 7.14 `prop_sign_interact.png` (128×160, 투명) — 튜토리얼 안내판 ⑤ 상호작용
+
+세이브 포인트와 도착 지점에서 **한 번 톡** 누르는 동작이다. 게이지 링 대신 버튼
+옆에 톡 튀는 짧은 선 두 개를 그려 ④ 와 구별한다.
+
+```
+A small weathered wooden signboard on a single post, standing upright, painted in soft hand-painted pixel art on a fully transparent background. The board face shows only a wordless pictogram: a small dog silhouette standing beside a low rounded object that reads as a resting spot, with a soft sparkle above the object. Below them sits one round button symbol with a dog nose shape inside it, and two short motion ticks flicking off its right edge that read as a single quick tap. Absolutely no letters, no words, no numbers anywhere on the sign, purely symbolic. Warm faded wood tones, gentle storybook style, no watermark.
+```
+
 ---
 
 # 8. GUI
