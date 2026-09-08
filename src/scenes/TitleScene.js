@@ -27,9 +27,15 @@ export default class TitleScene extends Phaser.Scene {
     input.clearTouch();
 
     // 씬 인스턴스는 다시 시작해도 그대로 재사용된다. confirm() 이 걸어 둔 자물쇠가
-    // 남아 있으면 홈으로 돌아왔을 때 메뉴가 통째로 먹통이 된다
+    // 남아 있으면 홈으로 돌아왔을 때 메뉴가 통째로 먹통이 된다.
+    //
+    // 선택 표시 강아지도 마찬가지다. 지난 방문에서 **이미 파괴된 스프라이트**가
+    // 그대로 남아 있어서, 그걸 걸어가게 하려다 예외가 나면 create() 가 중간에
+    // 끊긴다 — 타이틀이 시작되다 만 채로 활성 씬이 하나도 없어져 화면이 검게
+    // 멈춘다 (플레이 리뷰 2차 10)
     this.locked = false;
     this.selectedOnce = false;
+    this.marker = null;
 
     this.buildBackdrop();
 
@@ -71,13 +77,14 @@ export default class TitleScene extends Phaser.Scene {
       });
     });
 
-    this.index = 0;
-    this.select(0);
-
-    // 선택 표시 — 커서 대신 강아지가 그 앞에 앉는다
+    // 선택 표시 — 커서 대신 강아지가 그 앞에 앉는다.
+    // **고르기 전에 세워 둔다.** select() 가 이 강아지를 걸어가게 하기 때문이다
     this.marker = this.add.sprite(startX, 470, 'dog_idle').setDepth(11);
     sizeTo(this.marker, { height: UI_SIZE.markerDog });
     this.marker.play('dog_idle');
+
+    this.index = 0;
+    this.select(0);
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.confirmKeys = this.input.keyboard.addKeys('SPACE,ENTER,E');

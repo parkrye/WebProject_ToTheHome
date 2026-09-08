@@ -8,7 +8,7 @@
 import Phaser from 'phaser';
 import { SCENT } from '../config.js';
 import { sizeTo, sizeToActor, GROUND_SINK, PROP_DEPTH, UI_SIZE } from '../systems/Layout.js';
-import { ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
+import { ACTOR_SLOTS, ACTOR_FILL, PROP_FOOT, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 
 export class ScentTrail {
   /**
@@ -160,6 +160,11 @@ export function placeProp(scene, def) {
   if (def.tint != null) prop.setTint(def.tint);
   if (def.scrollFactor != null) prop.setScrollFactor(def.scrollFactor);
 
+  // 칸 아래에 여백이 남은 그림은 그만큼 내려 밑동을 지면에 맞춘다 (AssetManifest.PROP_FOOT).
+  // 크기를 다 정한 뒤라야 여백이 화면에서 몇 px 인지 알 수 있다
+  const foot = PROP_FOOT[key]?.[def.frame ?? 0];
+  if (foot) prop.y += foot * prop.displayHeight;
+
   // 지면에 서는 것은 살짝 파묻는다. 타일 윗면에 딱 올리면 붕 떠 보인다
   if (grounded) prop.y += def.sink ?? GROUND_SINK;
 
@@ -189,20 +194,18 @@ export function placeProp(scene, def) {
 }
 
 /**
- * 스테이지의 출발 지점과 도착 지점 표시.
+ * 도착 지점 표시 — **집 그림과 빛기둥.**
  *
- * 문자를 쓰지 않으므로 그림과 빛으로만 알린다. 출발은 **바닥에 남은 발자국**,
- * 도착은 **집 그림과 빛기둥**이다. 어느 쪽이 어디인지 한눈에 읽혀야 한다.
+ * 문자를 쓰지 않으므로 그림과 빛으로만 알린다.
+ *
+ * 출발 지점에도 발자국을 깔아 두었지만 걷어냈다. 강아지는 이미 거기 서 있으므로
+ * 그 자리를 알려 줄 이유가 없고, 발밑에 뜻 모를 표시만 남았다 (플레이 리뷰 2차 2).
  */
-export class Marker {
-  /** @param {'start'|'goal'} kind */
-  constructor(scene, x, y, kind) {
+export class GoalMarker {
+  constructor(scene, x, y) {
     this.scene = scene;
     this.x = x;
     this.y = y;
-
-    const goal = kind === 'goal';
-    const icon = goal ? 'ui_icon_house' : 'ui_icon_paw';
 
     // 빛기둥 — 멀리서도 보이라고 세로로 길게 깐다
     this.glow = scene.add
@@ -210,26 +213,24 @@ export class Marker {
       .setOrigin(0.5, 1)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(PROP_DEPTH + 1)
-      .setAlpha(goal ? 0.55 : 0.3);
-    sizeTo(this.glow, { height: goal ? 190 : 110 });
+      .setAlpha(0.55);
+    sizeTo(this.glow, { height: 190 });
 
     this.icon = scene.add
-      .image(x, y - (goal ? 96 : 6), icon)
-      .setOrigin(0.5, goal ? 1 : 0.5)
+      .image(x, y - 96, 'ui_icon_house')
+      .setOrigin(0.5, 1)
       .setDepth(PROP_DEPTH + 2)
-      .setAlpha(goal ? 0.95 : 0.55);
-    sizeTo(this.icon, { height: goal ? 96 : 44 });
+      .setAlpha(0.95);
+    sizeTo(this.icon, { height: 96 });
 
     scene.tweens.add({
       targets: this.glow,
-      alpha: goal ? 0.85 : 0.45,
-      duration: goal ? 1400 : 2200,
+      alpha: 0.85,
+      duration: 1400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
-
-    if (!goal) return;
 
     // 도착은 상호작용해야 통과다. 가까이 가면 안내가 떠오른다
     this.prompt = scene.add

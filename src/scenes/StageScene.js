@@ -6,8 +6,8 @@ import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../o
 import { Keepsake, KeepsakeRow } from '../objects/Keepsake.js';
 import { HAZARD_TYPES } from '../objects/Hazards.js';
 import { SavePoint } from '../objects/SavePoint.js';
-import { ScentTrail, SignBoard, placeProp, StageGoal, Marker } from '../objects/Decor.js';
-import { linked } from '../systems/StageBuilder.js';
+import { ScentTrail, SignBoard, placeProp, StageGoal, GoalMarker } from '../objects/Decor.js';
+import { pathNodes, pathLinks, pathRoute, nearestNode, PATH_STEP } from '../systems/StageBuilder.js';
 
 /**
  * 스테이지 공용 씬. 레벨은 전부 src/data/stage*.js 의 데이터로 만들어진다.
@@ -71,6 +71,17 @@ export default class StageScene extends Phaser.Scene {
     const { layers } = this.def;
     this.bgLayers = [];
 
+    // 카메라가 가장 아래에 있을 때의 스크롤 값. 여기서 얼마나 올라왔는지로 레이어를 내린다
+    this.floorScrollY = Math.max(0, (this.def.height ?? GAME_HEIGHT) - GAME_HEIGHT);
+
+    // **얼마나 올라가야 다 내려가는지를 스테이지 높이로 정한다.**
+    //
+    // 예전에는 올라온 px 에 고정 비율을 곱해서, 스테이지가 높든 낮든 1000px 만
+    // 올라가면 연출이 끝나 버렸다. 오를 수 있는 높이의 fullAt(80%) 를 올랐을 때
+    // 가까운 레이어가 화면 아래로 다 빠지도록 환산한다 (플레이 리뷰 2차 5)
+    const climb = Math.max(1, this.floorScrollY * PARALLAX_DROP.fullAt);
+    this.dropScale = GAME_HEIGHT / climb;
+
     const add = (key, factor, depth, drop = 0) => {
       if (!key || !this.textures.exists(key)) return;
       const tile = this.add
@@ -85,9 +96,6 @@ export default class StageScene extends Phaser.Scene {
     add(layers.far, PARALLAX.far, 1);
     add(layers.mid, PARALLAX.mid, 2, PARALLAX_DROP.mid);
     add(layers.near, PARALLAX.near, 3, PARALLAX_DROP.near);
-
-    // 카메라가 가장 아래에 있을 때의 스크롤 값. 여기서 얼마나 올라왔는지로 레이어를 내린다
-    this.floorScrollY = Math.max(0, (this.def.height ?? GAME_HEIGHT) - GAME_HEIGHT);
 
     this.vignette = this.add
       .image(0, 0, 'ui_vignette')
@@ -159,10 +167,9 @@ export default class StageScene extends Phaser.Scene {
 
     this.goal = new StageGoal(this, def.goal);
 
-    // 어디서 시작해 어디로 가야 하는지 보이게 한다 (플레이 리뷰 15)
-    const spawn = this.resolveSpawn();
-    this.startMarker = new Marker(this, spawn.x, spawn.y + 70, 'start');
-    this.goalMarker = new Marker(this, def.goal.x, def.goal.y + (def.goal.h ?? 300) / 2, 'goal');
+    // 어디로 가야 하는지 보이게 한다 (플레이 리뷰 15).
+    // 출발 표시는 두지 않는다 — 강아지가 이미 거기 서 있다 (플레이 리뷰 2차 2)
+    this.goalMarker = new GoalMarker(this, def.goal.x, def.goal.y + (def.goal.h ?? 300) / 2);
 
     // 기억 조각 — 이미 주운 것은 다시 놓지 않는다
     const spots = def.keepsakes || [];
@@ -190,40 +197,19 @@ export default class StageScene extends Phaser.Scene {
    */
   buildPathGraph() {
     const def = this.def;
-    this.pathPads = [...(def.ground || []), ...(def.ledges || [])].map((p) => ({
-      x: p.x,
-      y: p.y,
-      w: p.w,
-      cx: p.x + p.w / 2,
-    }));
+
+    // 발판 하나에 노드 하나면 폭 2000px 짜리 바닥은 가운데 한 점만 길이 된다.
+    // 일정 간격으로 쪼개야 긴 바닥에서도 갈 방향이 보인다 (StageBuilder.PATH_STEP)
+    this.pathPads = pathNodes([...(def.ground || []), ...(def.ledges || [])]);
 
     // 인접 목록을 한 번만 만들어 둔다. 매번 O(n²) 로 재면 맡을 때마다 버벅인다
-    this.pathAdj = this.pathPads.map(() => []);
-    for (let i = 0; i < this.pathPads.length; i += 1) {
-      for (let j = i + 1; j < this.pathPads.length; j += 1) {
-        if (!linked(this.pathPads[i], this.pathPads[j])) continue;
-        this.pathAdj[i].push(j);
-        this.pathAdj[j].push(i);
-      }
-    }
+    this.pathAdj = pathLinks(this.pathPads);
 
-    this.goalPad = this.nearestPad(def.goal.x, def.goal.y + (def.goal.h ?? 300) / 2);
-  }
-
-  /** 그 자리에 가장 가까운 발판 번호. 없으면 -1 */
-  nearestPad(x, y) {
-    let best = -1;
-    let bestD = Infinity;
-    this.pathPads.forEach((p, i) => {
-      // 발판 폭 안이면 가로 거리는 0 이다 — 위에 서 있는 발판이 먼저 잡힌다
-      const dx = Math.max(0, Math.max(p.x - x, x - (p.x + p.w)));
-      const d = dx * dx + (p.y - y) * (p.y - y);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    });
-    return best;
+    this.goalPad = nearestNode(
+      this.pathPads,
+      def.goal.x,
+      def.goal.y + (def.goal.h ?? 300) / 2
+    );
   }
 
   /**
@@ -233,33 +219,36 @@ export default class StageScene extends Phaser.Scene {
    */
   scentRoute() {
     if (!this.pathPads?.length || this.goalPad < 0) return [];
-    const from = this.nearestPad(this.dog.x, this.dog.body.bottom);
-    if (from < 0) return [];
+    const from = nearestNode(this.pathPads, this.dog.x, this.dog.body.bottom);
+    const route = pathRoute(this.pathAdj, from, this.goalPad);
+    if (route.length < 2) return [];
 
-    const prev = new Array(this.pathPads.length).fill(-1);
-    const seen = new Array(this.pathPads.length).fill(false);
-    const queue = [from];
-    seen[from] = true;
+    // 지금 서 있는 칸은 빼고, **앞쪽 얼마까지만** 보여 준다.
+    // 노드 간격이 촘촘해졌으므로 걸음 수가 아니라 걸어갈 거리로 끊는다
+    const motes = [];
+    let walked = 0;
 
-    for (let head = 0; head < queue.length; head += 1) {
-      const cur = queue[head];
-      if (cur === this.goalPad) break;
-      this.pathAdj[cur].forEach((j) => {
-        if (seen[j]) return;
-        seen[j] = true;
-        prev[j] = cur;
-        queue.push(j);
-      });
+    for (let i = 1; i < route.length && motes.length < SCENT.maxMotes; i += 1) {
+      const a = this.pathPads[route[i - 1]];
+      const b = this.pathPads[route[i]];
+      const span = Math.hypot(b.cx - a.cx, b.y - a.y);
+
+      // 최단 경로는 **가장 적게 뛰는 길**이라 한 칸이 450px 씩 벌어지기도 한다.
+      // 그대로 찍으면 입자가 띄엄띄엄해서 어디로 가라는 건지 읽히지 않는다.
+      // 같은 높이를 걸어가는 구간은 노드 간격(PATH_STEP)으로 잘게 나눠 찍는다 —
+      // 높이가 달라지는 구간은 뛰어 건너는 곳이라 나누지 않는다
+      const steps = Math.abs(b.y - a.y) < 8 ? Math.max(1, Math.round(span / PATH_STEP)) : 1;
+
+      for (let k = 1; k <= steps && motes.length < SCENT.maxMotes; k += 1) {
+        walked += span / steps;
+        if (walked > SCENT.lookahead) return motes;
+        motes.push({
+          x: a.cx + ((b.cx - a.cx) * k) / steps,
+          y: a.y + ((b.y - a.y) * k) / steps - 62,
+        });
+      }
     }
-    if (!seen[this.goalPad]) return [];
-
-    const route = [];
-    for (let at = this.goalPad; at >= 0; at = prev[at]) route.unshift(at);
-
-    // 지금 서 있는 칸은 빼고, 앞쪽 몇 걸음만 보여 준다
-    return route
-      .slice(1, 1 + SCENT.lookahead)
-      .map((i) => ({ x: this.pathPads[i].cx, y: this.pathPads[i].y - 62 }));
+    return motes;
   }
 
   /** 지금 저장되어 있는 세이브 포인트의 정의 */
@@ -313,7 +302,8 @@ export default class StageScene extends Phaser.Scene {
 
   buildCamera() {
     const cam = this.cameras.main;
-    cam.startFollow(this.dog, true, CAMERA.lerp, CAMERA.lerp, 0, CAMERA.followOffsetY);
+    // 정수 자리로 반올림하지 않는다 — 소수 단위 추적을 반올림하면 덜컥거린다 (main.js)
+    cam.startFollow(this.dog, false, CAMERA.lerp, CAMERA.lerp, 0, CAMERA.followOffsetY);
     cam.setDeadzone(CAMERA.deadzoneWidth, CAMERA.deadzoneHeight);
   }
 
@@ -540,7 +530,7 @@ export default class StageScene extends Phaser.Scene {
 
     this.bgLayers.forEach(({ tile, factor, drop }) => {
       tile.tilePositionX = cam.scrollX * factor;
-      if (drop) tile.y = Math.min(rise * drop, GAME_HEIGHT);
+      if (drop) tile.y = Math.min(rise * drop * this.dropScale, GAME_HEIGHT);
     });
   }
 

@@ -637,6 +637,142 @@ function decorate(out, rand, seed, area) {
   return props;
 }
 
+/* --------------------------------------------------------------- 길찾기 노드 */
+
+/**
+ * 길찾기 노드를 몇 px 마다 놓을지.
+ *
+ * 발판 하나에 노드 하나를 놓으면, 폭 2000px 짜리 바닥은 **가운데 한 점**만 길이 된다.
+ * 그 위 어디에 서 있든 냄새는 늘 바닥 한가운데를 가리키므로 길잡이 노릇을 못 한다
+ * (플레이 리뷰 2차 8). 발판을 일정 간격으로 쪼개 그 칸마다 노드를 놓는다.
+ *
+ * 간격은 한 번에 뛸 거리(REACH.hop 190)보다 짧아야 한다. 그래야 같은 발판 위의
+ * 이웃 칸끼리 `linked()` 로 이어져 한 줄기 길이 된다.
+ */
+export const PATH_STEP = 150;
+
+/** 발판들을 일정 간격으로 쪼갠 길찾기 노드 */
+export function pathNodes(pads) {
+  const nodes = [];
+  pads.forEach((p) => {
+    const parts = Math.max(1, Math.round(p.w / PATH_STEP));
+    const w = p.w / parts;
+    for (let i = 0; i < parts; i += 1) {
+      const x = p.x + w * i;
+      nodes.push({ x, y: p.y, w, cx: x + w / 2 });
+    }
+  });
+  return nodes;
+}
+
+/**
+ * 노드마다 오갈 수 있는 이웃 목록.
+ *
+ * 이어짐의 규칙은 발판일 때와 **같은 함수**(`linked`)를 쓴다. 생성기가 "오갈 수 있다"고
+ * 보고 이은 길이 곧 여기서 찾는 길이어야 하기 때문이다.
+ */
+export function pathLinks(nodes) {
+  const adj = nodes.map(() => []);
+  for (let i = 0; i < nodes.length; i += 1) {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      if (!linked(nodes[i], nodes[j])) continue;
+      adj[i].push(j);
+      adj[j].push(i);
+    }
+  }
+  return adj;
+}
+
+/** 그 자리에 가장 가까운 노드 번호. 없으면 -1 */
+export function nearestNode(nodes, x, y) {
+  let best = -1;
+  let bestD = Infinity;
+  nodes.forEach((p, i) => {
+    // 칸 폭 안이면 가로 거리는 0 이다 — 위에 서 있는 칸이 먼저 잡힌다
+    const dx = Math.max(0, Math.max(p.x - x, x - (p.x + p.w)));
+    const d = dx * dx + (p.y - y) * (p.y - y);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/** from 에서 to 까지의 최단 경로 (노드 번호 목록). 못 닿으면 빈 배열 */
+export function pathRoute(adj, from, to) {
+  if (from < 0 || to < 0) return [];
+
+  const prev = new Array(adj.length).fill(-1);
+  const seen = new Array(adj.length).fill(false);
+  const queue = [from];
+  seen[from] = true;
+
+  for (let head = 0; head < queue.length; head += 1) {
+    const cur = queue[head];
+    if (cur === to) break;
+    adj[cur].forEach((j) => {
+      if (seen[j]) return;
+      seen[j] = true;
+      prev[j] = cur;
+      queue.push(j);
+    });
+  }
+  if (!seen[to]) return [];
+
+  const route = [];
+  for (let at = to; at >= 0; at = prev[at]) route.unshift(at);
+  return route;
+}
+
+/** 노드 경로를 따라 걸어간 거리를 하나씩 쌓은 목록 */
+function walkedLengths(pts) {
+  const acc = [0];
+  for (let i = 1; i < pts.length; i += 1) {
+    acc.push(acc[i - 1] + Math.hypot(pts[i].cx - pts[i - 1].cx, pts[i].y - pts[i - 1].y));
+  }
+  return acc;
+}
+
+/* --------------------------------------------------------------- 중간 세이브 */
+
+/** 출발에서 도착까지의 최단 경로에서 중간 세이브를 놓을 지점 */
+const MID_SAVE_AT = [1 / 3, 2 / 3];
+
+/** 이미 찍어 둔 세이브와 이만큼 안이면 겹치는 것으로 보고 놓지 않는다 */
+const SAVE_MIN_GAP = 700;
+
+/**
+ * **최단 경로 1/3 지점마다 중간 세이브를 놓는다.**
+ *
+ * 스테이지가 길어질수록 찍어 둔 세이브 사이가 벌어져서, 한 번 죽으면 한참을 되돌아
+ * 걸어야 한다. 사람이 어디에 찍었든 길이의 3분의 1마다 쉴 자리가 있어야 한다
+ * (플레이 리뷰 2차 9). 그래서 이건 배치가 아니라 **생성기의 규칙**이다.
+ *
+ * 3분의 1은 **걸어가는 거리**로 잰다. 칸 수로 세면 넓은 바닥 하나가 한 칸이라
+ * 뜻이 없다. 사람이 찍은 세이브 가까이면 놓지 않는다 — 둘이 겹쳐 보인다.
+ */
+function midSaves(out, startPad, goalPad) {
+  const nodes = pathNodes(allPads(out));
+  const adj = pathLinks(nodes);
+  const from = nearestNode(nodes, startPad.x + startPad.w / 2, startPad.y);
+  const to = nearestNode(nodes, goalPad.x + goalPad.w / 2, goalPad.y);
+
+  const route = pathRoute(adj, from, to).map((i) => nodes[i]);
+  if (route.length < 3) return;
+
+  const acc = walkedLengths(route);
+  const total = acc[acc.length - 1];
+  if (!total) return;
+
+  MID_SAVE_AT.forEach((t) => {
+    const at = route[acc.findIndex((d) => d >= total * t)];
+    if (!at) return;
+    if (out.saves.some((s) => Math.hypot(s.x - at.cx, s.y - at.y) < SAVE_MIN_GAP)) return;
+    out.saves.push({ x: round(at.cx), y: round(at.y) });
+  });
+}
+
 /* ------------------------------------------------------------------ 만들기 */
 
 /** 점 하나를 발판 하나로 바꾼다 */
@@ -784,6 +920,9 @@ export function build(seed) {
     startPad.onGround ? out.ground[0] : startPad,
     goalPad.onGround ? out.ground[0] : goalPad
   );
+
+  // 8. 최단 경로 3분의 1마다 중간 세이브. 난수를 쓰지 않으므로 지형은 그대로다
+  midSaves(out, startPad, goalPad);
 
   const pads = allPads(out);
   const { groups } = components(pads);
