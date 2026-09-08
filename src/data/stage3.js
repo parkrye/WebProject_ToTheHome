@@ -118,9 +118,9 @@ export default {
     { type: 'static', x: 2660, y: 600, w: 900, h: 120, effect: 'kill' },
 
     // 멧돼지 — 땅을 긁고 나서 돌진
-    { type: 'boar', x: 4180, y: 450, range: 420, speed: 400, delay: 700 },
-    { type: 'boar', x: 4560, y: 450, range: 480, speed: 430, delay: 1900 },
-    { type: 'boar', x: 5380, y: 410, range: 440, speed: 470, delay: 2600 },
+    { type: 'boar', x: 4180, y: 470, range: 420, speed: 400, delay: 700 },
+    { type: 'boar', x: 4560, y: 470, range: 480, speed: 430, delay: 1900 },
+    { type: 'boar', x: 5380, y: 430, range: 440, speed: 470, delay: 2600 },
 
     // 낙석 — 절정 구간 내내 떨어진다
     { type: 'rock', x: 4060, y: 120, groundY: 480, interval: 2600, delay: 300 },

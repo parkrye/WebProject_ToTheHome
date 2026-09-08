@@ -827,7 +827,7 @@ function makeHazard(kind, slot, rand, lanes) {
     const car = {
       type: 'car',
       x: fromX,
-      y: pad.y - 34,
+      y: pad.y,
       fromX,
       toX,
       dir,
@@ -855,7 +855,7 @@ function makeHazard(kind, slot, rand, lanes) {
     return {
       type: 'boar',
       x,
-      y: pad.y - 20,
+      y: pad.y,
       range: round(380 + rand() * 140),
       speed: round(380 + rand() * 90),
       delay,

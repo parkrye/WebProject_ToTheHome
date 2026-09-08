@@ -34,7 +34,9 @@ const config = {
     default: 'arcade',
     arcade: {
       gravity: { y: DOG.gravity },
-      debug: false,
+      // 주소에 ?debug=1 을 붙이면 충돌 박스를 그린다 (개발 빌드 전용).
+      // **보이는 그림과 판정이 어긋나는 것**은 눈으로 보지 않으면 못 잡는다
+      debug: import.meta.env.DEV && new URLSearchParams(location.search).has('debug'),
     },
   },
   input: {
@@ -87,6 +89,17 @@ if (import.meta.env.DEV) {
       document.body.dataset.dog = `${Math.round(stage.dog.x)},${Math.round(stage.dog.y)}`;
       document.body.dataset.anim = stage.dog.anims.currentAnim?.key ?? '';
       document.body.dataset.checkpoint = stage.save.data.checkpoint ?? '';
+
+      // **보이는 그림과 판정이 어긋나면** "왜 죽었는지 모르겠다"가 된다.
+      // 위험 요소마다 그림 크기와 몸 크기를 나란히 적어 둔다
+      document.body.dataset.hazards = (stage.hazards ?? [])
+        .filter((h) => h.body && h.box)
+        .map(
+          (h) =>
+            `${h.def.type} art ${Math.round(h.displayWidth * h.box.w)}x${Math.round(h.displayHeight * h.box.h)}` +
+            ` body ${Math.round(h.body.width)}x${Math.round(h.body.height)}`
+        )
+        .join(' | ');
     }
   }, 120);
 }

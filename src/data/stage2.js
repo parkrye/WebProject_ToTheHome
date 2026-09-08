@@ -90,10 +90,10 @@ export default {
    */
   hazards: [
     // 좁은 해안 도로의 양방향 차량 — 갓길이 좁아 한쪽으로 붙어 피해야 한다
-    { type: 'car', x: 3400, y: GY - 34, fromX: 3400, toX: 1850, dir: -1, speed: 330, interval: 3800, delay: 800 },
-    { type: 'car', x: 1850, y: GY - 34, fromX: 1850, toX: 3400, dir: 1, speed: 290, interval: 4600, delay: 2400 },
-    { type: 'car', x: 3400, y: GY - 34, fromX: 3400, toX: 1850, dir: -1, speed: 260, interval: 6200, delay: 4200 },
-    { type: 'car', x: 4460, y: GY - 34, fromX: 4460, toX: 3520, dir: -1, speed: 310, interval: 4400, delay: 1600 },
+    { type: 'car', x: 3400, y: GY, fromX: 3400, toX: 1850, dir: -1, speed: 330, interval: 3800, delay: 800 },
+    { type: 'car', x: 1850, y: GY, fromX: 1850, toX: 3400, dir: 1, speed: 290, interval: 4600, delay: 2400 },
+    { type: 'car', x: 3400, y: GY, fromX: 3400, toX: 1850, dir: -1, speed: 260, interval: 6200, delay: 4200 },
+    { type: 'car', x: 4460, y: GY, fromX: 4460, toX: 3520, dir: -1, speed: 310, interval: 4400, delay: 1600 },
 
     // 밀물 — 닿으면 뒤로 밀려난다 (사망 아님). 셋이 어긋난 주기로 밀려온다
     { type: 'wave', x: 5000, y: GY + 120, reachX: 4700, interval: 3600, delay: 500, effect: 'push' },

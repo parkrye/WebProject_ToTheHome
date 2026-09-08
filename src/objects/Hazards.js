@@ -10,14 +10,17 @@
  */
 
 import Phaser from 'phaser';
-import { ACTOR, ACTOR_SLOTS, ACTOR_FILL, actorAnim, actorFrame } from '../systems/AssetManifest.js';
+import { ACTOR, ACTOR_SLOTS, ACTOR_BOX, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 import { sizeTo, sizeToActor, GROUND_SINK } from '../systems/Layout.js';
 
-/** 그 시트·역할의 칸 채움 비율 (`actors_city` → city) */
-function fillOf(sheetKey, slot) {
+/** 그 시트·역할 칸에서 그림이 실제로 차지하는 상자 (`actors_city` → city) */
+function boxOf(sheetKey, slot) {
   const theme = String(sheetKey).replace('actors_', '');
-  return ACTOR_FILL[theme]?.[ACTOR_SLOTS[slot]] ?? null;
+  return ACTOR_BOX[theme]?.[ACTOR_SLOTS[slot]] ?? null;
 }
+
+/** 칸을 통째로 쓰는 낱장 그림 */
+const FULL_BOX = { w: 1, h: 1, foot: 0 };
 
 /**
  * 크기 기준.
@@ -40,13 +43,45 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
     this.def = def;
     this.effect = def.effect || 'kill';
     this.setDepth(def.depth ?? 18);
+    this.box = (def.texture ? null : boxOf(key, slot)) ?? FULL_BOX;
     // height 는 **화면에서 그림이 차지할 높이**다. 칸 안 여백은 여기서 쳐 준다
-    if (def.height) sizeToActor(this, { height: def.height }, def.texture ? null : fillOf(key, slot));
+    if (def.height) sizeToActor(this, { height: def.height }, this.box.h);
+
+    // **def.y 는 그림의 밑동이다.** 칸 아래에 여백이 남은 시트는 그만큼 원점을 올려야
+    // 지면에 세운 것이 땅에 발을 붙이고 선다
+    this.setOrigin(def.originX ?? 0.5, def.originY ?? 1 - this.box.foot);
 
     if (!def.texture) {
       const anim = actorAnim(key, slot);
       if (anim && scene.anims.exists(anim)) this.play(anim);
     }
+  }
+
+  /**
+   * **보이는 그림 크기에 맞춰** 몸을 잡는다. 비율은 그 그림에 대한 비율이다.
+   *
+   * Arcade 의 `setSize()` 는 넘긴 값을 **원본 픽셀로 보고 거기에 스케일을 다시**
+   * 곱한다 (`Body.js`: `width = sourceWidth * _sx`). 그래서 화면 px 를 그대로 넘기면
+   * 몸이 두 번 커진다 — 도시 자동차는 220px 로 보이는 그림에 **772×600 짜리 몸**이
+   * 붙어 있었고, 차가 닿기 380px 전에 죽거나 위쪽 발판에 서 있어도 죽었다.
+   *
+   * 칸에는 여백이 있으므로 칸이 아니라 **그림 상자**(ACTOR_BOX)를 기준으로 잡는다.
+   *
+   * @param anchor 'center' 는 그림 가운데, 'bottom' 은 그림 **밑동**에 몸을 붙인다.
+   *   땅을 딛고 다니는 것(자동차 바퀴 · 멧돼지 발)은 밑동이 기준이어야 지면에 선
+   *   강아지와 제대로 부딪힌다.
+   */
+  fitBody(wRatio, hRatio, anchor = 'center') {
+    const fw = this.frame.realWidth || this.frame.width;
+    const fh = this.frame.realHeight || this.frame.height;
+    const box = this.box;
+    const bh = fh * box.h * hRatio;
+
+    this.body.setSize(fw * box.w * wRatio, bh, true);
+
+    const artBottom = fh * (1 - box.foot);
+    const centerY = anchor === 'bottom' ? artBottom - bh / 2 : artBottom - (fh * box.h) / 2;
+    this.body.offset.y += centerY - fh / 2;
   }
 
   /** 서브클래스에서 구현 */
@@ -75,7 +110,7 @@ export class Car extends HazardBase {
     this.warned = false;
     this.active_ = false;
     this.setFlipX(this.dir > 0);
-    this.body.setSize(this.displayWidth * 0.9, this.displayHeight * 0.7, true);
+    this.fitBody(0.92, 0.78, 'bottom');
     this.setVisible(false);
     this.body.setEnable(false);
     this.baseY = def.y;
@@ -127,7 +162,7 @@ export class FallingRock extends HazardBase {
     this.phase = 'wait';
     this.setVisible(false);
     this.body.setEnable(false);
-    this.body.setSize(this.displayWidth * 0.7, this.displayHeight * 0.7, true);
+    this.fitBody(0.7, 0.7);
 
     this.shadow = scene.add.ellipse(def.x, this.groundY, 46, 12, 0x000000, 0.35).setDepth(6).setVisible(false);
   }
@@ -189,7 +224,9 @@ export class Boar extends HazardBase {
     this.speed = def.speed ?? 420;
     this.phase = 'idle';
     this.timer = def.delay ?? 1200;
-    this.body.setSize(this.displayWidth * 0.85, this.displayHeight * 0.7, true);
+    // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다.
+    // 서서 뛰면 96px, 달리며 뛰면 112px 오르므로 84px 이면 넘어간다
+    this.fitBody(0.85, 0.58, 'bottom');
   }
 
   tick(time, delta) {
@@ -246,12 +283,11 @@ export class Boar extends HazardBase {
 export class Wave extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 190, ...def, effect: 'push' }, ACTOR.FALLER); // 파도 1.05m
-    this.setOrigin(0.5, 1);
     this.restX = def.x;
     this.reachX = def.reachX ?? def.x + 420;
     this.interval = def.interval ?? 3600;
     this.timer = def.delay ?? 0;
-    this.body.setSize(this.displayWidth * 0.9, this.displayHeight * 0.5, true);
+    this.fitBody(0.9, 0.8);
     this.setAlpha(0.85);
     this.setDepth(def.depth ?? 22);
   }
@@ -287,10 +323,9 @@ export class Wave extends HazardBase {
 export class SteamVent extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 290, ...def, effect: 'lift' }, ACTOR.PUFF); // 증기 기둥 1.6m
-    this.setOrigin(0.5, 1);
     this.setDepth(def.depth ?? 12);
     this.setAlpha(0);
-    this.body.setSize(70, this.displayHeight * 0.9, true);
+    this.fitBody(0.5, 0.9, 'bottom');
     this.body.setEnable(false);
 
     this.liftPower = def.power ?? -430;

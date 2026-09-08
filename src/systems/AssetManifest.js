@@ -47,6 +47,31 @@ export const SHEET_FILL = {
   dog_puppy_run: 0.89,
 };
 
+/**
+ * 강아지 시트의 칸 **아래에 남은 여백** 비율 (칸 160px 기준).
+ *
+ * 몸(충돌 박스)은 칸 바닥을 발끝으로 보고 잡는다. 그런데 시트마다 그림이 칸 안에서
+ * 앉은 높이가 달라서, 여백이 큰 시트는 **그림만 공중에 뜬 것처럼 보인다** — 자는
+ * 모션이 16% 나 떠 있었다. idle 을 기준으로 그 차이만큼 그림을 내려 앉힌다.
+ *
+ * 값은 `public/assets/sprites/dog_*.png` 알파에서 잰 것이다 (칸마다의 중간값).
+ * 공중에 있는 동안의 모션(jump)은 바닥에 닿지 않으므로 기준값 그대로 둔다.
+ */
+export const SHEET_FOOT = {
+  _default: 0.03,
+  dog_idle: 0.03, // 기준
+  dog_walk: 0.01,
+  dog_run: 0.06,
+  dog_jump: 0.03,
+  dog_sniff: 0.02,
+  dog_dispel: 0.04,
+  dog_dig: 0.05,
+  dog_sleep: 0.16,
+  dog_splash: 0.15,
+  dog_ball_nudge: 0.06,
+  dog_puppy_run: 0.03,
+};
+
 export const SPRITE_SHEETS = [
   { key: 'dog_idle', file: 'dog_idle.png', w: 160, h: 160, fps: 8, loop: true, placeholder: 'dogIdle' },
   { key: 'dog_walk', file: 'dog_walk.png', w: 160, h: 160, fps: 10, loop: true, placeholder: 'dogWalk' },
@@ -180,20 +205,54 @@ export const ACTOR = {
 };
 
 /**
- * 액터 칸(320px) 안에서 **그림이 실제로 차지하는 비율**.
+ * 액터 칸(320px) 안에서 **그림이 실제로 차지하는 상자**.
  *
  * `do_actor_sheets()` 가 8프레임을 한 덩어리로 맞춰 넣기 때문에 칸에는 여백이 남는다.
- * 높이를 지정할 때 이 비율을 쳐 주지 않으면, 자동차를 260px 로 세워도 화면에는
- * 106px 로 나온다. `sizeToActor()` 가 이 표를 보고 환산한다.
+ * 세 가지를 알아야 그림을 제대로 다룰 수 있다.
  *
- * 값은 `public/assets/props/actors_*.png` 에서 잰 것이다 (칸 320px 기준 세로 비율).
+ *   w     칸 대비 가로 비율 — **충돌 판정을 그림에 맞추는 데** 쓴다
+ *   h     칸 대비 세로 비율 — 높이를 지정할 때 환산한다 (`sizeToActor`)
+ *   foot  칸 **아래에 남은 여백** 비율 — 밑동을 지면에 맞추는 데 쓴다
+ *
+ * h 를 쳐 주지 않으면 자동차를 260px 로 세워도 화면에는 106px 로 나오고, w 를 쳐
+ * 주지 않으면 **보이는 그림보다 훨씬 큰 몸**이 붙는다 (Hazards.fitBody 주석 참고).
+ *
+ * 값은 `public/assets/props/actors_*.png` 의 알파에서 잰 것이다 (8프레임 중 가장 큰 칸).
  */
-export const ACTOR_FILL = {
-  city: { mover: 0.42, faller: 0.73, puff: 0.73, flyer: 0.58 },
-  coast: { mover: 0.51, faller: 0.32, puff: 0.80, flyer: 0.54 },
-  mountain: { mover: 0.51, faller: 0.74, puff: 0.31, flyer: 0.80 },
-  field: { mover: 0.74, faller: 0.80, puff: 0.60, flyer: 0.56 },
+export const ACTOR_BOX = {
+  city: {
+    mover: { w: 0.80, h: 0.42, foot: 0.00 },
+    faller: { w: 0.72, h: 0.72, foot: 0.14 },
+    puff: { w: 0.39, h: 0.73, foot: 0.00 },
+    flyer: { w: 0.76, h: 0.58, foot: 0.21 },
+  },
+  coast: {
+    mover: { w: 0.80, h: 0.50, foot: 0.00 },
+    faller: { w: 0.76, h: 0.31, foot: 0.00 },
+    puff: { w: 0.68, h: 0.80, foot: 0.00 },
+    flyer: { w: 0.80, h: 0.50, foot: 0.23 },
+  },
+  mountain: {
+    mover: { w: 0.80, h: 0.51, foot: 0.00 },
+    faller: { w: 0.97, h: 0.74, foot: 0.13 },
+    puff: { w: 0.69, h: 0.31, foot: 0.00 },
+    flyer: { w: 0.56, h: 0.79, foot: 0.00 },
+  },
+  field: {
+    mover: { w: 0.79, h: 0.74, foot: 0.13 },
+    faller: { w: 0.59, h: 0.79, foot: 0.10 },
+    puff: { w: 0.80, h: 0.59, foot: 0.20 },
+    flyer: { w: 0.77, h: 0.56, foot: 0.22 },
+  },
 };
+
+/** 크기를 맞출 때 쓰는 세로 비율만 뽑아 둔 것 (ACTOR_BOX 가 원본이다) */
+export const ACTOR_FILL = Object.fromEntries(
+  Object.entries(ACTOR_BOX).map(([theme, slots]) => [
+    theme,
+    Object.fromEntries(Object.entries(slots).map(([slot, box]) => [slot, box.h])),
+  ])
+);
 
 /** 역할 한 줄에 들어 있는 프레임 수 */
 export const ACTOR_FRAMES = 8;

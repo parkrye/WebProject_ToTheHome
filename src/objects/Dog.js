@@ -7,7 +7,7 @@
 
 import Phaser from 'phaser';
 import { DOG } from '../config.js';
-import { SHEET_FILL } from '../systems/AssetManifest.js';
+import { SHEET_FILL, SHEET_FOOT } from '../systems/AssetManifest.js';
 
 export const DogState = {
   NORMAL: 'normal',
@@ -78,12 +78,20 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
     const toFrame = frameSize / display; // 화면 px → 프레임 px
     const bw = DOG.bodyWidth * toFrame;
     const bh = DOG.bodyHeight * toFrame;
+
+    // 시트마다 그림이 칸 안에서 앉은 높이가 다르다. 여백이 큰 시트(자기 · 물장구)는
+    // 칸 바닥을 발끝으로 보면 **그림만 공중에 뜬다.** idle 과의 차이만큼 몸을 올려
+    // 그림을 그만큼 내려 앉힌다 (AssetManifest.SHEET_FOOT)
+    const foot = (SHEET_FOOT[key] ?? SHEET_FOOT._default) - SHEET_FOOT.dog_idle;
+    const drop = frameSize * foot;
+
     this.body.setSize(bw, bh);
-    this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame);
+    this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame - drop);
 
     // 발끝(body 아랫면)은 중심에서 display/2 - footPadding 만큼 아래다.
-    // 크기가 바뀌면 그만큼 중심을 옮겨야 발이 제자리에 남는다
-    this.y += (prev - display) / 2;
+    // 크기가 바뀌면 그만큼 중심을 옮겨야 발이 제자리에 남는다.
+    // 몸을 올린 만큼도 같이 내려 줘야 서 있던 자리에서 튀지 않는다
+    this.y += (prev - display) / 2 + drop / toFrame;
   }
 
   update(time, delta, input) {
