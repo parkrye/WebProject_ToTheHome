@@ -53,7 +53,15 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
   tick() {}
 }
 
-/** 주기적으로 화면을 가로지르는 자동차 */
+/**
+ * 주기적으로 화면을 가로지르는 자동차.
+ *
+ * **오기 전에 소리가 먼저 온다.** 자동차는 몸이 커서 점프로 못 넘고 달리기로도 못
+ * 따돌린다 — 유일한 대처가 "길에 들어가지 않는 것"이므로, 들어갈지 말지를 정할
+ * 시간이 먼저 있어야 한다 (플레이 리뷰 3차 · 방해 요소 기준 1).
+ *
+ *   조용함 → 엔진 소리(예고) → 화면 밖에서 들어와 지나감 → 조용함
+ */
 export class Car extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 220, ...def }, ACTOR.MOVER); // 자동차 1.25m
@@ -62,7 +70,9 @@ export class Car extends HazardBase {
     this.fromX = def.fromX ?? def.x;
     this.toX = def.toX ?? def.x - 900;
     this.interval = def.interval ?? 3200;
+    this.warnTime = def.warnTime ?? 900;
     this.timer = def.delay ?? 0;
+    this.warned = false;
     this.active_ = false;
     this.setFlipX(this.dir > 0);
     this.body.setSize(this.displayWidth * 0.9, this.displayHeight * 0.7, true);
@@ -75,12 +85,21 @@ export class Car extends HazardBase {
     if (!this.active_) {
       this.timer -= delta;
       if (this.timer > 0) return;
+
+      // 소리를 먼저 낸다. 이 동안 길에서 물러설 수 있다
+      if (!this.warned) {
+        this.warned = true;
+        this.timer = this.warnTime;
+        this.scene.audio?.play('sfx_car_pass', { volume: 0.35 });
+        return;
+      }
+
+      this.warned = false;
       this.timer = this.interval;
       this.active_ = true;
       this.setPosition(this.fromX, this.baseY);
       this.setVisible(true);
       this.body.setEnable(true);
-      this.scene.audio?.play('sfx_car_pass', { volume: 0.4 });
       return;
     }
 
@@ -152,7 +171,16 @@ export class FallingRock extends HazardBase {
   }
 }
 
-/** 멧돼지 — 땅 긁기 0.7초 후 직선 돌진, 이후 경직 */
+/**
+ * 멧돼지 — 땅 긁기 0.7초 후 직선 돌진, 이후 경직.
+ *
+ * **예고하는 동안 강아지 쪽으로 몸을 돌린다.** 늘 왼쪽으로만 달리면 오른쪽에서
+ * 다가온 사람에게는 아무 일도 일어나지 않아 무엇을 하는 놈인지 알 수 없고, 왼쪽에서
+ * 다가오면 이유 없이 덮치는 것이 된다. 어디로 달릴지를 먼저 보여 줘야
+ * 피할 방향을 정할 수 있다 (방해 요소 기준 1·2).
+ *
+ * 달리기(300)보다 빠르므로 도망칠 수는 없다. 대신 몸이 낮아 **뛰어넘을 수 있다.**
+ */
 export class Boar extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 145, ...def }, ACTOR.MOVER); // 멧돼지 0.8m
@@ -171,6 +199,10 @@ export class Boar extends HazardBase {
       if (this.timer > 0) return;
       this.phase = 'telegraph';
       this.timer = 700;
+      // 어디로 달릴지 정하고 그쪽을 본다 — 그림은 왼쪽을 보고 있다
+      const dog = this.scene.dog;
+      this.chargeDir = dog && dog.x > this.x ? 1 : -1;
+      this.setFlipX(this.chargeDir > 0);
       // 예고 — 앞발로 땅을 긁듯 좌우로 잘게 떤다
       this.scene.tweens.add({
         targets: this,
@@ -188,7 +220,7 @@ export class Boar extends HazardBase {
       if (this.timer > 0) return;
       this.phase = 'charge';
       this.timer = (this.range / this.speed) * 1000;
-      this.body.setVelocityX(-this.speed);
+      this.body.setVelocityX((this.chargeDir ?? -1) * this.speed);
       return;
     }
 

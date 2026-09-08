@@ -7184,251 +7184,251 @@
     "hazards": [
       {
         "type": "boar",
-        "x": 17933,
-        "y": 5436,
-        "range": 493,
-        "speed": 402,
-        "delay": 1379
-      },
-      {
-        "type": "boar",
-        "x": 18884,
-        "y": 1047,
-        "range": 414,
-        "speed": 394,
-        "delay": 1418
-      },
-      {
-        "type": "boar",
-        "x": 9420,
-        "y": -2594,
-        "range": 421,
-        "speed": 468,
-        "delay": 602
-      },
-      {
-        "type": "boar",
-        "x": 13065,
+        "x": 19707,
         "y": 7810,
-        "range": 468,
-        "speed": 424,
+        "range": 402,
+        "speed": 392,
+        "delay": 635
+      },
+      {
+        "type": "rock",
+        "x": 11027,
+        "y": -4952,
+        "groundY": -4622,
+        "interval": 3573,
+        "delay": 762
+      },
+      {
+        "type": "rock",
+        "x": 3333,
+        "y": 6007,
+        "groundY": 6337,
+        "interval": 3156,
         "delay": 1089
       },
       {
         "type": "rock",
-        "x": 3952,
+        "x": 11262,
         "y": 7490,
         "groundY": 7820,
-        "interval": 3090,
-        "delay": 1081
+        "interval": 2899,
+        "delay": 1219
+      },
+      {
+        "type": "boar",
+        "x": 3380,
+        "y": 7810,
+        "range": 469,
+        "speed": 415,
+        "delay": 241
+      },
+      {
+        "type": "boar",
+        "x": 9078,
+        "y": -2858,
+        "range": 380,
+        "speed": 439,
+        "delay": 954
+      },
+      {
+        "type": "rock",
+        "x": 5632,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 2832,
+        "delay": 1423
+      },
+      {
+        "type": "rock",
+        "x": 7321,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 2411,
+        "delay": 2399
+      },
+      {
+        "type": "boar",
+        "x": 6758,
+        "y": 7810,
+        "range": 431,
+        "speed": 392,
+        "delay": 1443
+      },
+      {
+        "type": "rock",
+        "x": 10699,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 3428,
+        "delay": 1285
+      },
+      {
+        "type": "rock",
+        "x": 19632,
+        "y": -6005,
+        "groundY": -5675,
+        "interval": 3412,
+        "delay": 2343
+      },
+      {
+        "type": "boar",
+        "x": 8447,
+        "y": 7810,
+        "range": 479,
+        "speed": 389,
+        "delay": 1657
+      },
+      {
+        "type": "rock",
+        "x": 4506,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 2517,
+        "delay": 851
       },
       {
         "type": "rock",
         "x": 13743,
         "y": 3771,
         "groundY": 4101,
-        "interval": 2862,
-        "delay": 1653
-      },
-      {
-        "type": "boar",
-        "x": 6556,
-        "y": 7810,
-        "range": 380,
-        "speed": 439,
-        "delay": 954
-      },
-      {
-        "type": "boar",
-        "x": 8508,
-        "y": 7810,
-        "range": 430,
-        "speed": 407,
-        "delay": 1423
-      },
-      {
-        "type": "boar",
-        "x": 7857,
-        "y": 7810,
-        "range": 500,
-        "speed": 430,
-        "delay": 24
+        "interval": 2835,
+        "delay": 2105
       },
       {
         "type": "rock",
-        "x": 12414,
-        "y": 7490,
-        "groundY": 7820,
-        "interval": 2887,
-        "delay": 341
+        "x": 11634,
+        "y": -4952,
+        "groundY": -4622,
+        "interval": 3201,
+        "delay": 1484
       },
       {
         "type": "rock",
-        "x": 15123,
-        "y": 4202,
-        "groundY": 4532,
-        "interval": 2852,
-        "delay": 2227
-      },
-      {
-        "type": "boar",
-        "x": 9810,
-        "y": 7810,
-        "range": 514,
-        "speed": 437,
-        "delay": 2193
-      },
-      {
-        "type": "boar",
-        "x": 17173,
-        "y": 1024,
-        "range": 383,
-        "speed": 409,
-        "delay": 259
+        "x": 2502,
+        "y": 4713,
+        "groundY": 5043,
+        "interval": 2643,
+        "delay": 1907
       },
       {
         "type": "rock",
-        "x": 5254,
-        "y": 7490,
-        "groundY": 7820,
-        "interval": 3371,
-        "delay": 720
-      },
-      {
-        "type": "rock",
-        "x": 6383,
-        "y": 3988,
-        "groundY": 4318,
-        "interval": 3085,
-        "delay": 390
-      },
-      {
-        "type": "boar",
         "x": 7288,
-        "y": -1544,
-        "range": 483,
-        "speed": 398,
-        "delay": 1950
-      },
-      {
-        "type": "boar",
-        "x": 12102,
-        "y": 1444,
-        "range": 401,
-        "speed": 387,
+        "y": -1864,
+        "groundY": -1534,
+        "interval": 2584,
         "delay": 1522
-      },
-      {
-        "type": "boar",
-        "x": 19835,
-        "y": 1056,
-        "range": 507,
-        "speed": 432,
-        "delay": 2497
-      },
-      {
-        "type": "rock",
-        "x": 697,
-        "y": 7490,
-        "groundY": 7820,
-        "interval": 2942,
-        "delay": 1127
-      },
-      {
-        "type": "boar",
-        "x": 17961,
-        "y": 1036,
-        "range": 493,
-        "speed": 434,
-        "delay": 705
-      },
-      {
-        "type": "rock",
-        "x": 16553,
-        "y": 704,
-        "groundY": 1034,
-        "interval": 3235,
-        "delay": 2141
-      },
-      {
-        "type": "boar",
-        "x": 17740,
-        "y": 5760,
-        "range": 387,
-        "speed": 422,
-        "delay": 2569
-      },
-      {
-        "type": "boar",
-        "x": 8384,
-        "y": -1520,
-        "range": 406,
-        "speed": 466,
-        "delay": 1268
-      },
-      {
-        "type": "rock",
-        "x": 3301,
-        "y": 7490,
-        "groundY": 7820,
-        "interval": 2953,
-        "delay": 624
-      },
-      {
-        "type": "rock",
-        "x": 11112,
-        "y": 7490,
-        "groundY": 7820,
-        "interval": 2587,
-        "delay": 473
       },
       {
         "type": "rock",
         "x": 6184,
         "y": -1886,
         "groundY": -1556,
-        "interval": 3260,
-        "delay": 2313
-      },
-      {
-        "type": "rock",
-        "x": 7750,
-        "y": 7037,
-        "groundY": 7367,
-        "interval": 2722,
-        "delay": 768
+        "interval": 3553,
+        "delay": 1413
       },
       {
         "type": "boar",
-        "x": 18923,
+        "x": 565,
         "y": 7810,
-        "range": 456,
-        "speed": 397,
-        "delay": 2506
+        "range": 449,
+        "speed": 419,
+        "delay": 1509
       },
       {
         "type": "rock",
-        "x": 16026,
-        "y": 4206,
-        "groundY": 4536,
-        "interval": 2420,
-        "delay": 2441
+        "x": 10420,
+        "y": -4952,
+        "groundY": -4622,
+        "interval": 2725,
+        "delay": 2597
       },
       {
         "type": "boar",
-        "x": 6544,
-        "y": 4686,
-        "range": 447,
-        "speed": 462,
-        "delay": 2297
+        "x": 17933,
+        "y": 5436,
+        "range": 404,
+        "speed": 454,
+        "delay": 1551
+      },
+      {
+        "type": "boar",
+        "x": 11862,
+        "y": 7226,
+        "range": 518,
+        "speed": 384,
+        "delay": 1049
       },
       {
         "type": "rock",
-        "x": 1999,
+        "x": 15767,
+        "y": 7346,
+        "groundY": 7676,
+        "interval": 2985,
+        "delay": 1661
+      },
+      {
+        "type": "rock",
+        "x": 2817,
         "y": 7490,
         "groundY": 7820,
-        "interval": 2425,
-        "delay": 2556
+        "interval": 2413,
+        "delay": 2477
+      },
+      {
+        "type": "rock",
+        "x": 9573,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 2537,
+        "delay": 1197
+      },
+      {
+        "type": "rock",
+        "x": 9671,
+        "y": -3178,
+        "groundY": -2848,
+        "interval": 2598,
+        "delay": 404
+      },
+      {
+        "type": "boar",
+        "x": 15123,
+        "y": 4522,
+        "range": 441,
+        "speed": 407,
+        "delay": 1863
+      },
+      {
+        "type": "rock",
+        "x": 16329,
+        "y": 7490,
+        "groundY": 7820,
+        "interval": 3556,
+        "delay": 2598
+      },
+      {
+        "type": "boar",
+        "x": 11297,
+        "y": 7226,
+        "range": 433,
+        "speed": 465,
+        "delay": 492
+      },
+      {
+        "type": "boar",
+        "x": 17740,
+        "y": 5760,
+        "range": 504,
+        "speed": 423,
+        "delay": 901
+      },
+      {
+        "type": "rock",
+        "x": 10242,
+        "y": -1008,
+        "groundY": -678,
+        "interval": 3580,
+        "delay": 1103
       }
     ],
     "start": {

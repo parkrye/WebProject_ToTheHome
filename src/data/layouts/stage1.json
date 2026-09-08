@@ -2850,59 +2850,91 @@
     ],
     "hazards": [
       {
-        "type": "rock",
-        "x": 1755,
-        "y": -410,
-        "groundY": -80,
-        "interval": 2589,
-        "delay": 255
-      },
-      {
         "type": "steam",
-        "x": 3478,
-        "y": -4979,
+        "x": 638,
+        "y": -70,
         "interval": 2910,
         "warnTime": 700,
         "activeTime": 1362,
         "power": -430
       },
       {
-        "type": "car",
-        "x": 212,
-        "y": -104,
-        "fromX": 212,
-        "toX": -1417,
-        "dir": -1,
-        "speed": 295,
-        "interval": 5010,
+        "type": "rock",
+        "x": -3359,
+        "y": -1745,
+        "groundY": -1415,
+        "interval": 2462,
         "delay": 2432
       },
       {
-        "type": "rock",
-        "x": 4910,
-        "y": -5469,
-        "groundY": -5139,
-        "interval": 2979,
-        "delay": 1731
-      },
-      {
         "type": "car",
-        "x": -2765,
+        "x": -2281,
         "y": -104,
-        "fromX": -2765,
-        "toX": -1136,
+        "fromX": -2281,
+        "toX": -981,
         "dir": 1,
         "speed": 319,
-        "interval": 4566,
-        "delay": 470
+        "interval": 12775,
+        "warnTime": 900,
+        "delay": 0
       },
       {
         "type": "steam",
-        "x": 4669,
-        "y": -3343,
-        "interval": 2405,
+        "x": 4910,
+        "y": -5129,
+        "interval": 2581,
         "warnTime": 700,
-        "activeTime": 1335,
+        "activeTime": 1539,
+        "power": -430
+      },
+      {
+        "type": "car",
+        "x": -981,
+        "y": -104,
+        "fromX": -981,
+        "toX": -2281,
+        "dir": -1,
+        "speed": 319,
+        "interval": 12775,
+        "warnTime": 900,
+        "delay": 8875
+      },
+      {
+        "type": "steam",
+        "x": 5178,
+        "y": -70,
+        "interval": 2737,
+        "warnTime": 700,
+        "activeTime": 1578,
+        "power": -430
+      },
+      {
+        "type": "rock",
+        "x": 4669,
+        "y": -3683,
+        "groundY": -3353,
+        "interval": 2723,
+        "delay": 422
+      },
+      {
+        "type": "car",
+        "x": 4126,
+        "y": -104,
+        "fromX": 4126,
+        "toX": 2826,
+        "dir": -1,
+        "speed": 339,
+        "interval": 3900,
+        "warnTime": 900,
+        "delay": 0
+      },
+      {
+        "type": "steam",
+        "x": 3478,
+        "y": -4979,
+        "interval": 3231,
+        "warnTime": 700,
+        "activeTime": 1526,
         "power": -430
       },
       {
@@ -2910,37 +2942,8 @@
         "x": 3472,
         "y": -5700,
         "groundY": -5370,
-        "interval": 2595,
-        "delay": 2467
-      },
-      {
-        "type": "steam",
-        "x": 5125,
-        "y": -70,
-        "interval": 2426,
-        "warnTime": 700,
-        "activeTime": 1594,
-        "power": -430
-      },
-      {
-        "type": "steam",
-        "x": -2426,
-        "y": -2326,
-        "interval": 2933,
-        "warnTime": 700,
-        "activeTime": 1532,
-        "power": -430
-      },
-      {
-        "type": "car",
-        "x": -2765,
-        "y": -104,
-        "fromX": -2765,
-        "toX": -1136,
-        "dir": 1,
-        "speed": 344,
-        "interval": 4755,
-        "delay": 2438
+        "interval": 3555,
+        "delay": 1035
       }
     ],
     "start": {

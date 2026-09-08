@@ -675,10 +675,19 @@ function decorate(out, rand, seed, area) {
  *
  * 밀도는 손으로 짠 스테이지에서 쓰던 값 그대로다 — 도시 0.9, 해안 1.1, 산 1.5.
  * 들판(4)에는 위험을 두지 않는다. 함께 살던 곳이라 아무 일도 일어나지 않는다.
+ *
+ * **한 테마 안에서 종류가 그림으로 구별되어야 한다.** 액터 시트는 한 줄이 한 역할이라
+ * (`ACTOR.MOVER/FALLER/PUFF`), 같은 줄을 쓰는 위험 둘을 한 테마에 넣으면 **생김새가
+ * 똑같은데 하나는 밀어내고 하나는 죽이는** 꼴이 된다. 해안의 파도와 낙석이 그랬다 —
+ * 둘 다 FALLER 줄(해안에서는 파도 그림)이라 낙석을 뺐다.
+ *
+ *   도시  증기(PUFF, 밀어 올림) · 화분(FALLER, 즉사) · 자동차(MOVER, 즉사)
+ *   해안  파도(FALLER, 밀어냄) · 물보라(PUFF, 밀어 올림) · 자동차(MOVER, 즉사)
+ *   산    낙석(FALLER, 즉사) · 멧돼지(MOVER, 즉사)
  */
 const HAZARD_KIT = {
   city: { per1000: 0.9, kinds: ['steam', 'rock', 'car'] },
-  coast: { per1000: 1.1, kinds: ['wave', 'car', 'rock'] },
+  coast: { per1000: 1.1, kinds: ['wave', 'steam', 'car'] },
   mountain: { per1000: 1.5, kinds: ['rock', 'boar'] },
   field: { per1000: 0, kinds: [] },
 };
@@ -692,42 +701,143 @@ const HAZARD_GAP = 520;
 /** 자리 후보를 발판 위 몇 px 마다 잡을지 */
 const HAZARD_STEP = 560;
 
-/** 낙석이 떨어져 내릴 자리가 비어 있는가 (머리 위가 막혀 있으면 지형 속에서 나온다) */
-function openSky(pads, pad, x) {
-  return !pads.some((p) => p !== pad && p.x <= x && x <= p.x + p.w && p.y < pad.y && pad.y - p.y < 380);
+/**
+ * 자동차가 달리는 **길 한 구간의 길이.**
+ *
+ * 예전에는 바닥 조각을 통째로 달리게 해서, 폭 2256px 짜리 바닥을 한 대가 7~9초에
+ * 걸쳐 지나갔다. 세 대가 주기 4~6초로 돌면 **길이 비는 순간이 없다.** 자동차는
+ * 뛰어넘을 수도(몸높이 154 > 점프 96) 따돌릴 수도(240~344 vs 달리기 300) 없으므로
+ * 유일한 대처가 "지금은 들어가지 않는다"인데, 들어갈 틈이 아예 없었던 것이다
+ * (방해 요소 기준 2).
+ *
+ * 그래서 길을 **정해진 구간**으로 자른다. 1300px 을 260~350 으로 지나가면 4~5초,
+ * 주기 4~6초와 맞물려 확실히 비는 때가 생긴다. 구간 양옆은 안전한 땅으로 남는다.
+ */
+const CAR_RUN = 1300;
+
+/** 자동차 구간 양옆에 남겨 둘 안전한 땅 */
+const CAR_SHOULDER = 350;
+
+/** 한 길에 다니는 자동차 대수 */
+const CAR_PER_LANE = 2;
+
+/**
+ * 자동차가 다 지나간 뒤 **길이 비어 있는 시간.**
+ *
+ * 강아지 달리기(300px/s)로 길 한 구간(1300px)을 지나는 데 4.3초가 걸린다.
+ * 그보다 넉넉해야 "지금 건넌다"는 판단이 성립한다.
+ */
+const CAR_CLEAR = 4800;
+
+/** 나란히 이어 붙은 바닥 조각을 한 덩어리로 본다 */
+function mergeFloors(ground) {
+  const rows = [...ground].sort((a, b) => a.x - b.x);
+  const out = [];
+  rows.forEach((g) => {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.y - g.y) <= 8 && g.x <= last.x + last.w + 8) {
+      last.w = Math.max(last.w, g.x + g.w - last.x);
+      return;
+    }
+    out.push({ ...g });
+  });
+  return out;
+}
+
+/** 위(아래)가 비어 있는가 — 낙석이 떨어져 내리고 증기가 뿜어 오를 자리 */
+function openSky(pads, pad, x, height = 380) {
+  return !pads.some((p) => p !== pad && p.x <= x && x <= p.x + p.w && p.y < pad.y && pad.y - p.y < height);
 }
 
 /** 이 자리에 놓을 수 있는 위험인가 */
 function hazardFits(kind, slot, pads, baseY) {
   const pad = slot.pad;
-  if (kind === 'car') return pad.floor && pad.w >= 1000;
+  // 길 구간과 갓길이 다 들어가는 바닥에만 — 피해 설 땅이 양옆에 남아야 한다
+  if (kind === 'car') return pad.floor && pad.w >= CAR_RUN + CAR_SHOULDER * 2;
   // 파도는 바다가 있는 **가장 낮은 바닥**에만 밀려온다
   if (kind === 'wave') return pad.floor && pad.y >= baseY - 8;
-  if (kind === 'boar') return pad.w >= 420;
+  // 멧돼지는 돌진 거리(최대 520)가 발판 안에 들어가야 한다. 허공으로 달려 나가면
+  // 무엇을 하는 놈인지 읽히지 않는다
+  if (kind === 'boar') return pad.w >= 700;
   if (kind === 'rock') return openSky(pads, pad, slot.x);
+  // 증기 기둥은 290px 이다. 머리 위가 막힌 자리에서 뿜으면 지형을 뚫고 나온다
+  if (kind === 'steam') return openSky(pads, pad, slot.x, 320);
   return true;
 }
 
+/**
+ * 자동차가 달릴 구간을 잡는다.
+ *
+ * 가까이에 이미 길이 있으면 **그 길을 같이 쓴다.** 손으로 짠 횡단보도가 그랬듯이,
+ * 한 길 위로 여러 대가 서로 다른 주기로 지나가는 편이 길을 여러 개 내는 것보다
+ * 읽기 쉽다 — 위험한 자리는 하나고 언제 비는지만 보면 된다.
+ */
+function carLane(lanes, slot, rand) {
+  const pad = slot.pad;
+  const near = lanes.find((l) => l.pad === pad && Math.abs(l.cx - slot.x) < CAR_RUN * 1.5);
+  if (near) return near.cars.length < CAR_PER_LANE ? near : null;
+
+  const cx = clamp(slot.x, pad.x + CAR_SHOULDER + CAR_RUN / 2, pad.x + pad.w - CAR_SHOULDER - CAR_RUN / 2);
+  // 한 길을 다니는 차는 **속도가 같다.** 제각각이면 언제 오는지 셀 수 없다
+  const lane = {
+    pad,
+    cx,
+    x0: round(cx - CAR_RUN / 2),
+    x1: round(cx + CAR_RUN / 2),
+    speed: round(260 + rand() * 80),
+    cars: [],
+  };
+  lanes.push(lane);
+  return lane;
+}
+
+/**
+ * 길마다 **박자를 맞춘다.**
+ *
+ * 대수만큼 위상을 고르게 나누면 한 번에 한 대만 지나가고, 그 사이에 길이 비는
+ * 시간(CAR_CLEAR)이 반드시 생긴다. 주기가 제각각이면 언제 비는지 셀 수 없어서
+ * "기다렸다 건넌다"가 운에 맡기는 일이 된다 (방해 요소 기준 1·2).
+ */
+function timeLanes(lanes) {
+  lanes.forEach((lane) => {
+    const n = lane.cars.length;
+    if (!n) return;
+    const transit = (CAR_RUN / lane.speed) * 1000;
+    const period = n * (transit + CAR_CLEAR); // 한 대가 다시 오기까지
+    lane.cars.forEach((car, i) => {
+      car.speed = lane.speed;
+      car.interval = round(period - transit - car.warnTime);
+      car.delay = round((period * i) / n);
+    });
+  });
+}
+
 /** 위험 하나를 그 자리 좌표로 만든다 */
-function makeHazard(kind, slot, rand) {
+function makeHazard(kind, slot, rand, lanes) {
   const { x, pad } = slot;
   const delay = round(rand() * 2600);
 
   if (kind === 'car') {
+    const lane = carLane(lanes, slot, rand);
+    if (!lane) return null; // 이 길은 이미 찼다
     const dir = rand() < 0.5 ? -1 : 1;
-    const fromX = round(dir < 0 ? pad.x + pad.w + 140 : pad.x - 140);
-    const toX = round(dir < 0 ? pad.x - 140 : pad.x + pad.w + 140);
-    return {
+    const fromX = dir < 0 ? lane.x1 : lane.x0;
+    const toX = dir < 0 ? lane.x0 : lane.x1;
+    // 속도·주기·출발 시각은 길 단위로 timeLanes() 가 다시 잡는다
+    const car = {
       type: 'car',
       x: fromX,
       y: pad.y - 34,
       fromX,
       toX,
       dir,
-      speed: round(240 + rand() * 110),
-      interval: round(3800 + rand() * 2400),
+      speed: lane.speed,
+      interval: 5000,
+      warnTime: 900,
       delay,
     };
+    lane.cars.push(car);
+    return car;
   }
 
   if (kind === 'rock') {
@@ -792,7 +902,9 @@ function hazardize(out, rand, seed, safe, area) {
   if (!kit || !kit.per1000) return [];
 
   const pads = [
-    ...out.ground.map((g) => ({ ...g, floor: true })),
+    // 바닥은 **이어 붙여 하나로 본다.** 무늬를 바꾸려고 여러 조각으로 깔았을 뿐
+    // 실제로는 한 줄로 이어진 땅이라, 조각으로 보면 자동차가 달릴 길을 못 찾는다
+    ...mergeFloors(out.ground).map((g) => ({ ...g, floor: true })),
     ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 380).map((l) => ({ ...l, floor: false })),
   ];
   if (!pads.length) return [];
@@ -813,20 +925,34 @@ function hazardize(out, rand, seed, safe, area) {
   slots.sort((a, b) => a.roll - b.roll);
 
   const budget = clamp(round(((area.x1 - area.x0) / 1000) * kit.per1000), 0, 40);
+  // **한 종류가 절반을 넘지 않게 한다.** 산에서 멧돼지 17 · 낙석 14 처럼 한쪽으로
+  // 쏠리면, 스테이지가 통째로 "멧돼지 스테이지"가 되어 종류를 나눈 뜻이 없어진다
+  const perKind = Math.max(2, Math.ceil((budget / kit.kinds.length) * 1.4));
+
   const hazards = [];
   const taken = [];
+  const lanes = [];
+  const used = {};
 
   slots.forEach((slot) => {
     if (hazards.length >= budget) return;
     if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
 
-    const kinds = kit.kinds.filter((k) => hazardFits(k, slot, pads, baseY));
+    const kinds = kit.kinds.filter(
+      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY)
+    );
     if (!kinds.length) return;
 
-    hazards.push(makeHazard(kinds[Math.floor(rand() * kinds.length) % kinds.length], slot, rand));
+    const kind = kinds[Math.min(kinds.length - 1, Math.floor(rand() * kinds.length))];
+    const hazard = makeHazard(kind, slot, rand, lanes);
+    if (!hazard) return;
+
+    hazards.push(hazard);
+    used[kind] = (used[kind] ?? 0) + 1;
     taken.push({ x: slot.x, y: slot.pad.y });
   });
 
+  timeLanes(lanes);
   return hazards;
 }
 /* --------------------------------------------------------------- 길찾기 노드 */
