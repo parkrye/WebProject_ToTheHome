@@ -114,16 +114,17 @@ const allPads = (out) => [
 /**
  * 이미 놓인 발판과 너무 가까우면 겹쳐 보인다.
  *
- * 위아래로 88px 은 띄운다. 여럿이 모인 자리는 **두껍게** 깔 것이므로, 그만한 두께가
- * 들어갈 자리를 미리 비워 두어야 아래 발판을 덮지 않는다.
+ * 위아래로 110px 은 띄운다. 여럿이 모인 자리는 **두껍게** 깔 것이므로, 그만한 두께가
+ * 들어갈 자리를 미리 비워 두어야 아래 발판을 덮지 않는다. 옆으로도 넉넉히 벌린다 —
+ * 발판이 서로 붙어 있으면 계단이 아니라 겹쳐 놓은 판자로 보인다 (플레이 리뷰 3차 7).
  */
 function tooClose(out, x, y, w) {
   return allPads(out).some((p) => {
     const dy = Math.abs(p.y - y);
-    if (dy >= 88) return false;
+    if (dy >= 110) return false;
     // **같은 줄에서 옆에 나란히 놓는 것은 막지 않는다.** 그래야 줄지어 이어진 땅이 된다.
     // 막을 것은 실제로 겹치는 경우뿐이다
-    const margin = dy < 30 ? 6 : 40;
+    const margin = dy < 30 ? 6 : 64;
     return x < p.x + p.w + margin && p.x < x + w + margin;
   });
 }
@@ -155,7 +156,7 @@ const STEP_X_MIN = PAD_W.link - MAX_STEP_OVERLAP;
  * 계단 자리를 고를 때도 이 값을 봐야 한다. 합쳐지고 나면 없어질 틈에 칸을 놓으면,
  * 놓을 때는 안 겹쳤는데 합친 뒤에 덮이기 때문이다.
  */
-const MERGE_GAP = 46;
+const MERGE_GAP = 84;
 
 /** 두 칸이 가로로 나눠 가진 길이 */
 function overlapX(a, ax, aw) {
@@ -307,7 +308,8 @@ function ladder(a, b, out, rand) {
  * 발판을 하나씩 흩뿌리면 징검다리처럼 보이고, 줄로 놓아야 **지형**으로 읽힌다.
  */
 function shelf(out, rand, x, y, len) {
-  const step = 160 + rand() * 30;
+  // 칸 폭보다 조금만 벌린다. 틈이 MERGE_GAP 안이라야 한 덩어리로 합쳐진다
+  const step = PAD_W.shelf + rand() * 30;
   for (let i = 0; i < len; i += 1) {
     const px = round(x + i * step);
     if (tooClose(out, px, y, PAD_W.shelf)) continue;
@@ -472,9 +474,12 @@ const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
  * 타일셋에는 쓰임이 다른 칸이 여럿 있는데, 전부 얇은 발판(6번)으로만 깔면 공중에 판자만
  * 잔뜩 떠 있는 것처럼 보인다.
  *
- *   1개      얇은 발판 (6번, 18px) — 딛고 지나가는 판자
- *   2개      연석·계단 (7번, 40px) — 낮은 턱
- *   3개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
+ *   2개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
+ *   그 밖    연석·계단 (7번, 40px) — 낮은 턱
+ *   마지막   얇은 발판 (6번, 18px) — 연석조차 못 놓을 만큼 아래가 가까운 자리
+ *
+ * **자리가 허락하는 한 두껍게 깐다.** 예전에는 셋이 모여야 땅이었는데, 그러면 지도의
+ * 대부분이 공중에 뜬 18px 판자가 되어 지형으로 읽히지 않았다 (플레이 리뷰 3차 6).
  *
  * 이어진 것은 **하나로 합친다.** 나란한 세 덩어리보다 이어진 한 덩어리가 땅처럼 보인다.
  * 두께는 바로 아래 발판을 덮지 않는 선까지만 준다. 땅으로 깔 만큼 자리가 없으면
@@ -533,8 +538,10 @@ function thicken(out) {
     const skin = clearance - 14;
     const solid = clearance - TERRAIN.headroom;
 
-    const land = (m.count >= 3 || m.w >= 430) && solid >= 68;
-    const curb = !land && (m.count >= 2 || m.w >= 300) && skin >= 34;
+    // 얇은 판자가 공중에 잔뜩 떠 있으면 지형으로 안 읽힌다 (플레이 리뷰 3차 6).
+    // 자리가 허락하는 한 **땅으로, 안 되면 연석으로** 깐다. 판자는 마지막 수단이다
+    const land = (m.count >= 2 || m.w >= 300) && solid >= 68;
+    const curb = !land && skin >= 34;
 
     if (land) {
       // 자리마다 다른 윗면 타일 — 같은 무늬가 이어지면 붙여 놓은 티가 난다
@@ -571,14 +578,19 @@ const PROP_KIT = [
 
 const KIT_TOTAL = PROP_KIT.reduce((n, p) => n + p.weight, 0);
 
-/** 무게를 반영해 소품 하나를 뽑는다 */
-function pickProp(rand) {
-  let t = rand() * KIT_TOTAL;
-  for (let i = 0; i < PROP_KIT.length; i += 1) {
-    t -= PROP_KIT[i].weight;
-    if (t <= 0) return PROP_KIT[i];
+/** 좁은 자리에는 이보다 낮은 것만 세운다 — 큰 것은 길을 가린다 */
+const SMALL_PROP = 120;
+
+/** 무게를 반영해 소품 하나를 뽑는다. maxHeight 를 주면 그보다 낮은 것 중에서 고른다 */
+function pickProp(rand, maxHeight) {
+  const kit = maxHeight ? PROP_KIT.filter((p) => p.height <= maxHeight) : PROP_KIT;
+  const total = maxHeight ? kit.reduce((n, p) => n + p.weight, 0) : KIT_TOTAL;
+  let t = rand() * total;
+  for (let i = 0; i < kit.length; i += 1) {
+    t -= kit[i].weight;
+    if (t <= 0) return kit[i];
   }
-  return PROP_KIT[PROP_KIT.length - 1];
+  return kit[kit.length - 1];
 }
 
 /**
@@ -594,13 +606,16 @@ function decorate(out, rand, seed, area) {
 
   const spots = [
     ...out.ground.map((g) => ({ x: g.x, y: g.y, w: g.w, floor: true })),
-    ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 260),
+    // 두껍게 깔린 땅과 연석. **위로 올라가는 지도는 바닥을 떠나는 순간 아무것도
+    // 없어진다** (플레이 리뷰 3차 3). 좁은 자리도 쓰되 낮은 것만 세운다
+    ...out.ledges.filter((l) => (l.h ?? 18) >= 34 && l.w >= 220),
   ];
 
   spots.forEach((spot) => {
-    const count = clamp(round(spot.w / 420), spot.floor ? 1 : 0, 6);
+    const narrow = !spot.floor && spot.w < 380;
+    const count = clamp(round(spot.w / (narrow ? 300 : 420)), spot.floor ? 1 : 0, 6);
     for (let i = 0; i < count; i += 1) {
-      const kit = pickProp(rand);
+      const kit = pickProp(rand, narrow ? SMALL_PROP : null);
       // 칸을 나눠 그 안에서 흔든다. 가운데가 비어야 지나다닐 길이 남는다
       const t = (i + 0.2 + rand() * 0.6) / count;
       props.push({
@@ -614,15 +629,25 @@ function decorate(out, rand, seed, area) {
     }
   });
 
-  // 하늘을 나는 것 — 지형과 상관없이 위쪽에 띄운다.
+  // 하늘을 나는 것.
   // drift 가 있으면 placeProp 이 지면에 앉히지 않고 그대로 둔다
   if (seed.actors) {
-    const span = area.x1 - area.x0;
-    const flyers = clamp(round(span / 2200), 1, 6);
+    // **지나가는 길 바로 위**에 띄운다. 지도 꼭대기에 몰아 두면 위로 한참 올라가는
+    // 지도에서는 전부 화면 밖이라 한 마리도 못 보고 지나간다 (플레이 리뷰 3차 2·3).
+    // 그래서 x 로만 나누지 않고 **발판을 골라** 그 위에 띄운다 — 세로로 긴 지도에는
+    // 위쪽에도 걸린다. 마릿수도 가로·세로를 합친 길이로 잰다
+    const pads = allPads(out).sort((a, b) => a.x - b.x);
+    const reach = area.x1 - area.x0 + Math.max(0, area.base - area.top);
+    const flyers = clamp(round(reach / 1100), 3, 18);
     for (let i = 0; i < flyers; i += 1) {
+      const lo = Math.floor((pads.length * i) / flyers);
+      const hi = Math.max(lo + 1, Math.floor((pads.length * (i + 1)) / flyers));
+      const bucket = pads.slice(lo, hi);
+      const pad = bucket[Math.floor(rand() * bucket.length)] || pads[0];
+      if (!pad) break;
       props.push({
-        x: round(area.x0 + (span * (i + 0.5)) / flyers),
-        y: round(area.top - 80 - rand() * 200),
+        x: round(pad.x + pad.w / 2),
+        y: round(pad.y - 170 - rand() * 240),
         atlas: seed.actors,
         frame: ACTOR.FLYER,
         height: 44,
