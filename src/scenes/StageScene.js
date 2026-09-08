@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, SCENT, DOG, MIX } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, CAMERA, PARALLAX, PARALLAX_DROP, SCENT, DOG, MIX, FADE } from '../config.js';
 import { getStage, LAST_STAGE } from '../data/stages.js';
 import { Dog } from '../objects/Dog.js';
 import { createGround, createLedge, MovingPlatform, CrumblePlatform } from '../objects/Platforms.js';
@@ -67,7 +67,7 @@ export default class StageScene extends Phaser.Scene {
     } else if (def.intro && this.textures.exists(def.intro.texture)) {
       this.playIntro(def.intro);
     } else {
-      this.cameras.main.fadeIn(700, 0, 0, 0);
+      this.cameras.main.fadeIn(FADE.in, 0, 0, 0);
     }
   }
 
@@ -322,7 +322,7 @@ export default class StageScene extends Phaser.Scene {
    * 거꾸로 돌려 일어난다. 어디에서 왔는지 말하지 않고 그냥 눈을 뜬다.
    */
   playWake(wake) {
-    const fade = wake.fade ?? 900;
+    const fade = wake.fade ?? FADE.in;
     this.dog.sleep();
     this.cameras.main.fadeIn(fade, 0, 0, 0);
 
@@ -340,7 +340,7 @@ export default class StageScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(45);
 
-    this.cameras.main.fadeIn(900, 0, 0, 0);
+    this.cameras.main.fadeIn(FADE.in, 0, 0, 0);
     this.dog.setCutscene(true);
 
     this.time.delayedCall(1600, () => {
@@ -388,11 +388,11 @@ export default class StageScene extends Phaser.Scene {
     await this.dog.die();
 
     const spawn = this.checkpointPosition();
-    this.cameras.main.fadeOut(260, 0, 0, 0);
+    this.cameras.main.fadeOut(FADE.death, 0, 0, 0);
     await new Promise((resolve) => this.cameras.main.once('camerafadeoutcomplete', resolve));
 
     await this.dog.respawnAt(spawn.x, spawn.y);
-    this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.fadeIn(FADE.respawn, 0, 0, 0);
     this.dying = false;
   }
 
@@ -444,7 +444,7 @@ export default class StageScene extends Phaser.Scene {
     this.audio.stopAmbience(this);
     this.audio.stopBgm(this, 1200);
 
-    this.cameras.main.fadeOut(1400, 0, 0, 0);
+    this.cameras.main.fadeOut(FADE.clear, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop('Hud');
       if (this.stageId >= LAST_STAGE) {

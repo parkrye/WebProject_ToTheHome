@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, FADE } from '../config.js';
 import { sizeTo } from '../systems/Layout.js';
 import { HOME } from '../systems/AssetManifest.js';
 import { isReal } from '../systems/AssetLoader.js';
@@ -93,7 +93,7 @@ export default class PrologueScene extends Phaser.Scene {
     this.busy = false;
 
     this.layerGroup = this.add.container(0, 0);
-    this.cameras.main.fadeIn(900, 0, 0, 0);
+    this.cameras.main.fadeIn(FADE.in, 0, 0, 0);
     this.audio.playBgm(this, 'bgm_prologue');
 
     this.input.on('pointerdown', () => this.skipCut());
@@ -288,13 +288,13 @@ export default class PrologueScene extends Phaser.Scene {
     if (this.pending) this.pending.remove(false);
 
     const isLast = this.cutIndex >= CUTS.length;
-    const fade = isLast ? 2200 : 800;
+    const fade = isLast ? FADE.clear : FADE.cut;
 
     this.cameras.main.fadeOut(fade, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       if (isLast) return this.finish();
       this.playCut(this.cutIndex + 1);
-      this.cameras.main.fadeIn(700, 0, 0, 0);
+      this.cameras.main.fadeIn(FADE.cut, 0, 0, 0);
     });
   }
 

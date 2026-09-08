@@ -33,7 +33,7 @@ export default {
   start: { x: 140, y: 420 },
 
   // 시작 연출 — 자고 있다가 눈을 뜬다 (플레이 리뷰 3)
-  wake: { fade: 900, hold: 1300, rise: 1100 },
+  wake: { fade: 1600, hold: 1500, rise: 1100 },
 
   ground: [
     // 갭 폭은 도움닫기 최대 도달거리(약 240px)보다 넉넉히 짧게 잡는다.

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DOG } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DOG, FADE } from '../config.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 
 /**
@@ -92,7 +92,7 @@ export default class TitleScene extends Phaser.Scene {
     this.input.once('pointerdown', () => this.audio.unlock());
     this.input.keyboard.once('keydown', () => this.audio.unlock());
 
-    this.cameras.main.fadeIn(700, 0, 0, 0);
+    this.cameras.main.fadeIn(FADE.in, 0, 0, 0);
     this.time.delayedCall(300, () => this.audio.playBgm(this, 'bgm_title'));
   }
 
@@ -180,7 +180,7 @@ export default class TitleScene extends Phaser.Scene {
     this.audio.unlock();
     this.audio.play('sfx_page_turn');
     const action = this.items[this.index].action;
-    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.fadeOut(FADE.out, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', action);
   }
 
