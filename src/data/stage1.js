@@ -115,6 +115,10 @@ export default {
     { x: 320, y: GY, texture: 'prop_sign_move', height: 165 },
     { x: 700, y: GY, texture: 'prop_sign_jump', height: 165 },
     { x: 1380, y: GY, texture: 'prop_sign_run', height: 165 },
+    // 길을 잃기 전에 — 코를 꾹 눌러 냄새를 맡으면 갈 길이 보인다
+    { x: 1640, y: GY, texture: 'prop_sign_sniff', height: 165 },
+    // 첫 세이브(모래 놀이터) 바로 앞 — 쉬어 가는 자리에서는 톡
+    { x: 1840, y: GY, texture: 'prop_sign_interact', height: 165 },
     // 담장에 오르기 직전 — 올라간 발판에서 다시 내려오는 법
     { x: 2400, y: GY, texture: 'prop_sign_jumpdown', height: 165 },
     // 갓길 틈 앞 — 발밑을 살펴야 내려갈 자리가 보인다

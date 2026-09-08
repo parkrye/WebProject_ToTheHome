@@ -251,6 +251,8 @@ export const IMAGES = [
   { key: 'prop_sign_run', file: PROP_DIR + 'prop_sign_run.png', placeholder: 'signRun', w: 128, h: 160 },
   { key: 'prop_sign_jumpdown', file: PROP_DIR + 'prop_sign_jumpdown.png', placeholder: 'signJumpDown', w: 128, h: 160 },
   { key: 'prop_sign_lookdown', file: PROP_DIR + 'prop_sign_lookdown.png', placeholder: 'signLookDown', w: 128, h: 160 },
+  { key: 'prop_sign_sniff', file: PROP_DIR + 'prop_sign_sniff.png', placeholder: 'signSniff', w: 128, h: 160 },
+  { key: 'prop_sign_interact', file: PROP_DIR + 'prop_sign_interact.png', placeholder: 'signInteract', w: 128, h: 160 },
   { key: 'prop_sandbox', file: PROP_DIR + 'prop_sandbox.png', placeholder: 'sandbox', w: 256, h: 128 },
   { key: 'prop_food_stall', file: PROP_DIR + 'prop_food_stall.png', placeholder: 'stall', w: 320, h: 256 },
   { key: 'prop_valley_pond', file: PROP_DIR + 'prop_valley_pond.png', placeholder: 'pond', w: 384, h: 160 },
