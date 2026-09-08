@@ -207,30 +207,15 @@ export class GoalMarker {
     this.x = x;
     this.y = y;
 
-    // 빛기둥 — 멀리서도 보이라고 세로로 길게 깐다
-    this.glow = scene.add
-      .image(x, y + GROUND_SINK, 'ui_save_glow')
-      .setOrigin(0.5, 1)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(PROP_DEPTH + 1)
-      .setAlpha(0.55);
-    sizeTo(this.glow, { height: 190 });
-
+    // 빛기둥은 두지 않는다. 숨 쉬듯 밝아졌다 어두워지는 기둥이 화면에서 제일 눈에
+    // 띄어서, 새벽 도시의 조용한 분위기를 통째로 깨뜨렸다 (플레이 리뷰 3차 5).
+    // 어디로 가야 하는지는 집 그림 하나로 충분하다
     this.icon = scene.add
       .image(x, y - 96, 'ui_icon_house')
       .setOrigin(0.5, 1)
       .setDepth(PROP_DEPTH + 2)
       .setAlpha(0.95);
     sizeTo(this.icon, { height: 96 });
-
-    scene.tweens.add({
-      targets: this.glow,
-      alpha: 0.85,
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
 
     // 도착은 상호작용해야 통과다. 가까이 가면 안내가 떠오른다
     this.prompt = scene.add
