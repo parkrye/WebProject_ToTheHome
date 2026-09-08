@@ -59,6 +59,18 @@ function normalize(L) {
   if (dx === 0 && dy === 0) return L;
 
   const move = (list) => (list || []).map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
+  // 위험은 x·y 말고도 **자기만의 좌표**를 들고 있다 (자동차가 오가는 두 끝, 파도가
+  // 닿는 자리, 돌이 떨어질 바닥). 같이 밀지 않으면 엉뚱한 데서 튀어나온다
+  const moveHazards = (list) =>
+    (list || []).map((h) => {
+      const moved = { ...h, x: h.x + dx, y: h.y + dy };
+      ['fromX', 'toX', 'reachX'].forEach((k) => {
+        if (h[k] != null) moved[k] = h[k] + dx;
+      });
+      if (h.groundY != null) moved.groundY = h.groundY + dy;
+      return moved;
+    });
+
   return {
     ...L,
     ground: move(L.ground),
@@ -67,6 +79,7 @@ function normalize(L) {
     keepsakes: move(L.keepsakes),
     saves: move(L.saves),
     props: move(L.props),
+    hazards: moveHazards(L.hazards),
     start: L.start ? { ...L.start, x: L.start.x + dx, y: L.start.y + dy } : L.start,
     goal: L.goal ? { ...L.goal, x: L.goal.x + dx, y: L.goal.y + dy } : L.goal,
     width: (L.width ?? 0) + dx,
@@ -159,10 +172,12 @@ function applyLayout(base, saved) {
     ground,
     ledges: L.ledges || [],
     // 지형이 바뀌었으므로 지형에 매달려 있던 것들은 버린다.
-    // 관리 툴로 만든 지도는 지형과 냄새와 기억으로만 이루어진다
     moving: [],
     crumble: [],
-    hazards: [],
+    // 위험만은 버리지 않는다. 예전 좌표는 뜻이 없으므로 **생성기가 새 지형을 보고
+    // 놓아 준 것**을 쓴다 — 비워 두면 걸어가기만 하면 끝나는 산책로가 된다
+    // (플레이 리뷰 3차 1)
+    hazards: L.hazards || [],
     // 안내판만은 버리지 않는다 — 조작을 알려 주는 유일한 수단이다.
     // 지형에 매달린 x 를 버리고 출발 지점 앞에 순서대로 다시 세운다
     signs: tutorialSigns(base, ground, start, goal),

@@ -637,6 +637,173 @@ function decorate(out, rand, seed, area) {
   return props;
 }
 
+
+/* ------------------------------------------------------------------ 위험 */
+
+/**
+ * 테마마다 놓을 수 있는 위험과 밀도.
+ *
+ * **확정 배치를 쓰는 순간 손으로 찍어 둔 위험은 전부 버려진다** — 지형이 통째로
+ * 바뀌었으니 예전 좌표는 뜻이 없기 때문이다. 그렇다고 비워 두면 걸어가기만 하면
+ * 끝나는 산책로가 된다 (플레이 리뷰 3차 1). 그래서 위험도 지형처럼 **생성기가**
+ * 놓는다.
+ *
+ * 밀도는 손으로 짠 스테이지에서 쓰던 값 그대로다 — 도시 0.9, 해안 1.1, 산 1.5.
+ * 들판(4)에는 위험을 두지 않는다. 함께 살던 곳이라 아무 일도 일어나지 않는다.
+ */
+const HAZARD_KIT = {
+  city: { per1000: 0.9, kinds: ['steam', 'rock', 'car'] },
+  coast: { per1000: 1.1, kinds: ['wave', 'car', 'rock'] },
+  mountain: { per1000: 1.5, kinds: ['rock', 'boar'] },
+  field: { per1000: 0, kinds: [] },
+};
+
+/** 출발 · 도착 · 세이브 · 기억 조각에서 이만큼은 떼어 놓는다 */
+const HAZARD_CLEAR = 460;
+
+/** 위험끼리도 이만큼은 벌린다 — 하나씩 보고 판단할 시간이 있어야 한다 */
+const HAZARD_GAP = 520;
+
+/** 자리 후보를 발판 위 몇 px 마다 잡을지 */
+const HAZARD_STEP = 560;
+
+/** 낙석이 떨어져 내릴 자리가 비어 있는가 (머리 위가 막혀 있으면 지형 속에서 나온다) */
+function openSky(pads, pad, x) {
+  return !pads.some((p) => p !== pad && p.x <= x && x <= p.x + p.w && p.y < pad.y && pad.y - p.y < 380);
+}
+
+/** 이 자리에 놓을 수 있는 위험인가 */
+function hazardFits(kind, slot, pads, baseY) {
+  const pad = slot.pad;
+  if (kind === 'car') return pad.floor && pad.w >= 1000;
+  // 파도는 바다가 있는 **가장 낮은 바닥**에만 밀려온다
+  if (kind === 'wave') return pad.floor && pad.y >= baseY - 8;
+  if (kind === 'boar') return pad.w >= 420;
+  if (kind === 'rock') return openSky(pads, pad, slot.x);
+  return true;
+}
+
+/** 위험 하나를 그 자리 좌표로 만든다 */
+function makeHazard(kind, slot, rand) {
+  const { x, pad } = slot;
+  const delay = round(rand() * 2600);
+
+  if (kind === 'car') {
+    const dir = rand() < 0.5 ? -1 : 1;
+    const fromX = round(dir < 0 ? pad.x + pad.w + 140 : pad.x - 140);
+    const toX = round(dir < 0 ? pad.x - 140 : pad.x + pad.w + 140);
+    return {
+      type: 'car',
+      x: fromX,
+      y: pad.y - 34,
+      fromX,
+      toX,
+      dir,
+      speed: round(240 + rand() * 110),
+      interval: round(3800 + rand() * 2400),
+      delay,
+    };
+  }
+
+  if (kind === 'rock') {
+    return {
+      type: 'rock',
+      x,
+      y: round(pad.y - 340),
+      groundY: pad.y - 10,
+      interval: round(2400 + rand() * 1200),
+      delay,
+    };
+  }
+
+  if (kind === 'boar') {
+    return {
+      type: 'boar',
+      x,
+      y: pad.y - 20,
+      range: round(380 + rand() * 140),
+      speed: round(380 + rand() * 90),
+      delay,
+    };
+  }
+
+  if (kind === 'wave') {
+    return {
+      type: 'wave',
+      x: x + 280,
+      y: pad.y + 120,
+      reachX: x - 60,
+      interval: round(3400 + rand() * 1600),
+      delay,
+      effect: 'push',
+    };
+  }
+
+  return {
+    type: 'steam',
+    x,
+    y: pad.y,
+    interval: round(2400 + rand() * 1000),
+    warnTime: 700,
+    activeTime: round(1200 + rand() * 400),
+    power: -430,
+  };
+}
+
+/**
+ * 지형 위에 위험을 놓는다.
+ *
+ * 놓을 자리는 소품과 같은 기준이다 — **딛고 설 만큼 넓은 자리**만 쓴다. 지나가는 길인
+ * 얇은 판자 위에 두면 피할 자리가 없어 외워서 뚫는 수밖에 없다.
+ *
+ * 출발·도착·세이브·기억 조각 둘레는 비워 둔다. 되살아나자마자 죽거나, 주우러 간
+ * 자리에서 죽으면 그건 어려운 게 아니라 억울한 것이다.
+ *
+ * @param safe 비워 둘 자리들 {x, y}
+ */
+function hazardize(out, rand, seed, safe, area) {
+  const theme = seed.actors ? String(seed.actors).replace('actors_', '') : null;
+  const kit = HAZARD_KIT[theme];
+  if (!kit || !kit.per1000) return [];
+
+  const pads = [
+    ...out.ground.map((g) => ({ ...g, floor: true })),
+    ...out.ledges.filter((l) => (l.h ?? 18) >= 40 && l.w >= 380).map((l) => ({ ...l, floor: false })),
+  ];
+  if (!pads.length) return [];
+  const baseY = Math.max(...out.ground.map((g) => g.y));
+
+  // 넓은 발판을 일정 간격으로 쪼개 자리 후보를 만든다
+  const slots = [];
+  pads.forEach((pad) => {
+    const count = Math.floor(pad.w / HAZARD_STEP);
+    for (let i = 0; i < count; i += 1) {
+      const x = round(pad.x + (pad.w * (i + 0.5)) / count);
+      if (safe.some((s) => Math.abs(s.x - x) < HAZARD_CLEAR && Math.abs(s.y - pad.y) < 260)) continue;
+      slots.push({ x, pad, roll: rand() });
+    }
+  });
+
+  // 씨앗 난수로 섞어 앞에서부터 쓴다 — 같은 씨앗이면 언제나 같은 자리다
+  slots.sort((a, b) => a.roll - b.roll);
+
+  const budget = clamp(round(((area.x1 - area.x0) / 1000) * kit.per1000), 0, 40);
+  const hazards = [];
+  const taken = [];
+
+  slots.forEach((slot) => {
+    if (hazards.length >= budget) return;
+    if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
+
+    const kinds = kit.kinds.filter((k) => hazardFits(k, slot, pads, baseY));
+    if (!kinds.length) return;
+
+    hazards.push(makeHazard(kinds[Math.floor(rand() * kinds.length) % kinds.length], slot, rand));
+    taken.push({ x: slot.x, y: slot.pad.y });
+  });
+
+  return hazards;
+}
 /* --------------------------------------------------------------- 길찾기 노드 */
 
 /**
@@ -829,7 +996,7 @@ export function build(seed) {
   const rand = rng(seed.seedNumber ?? 1);
   const groundH = seed.groundH ?? 90;
   const richness = seed.richness ?? 1; // 살을 얼마나 붙일지 (0 = 점만 잇는다)
-  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [] };
+  const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [], hazards: [] };
 
   const start = seed.start;
   const goal = seed.goal;
@@ -924,6 +1091,15 @@ export function build(seed) {
   // 8. 최단 경로 3분의 1마다 중간 세이브. 난수를 쓰지 않으므로 지형은 그대로다
   midSaves(out, startPad, goalPad);
 
+  // 9. 위험. 쉴 자리가 다 정해진 뒤라야 그 둘레를 비워 둘 수 있다
+  const safe = [
+    { x: start.x, y: startPad.y },
+    { x: goal.x, y: goalPad.y },
+    ...out.saves,
+    ...out.keepsakes,
+  ];
+  out.hazards = hazardize(out, rand, seed, safe, { x0: minX, x1: maxX });
+
   const pads = allPads(out);
   const { groups } = components(pads);
   const tops = pads.map((p) => p.y);
@@ -944,6 +1120,7 @@ export function build(seed) {
       세이브: out.saves.length,
       기억: out.keepsakes.length,
       소품: out.props.length,
+      위험: out.hazards.length,
       이어짐: connected && groups.length === 1 ? '전부 오갈 수 있다' : `덩어리 ${groups.length}개로 갈라짐`,
       갈라진덩어리: groups.length,
       머리공간: ceilings.length ? `막힌 자리 ${ceilings.length}곳` : '전부 뛸 수 있다',
