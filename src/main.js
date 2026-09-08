@@ -17,7 +17,15 @@ const config = {
   height: GAME_HEIGHT,
   backgroundColor: '#12131a',
   pixelArt: false,
-  roundPixels: true,
+  /**
+   * **정수 자리로 반올림하지 않는다.**
+   *
+   * 카메라는 매 프레임 5.39px 처럼 소수 단위로 움직이는데, 반올림해서 그리면 그 소수가
+   * 5, 5, 6, 5, 6 으로 튄다. 화면은 FIT 으로 다시 확대되므로 그 1px 이 더 커져서
+   * **모든 이동이 자잘하게 덜컥거린다** (플레이 리뷰 2차 6). 픽셀아트가 아니라
+   * 반올림해서 얻을 것도 없다.
+   */
+  roundPixels: false,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
