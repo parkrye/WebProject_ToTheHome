@@ -8,6 +8,14 @@ import { HAZARD_TYPES } from '../objects/Hazards.js';
 import { SavePoint } from '../objects/SavePoint.js';
 import { ScentTrail, SignBoard, placeProp, StageGoal, GoalMarker } from '../objects/Decor.js';
 import { pathNodes, pathLinks, pathRoute, nearestNode, PATH_STEP } from '../systems/StageBuilder.js';
+import { sizeTo } from '../systems/Layout.js';
+
+/**
+ * 주인의 차가 화면에서 차지할 높이.
+ *
+ * 강아지 그림이 71px 이고 0.4m 쯤이므로 1m 는 178px 이다 — 승용차 1.4m.
+ */
+const OWNER_CAR_H = 250;
 
 /**
  * 스테이지 공용 씬. 레벨은 전부 src/data/stage*.js 의 데이터로 만들어진다.
@@ -472,12 +480,22 @@ export default class StageScene extends Phaser.Scene {
     });
   }
 
-  /** 스테이지 2 — 주인의 차와 같은 색 차가 지나간다 */
+  /**
+   * 스테이지 2 — 주인의 차와 같은 색 차가 지나간다.
+   *
+   * 크기와 자리를 **강아지를 기준으로** 잡는다. 예전에는 원본 PNG 를 크기 지정 없이
+   * 놓아서 화면을 통째로 덮었고, 손으로 잡아 둔 좌표는 관리 툴 지형에서 뜻을 잃어
+   * 엉뚱한 높이에서 튀어나왔다 (플레이 리뷰 3차 2).
+   */
   triggerEvent(event) {
     event.fired = true;
     if (event.type !== 'ownerCar') return;
 
-    const car = this.add.image(event.carX, event.carY, 'prop_owner_car').setOrigin(0.5, 1).setDepth(19);
+    // 화면 밖에서 들어와 강아지를 지나쳐 화면 밖으로 나간다
+    const groundY = this.dog.body.bottom;
+    const fromX = this.dog.x + GAME_WIDTH * 0.8;
+    const car = this.add.image(fromX, groundY, 'prop_owner_car').setOrigin(0.5, 1).setDepth(19);
+    sizeTo(car, { height: OWNER_CAR_H });
     this.audio.play('sfx_car_pass', { volume: 0.5 });
 
     this.dog.setCutscene(true);
@@ -486,7 +504,7 @@ export default class StageScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: car,
-      x: event.carX - 2200,
+      x: fromX - GAME_WIDTH * 1.8,
       duration: 4200,
       ease: 'Sine.easeInOut',
       onComplete: () => car.destroy(),

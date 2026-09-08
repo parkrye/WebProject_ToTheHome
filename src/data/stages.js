@@ -143,6 +143,17 @@ function tutorialSigns(base, ground, start, goal) {
     .filter(Boolean);
 }
 
+/**
+ * 연출 이벤트를 새 지도의 **같은 비율 자리**로 옮긴다.
+ *
+ * 이벤트는 "지나가는 길의 어디쯤에서 터지는가"가 전부다. 손으로 잡은 x 는 예전
+ * 지도 기준이라, 폭이 두 배로 늘어난 지도에서는 시작하자마자 터져 버린다.
+ */
+function reanchorEvents(base, width) {
+  const scale = base.width ? width / base.width : 1;
+  return (base.events || []).map((e) => ({ ...e, x: Math.round(e.x * scale) }));
+}
+
 /** 손으로 짠 스테이지 위에 관리 툴 배치를 덮는다 */
 function applyLayout(base, saved) {
   if (!saved.layout || !saved.layout.ground?.length) return base;
@@ -187,6 +198,7 @@ function applyLayout(base, saved) {
     // 안내판만은 버리지 않는다 — 조작을 알려 주는 유일한 수단이다.
     // 지형에 매달린 x 를 버리고 출발 지점 앞에 순서대로 다시 세운다
     signs: tutorialSigns(base, ground, start, goal),
+    events: reanchorEvents(base, width),
     scent: L.scent || [],
     keepsakes: L.keepsakes || [],
     // 생성기가 소품까지 만들어 주면 그것을 쓴다. 없으면 손으로 놓은 것을 새 지면에 앉힌다
