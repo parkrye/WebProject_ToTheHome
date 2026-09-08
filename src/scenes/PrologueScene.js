@@ -57,12 +57,19 @@ const ROOM_TINT = 0x8b7d6d;
  */
 const CENTER_X = 494;
 
+/**
+ * 강아지는 컷마다 **조금씩 자란다.**
+ *
+ * 세 컷은 하루가 아니라 함께 자란 몇 해다. 아이는 그림 하나뿐이라 키를 못 바꾸지만,
+ * 강아지가 커지는 것만으로 시간이 흘렀다는 게 읽힌다 (플레이 리뷰 2차 4).
+ * 한 컷에 12% 씩만 키운다 — 더 키우면 자란 게 아니라 다른 개가 된다.
+ */
 const CUTS = [
-  // lead: 평균적으로 앞서는 거리 (+ 면 강아지가 앞)
-  { id: 'p1', sky: 'bg_field_sky_morning', lead: 70, duration: 7400, tint: 0xffffff, play: 1.0 },
-  { id: 'p2', sky: 'bg_field_sky_noon', lead: 0, duration: 7400, tint: 0xffffff, play: 1.05 },
+  // lead: 평균적으로 앞서는 거리 (+ 면 강아지가 앞) / dogH: 그 컷의 강아지 키
+  { id: 'p1', sky: 'bg_field_sky_morning', lead: 70, duration: 7400, tint: 0xffffff, play: 1.0, dogH: 72 },
+  { id: 'p2', sky: 'bg_field_sky_noon', lead: 0, duration: 7400, tint: 0xffffff, play: 1.05, dogH: 82 },
   // 저녁 — 아이가 앞서고 강아지의 걸음이 느려진다
-  { id: 'p3', sky: 'bg_field_sky_evening', lead: -80, duration: 7800, tint: 0xf0d0c0, play: 0.8 },
+  { id: 'p3', sky: 'bg_field_sky_evening', lead: -80, duration: 7800, tint: 0xf0d0c0, play: 0.8, dogH: 92 },
 ];
 
 /** 앞뒤로 오가는 폭과 주기. 둘의 주기를 어긋나게 둬야 서로 스쳐 지나간다 */
@@ -143,7 +150,7 @@ export default class PrologueScene extends Phaser.Scene {
     owner.setTint(cut.tint);
 
     const dog = this.add.sprite(dogX, GROUND_Y + 10 + PUPPY_DROP, 'dog_puppy_run').setOrigin(0.5, 1);
-    sizeTo(dog, { height: 84 });
+    sizeTo(dog, { height: cut.dogH ?? 84 });
     dog.play('dog_puppy_run');
     dog.setTint(cut.tint);
     dog.anims.timeScale = cut.play;
@@ -225,8 +232,11 @@ export default class PrologueScene extends Phaser.Scene {
           .setTint(ROOM_TINT)
       );
 
+      // 방 안의 자로 재야 한다. 어른(1.75m)이 376px 이므로 1px 은 약 4.7mm 다.
+      // 몸을 말고 자는 강아지는 60cm 남짓이라 130px 쯤 된다 — 예전 값(200)은 1m 에
+      // 가까워서 방석을 넘치고 어른만 하게 보였다 (플레이 리뷰 2차 3)
       const dog = this.add.sprite(CUSHION.x, CUSHION.y - 22, 'dog_sleep').setOrigin(0.5, 1);
-      sizeTo(dog, { width: 200 });
+      sizeTo(dog, { width: 130 });
       dog.play('dog_sleep');
       this.layerGroup.add(dog);
     }
