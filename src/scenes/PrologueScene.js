@@ -32,6 +32,16 @@ const GROUND_Y = 496;
 const PUPPY_DROP = 16;
 
 /**
+ * 소년도 같은 이유로 내려 딛는다.
+ *
+ * 강아지만 내려 놓았더니 이번에는 **소년이 풀 위를 달리는 것처럼** 보였다
+ * (플레이 리뷰 4차 1). 앞쪽 풀은 y=525 부터 화면을 꽉 채우므로, 발끝이 그 근처까지
+ * 내려와야 풀 사이에 선 것이 된다. 강아지(522)와 거의 같은 줄이라 나란히 달리는
+ * 것으로 읽히고, 앞뒤 거리는 `lead` 와 `weave` 가 낸다.
+ */
+const OWNER_DROP = 18;
+
+/**
  * 밤 컷(집 안)의 기준 치수. 화면은 960 x 540 이다.
  *
  * 배경 그림 속 문은 높이 430px 이고 실제 문은 2m 다. 그래서 **1m 는 약 215px**.
@@ -144,7 +154,7 @@ export default class PrologueScene extends Phaser.Scene {
     const ownerX = CENTER_X - cut.lead / 2;
     const dogX = CENTER_X + cut.lead / 2;
 
-    const owner = this.add.sprite(ownerX, GROUND_Y + 10, 'owner_child_run').setOrigin(0.5, 1);
+    const owner = this.add.sprite(ownerX, GROUND_Y + 10 + OWNER_DROP, 'owner_child_run').setOrigin(0.5, 1);
     sizeTo(owner, { height: 190 });
     owner.play('owner_child_run');
     owner.setTint(cut.tint);
@@ -169,7 +179,7 @@ export default class PrologueScene extends Phaser.Scene {
     this.scrollers.push({ tile: near, speed: 150 });
 
     // 달리는 상하 진동
-    [[owner, 0], [dog, PUPPY_DROP]].forEach(([sprite, drop], i) => {
+    [[owner, OWNER_DROP], [dog, PUPPY_DROP]].forEach(([sprite, drop], i) => {
       this.tweens.add({
         targets: sprite,
         y: GROUND_Y + 2 + drop,

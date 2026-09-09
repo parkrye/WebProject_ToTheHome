@@ -99,10 +99,11 @@ export default {
     { type: 'rock', x: 3980, y: 120, groundY: GY - 10, interval: 3000, delay: 900 },
 
     // 횡단보도 — 세 대가 다른 주기로 지나간다.
-    // 주기를 길게 잡아 **차가 다 지나간 뒤 건너는 시간**이 확실히 생기게 한다
+    // 주기를 길게 잡아 **차가 다 지나간 뒤 건너는 시간**이 확실히 생기게 한다.
+    // 전부 **가는 쪽에서 마주 온다** — 등 뒤에서 오면 보이는 순간 이미 코앞이다
     { type: 'car', x: 5700, y: GY, fromX: 5700, toX: 4200, dir: -1, speed: 280, interval: 4400, delay: 400 },
     { type: 'car', x: 5700, y: GY, fromX: 5700, toX: 4200, dir: -1, speed: 230, interval: 5600, delay: 2400 },
-    { type: 'car', x: 4200, y: GY, fromX: 4200, toX: 5700, dir: 1, speed: 250, interval: 6200, delay: 3800 },
+    { type: 'car', x: 5700, y: GY, fromX: 5700, toX: 4200, dir: -1, speed: 250, interval: 6200, delay: 3800 },
   ],
 
   /**

@@ -2868,24 +2868,23 @@
       },
       {
         "type": "car",
-        "x": -2281,
+        "x": -981,
         "y": -70,
-        "fromX": -2281,
-        "toX": -981,
-        "dir": 1,
+        "fromX": -981,
+        "toX": -2281,
+        "dir": -1,
         "speed": 319,
         "interval": 12775,
         "warnTime": 900,
         "delay": 0
       },
       {
-        "type": "steam",
+        "type": "rock",
         "x": 4910,
-        "y": -5129,
-        "interval": 2581,
-        "warnTime": 700,
-        "activeTime": 1539,
-        "power": -430
+        "y": -5469,
+        "groundY": -5139,
+        "interval": 3045,
+        "delay": 1254
       },
       {
         "type": "car",
@@ -2900,50 +2899,55 @@
         "delay": 8875
       },
       {
-        "type": "steam",
-        "x": 5178,
+        "type": "car",
+        "x": 5112,
         "y": -70,
+        "fromX": 5112,
+        "toX": 3812,
+        "dir": -1,
+        "speed": 268,
+        "interval": 13551,
+        "warnTime": 900,
+        "delay": 0
+      },
+      {
+        "type": "steam",
+        "x": 4669,
+        "y": -3343,
         "interval": 2737,
         "warnTime": 700,
         "activeTime": 1578,
         "power": -430
       },
       {
-        "type": "rock",
-        "x": 4669,
-        "y": -3683,
-        "groundY": -3353,
-        "interval": 2723,
-        "delay": 422
-      },
-      {
         "type": "car",
-        "x": 4126,
+        "x": 5112,
         "y": -70,
-        "fromX": 4126,
-        "toX": 2826,
+        "fromX": 5112,
+        "toX": 3812,
         "dir": -1,
-        "speed": 339,
-        "interval": 3900,
+        "speed": 268,
+        "interval": 13551,
         "warnTime": 900,
-        "delay": 0
+        "delay": 9651
       },
       {
         "type": "steam",
         "x": 3478,
         "y": -4979,
-        "interval": 3231,
+        "interval": 2426,
         "warnTime": 700,
-        "activeTime": 1526,
+        "activeTime": 1594,
         "power": -430
       },
       {
-        "type": "rock",
-        "x": 3472,
-        "y": -5700,
-        "groundY": -5370,
-        "interval": 3555,
-        "delay": 1035
+        "type": "steam",
+        "x": -2766,
+        "y": -70,
+        "interval": 2933,
+        "warnTime": 700,
+        "activeTime": 1532,
+        "power": -430
       }
     ],
     "start": {

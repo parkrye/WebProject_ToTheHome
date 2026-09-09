@@ -715,7 +715,12 @@ const HAZARD_STEP = 560;
  */
 const CAR_RUN = 1300;
 
-/** 자동차 구간 양옆에 남겨 둘 안전한 땅 */
+/**
+ * 자동차 구간 양옆에 남겨 둘 안전한 땅.
+ *
+ * 차는 차선 끝에서 뚝 사라지지 않고 이 갓길을 계속 달려 나가며 옅어진다
+ * (`Hazards.CAR_FADE` 190). 그 거리가 갓길 안에 들어와야 다음 발판까지 넘어가지 않는다.
+ */
 const CAR_SHOULDER = 350;
 
 /** 한 길에 다니는 자동차 대수 */
@@ -772,7 +777,7 @@ function hazardFits(kind, slot, pads, baseY) {
  * 한 길 위로 여러 대가 서로 다른 주기로 지나가는 편이 길을 여러 개 내는 것보다
  * 읽기 쉽다 — 위험한 자리는 하나고 언제 비는지만 보면 된다.
  */
-function carLane(lanes, slot, rand) {
+function carLane(lanes, slot, rand, dir) {
   const pad = slot.pad;
   const near = lanes.find((l) => l.pad === pad && Math.abs(l.cx - slot.x) < CAR_RUN * 1.5);
   if (near) return near.cars.length < CAR_PER_LANE ? near : null;
@@ -782,6 +787,7 @@ function carLane(lanes, slot, rand) {
   const lane = {
     pad,
     cx,
+    dir,
     x0: round(cx - CAR_RUN / 2),
     x1: round(cx + CAR_RUN / 2),
     speed: round(260 + rand() * 80),
@@ -813,14 +819,14 @@ function timeLanes(lanes) {
 }
 
 /** 위험 하나를 그 자리 좌표로 만든다 */
-function makeHazard(kind, slot, rand, lanes) {
+function makeHazard(kind, slot, rand, lanes, carDir) {
   const { x, pad } = slot;
   const delay = round(rand() * 2600);
 
   if (kind === 'car') {
-    const lane = carLane(lanes, slot, rand);
+    const lane = carLane(lanes, slot, rand, carDir);
     if (!lane) return null; // 이 길은 이미 찼다
-    const dir = rand() < 0.5 ? -1 : 1;
+    const dir = lane.dir;
     const fromX = dir < 0 ? lane.x1 : lane.x0;
     const toX = dir < 0 ? lane.x0 : lane.x1;
     // 속도·주기·출발 시각은 길 단위로 timeLanes() 가 다시 잡는다
@@ -934,6 +940,19 @@ function hazardize(out, rand, seed, safe, area) {
   const lanes = [];
   const used = {};
 
+  /**
+   * 자동차는 **언제나 마주 오게** 한다.
+   *
+   * 방향을 난수로 고르면 절반은 강아지 뒤에서 따라와 등을 친다. 속도(260~340)가
+   * 달리기(300)와 비슷해서 뒤에서 오는 차는 화면에 들어오는 순간 이미 코앞이고,
+   * 소리로 예고해 봐야 어느 쪽에서 오는지 알 수 없다 (플레이 리뷰 4차 3).
+   * 가는 쪽에서 오면 다가오는 내내 보이므로 들어갈지 말지를 눈으로 정할 수 있다.
+   *
+   * 한 길의 차는 전부 같은 방향으로 다닌다 — 한 차선에서 마주 달리면 서로 뚫고
+   * 지나가는 꼴이 된다.
+   */
+  const carDir = safe[1] && safe[1].x < safe[0].x ? 1 : -1;
+
   slots.forEach((slot) => {
     if (hazards.length >= budget) return;
     if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
@@ -944,7 +963,7 @@ function hazardize(out, rand, seed, safe, area) {
     if (!kinds.length) return;
 
     const kind = kinds[Math.min(kinds.length - 1, Math.floor(rand() * kinds.length))];
-    const hazard = makeHazard(kind, slot, rand, lanes);
+    const hazard = makeHazard(kind, slot, rand, lanes, carDir);
     if (!hazard) return;
 
     hazards.push(hazard);

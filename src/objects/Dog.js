@@ -7,7 +7,7 @@
 
 import Phaser from 'phaser';
 import { DOG } from '../config.js';
-import { SHEET_FILL, SHEET_FOOT } from '../systems/AssetManifest.js';
+import { SHEET_FOOT } from '../systems/AssetManifest.js';
 
 export const DogState = {
   NORMAL: 'normal',
@@ -55,22 +55,20 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
   /**
    * 시트가 바뀌어도 강아지가 같은 크기로 보이게 맞춘다.
    *
-   * 시트마다 칸 안 여백이 달라서(AssetManifest.SHEET_FILL 주석 참고) 칸 크기로만
-   * 표시 크기를 정하면 모션이 바뀔 때마다 커졌다 작아진다. idle 을 기준으로 되돌린다.
+   * **모든 시트를 같은 크기로 그린다.** 예전에는 시트마다 칸 안 여백(`SHEET_FILL`)이
+   * 다른 만큼 표시 크기를 키워 주었는데, 실제 알파를 재 보니 idle · walk · run · sniff 의
+   * 가로 채움은 0.95~0.97 로 사실상 같았다. 표에 적힌 값(run 0.91 · sniff 0.92)만
+   * 어긋나 있어서, **없는 차이를 5% 확대**하고 있었다 — 걷다 뛰면 몸이 커지고 냄새를
+   * 맡으면 또 커졌다 (플레이 리뷰 4차 2). 칸을 꽉 채우지 않는 시트(웅크린 자세)는
+   * 원래 몸을 접은 것이므로 키우면 오히려 다른 개가 된다.
    *
-   * 충돌 박스는 "화면에서 몇 px 인지"로 정하므로, 표시 크기가 바뀐 만큼 프레임
-   * 좌표로 되돌려 다시 잡는다. 그리고 발 위치가 튀지 않도록 중심을 그만큼 올린다.
+   * 충돌 박스는 "화면에서 몇 px 인지"로 정하므로 프레임 좌표로 되돌려 잡는다.
    */
   applySheetSize(key) {
     if (this.sheetKey === key) return;
     this.sheetKey = key;
 
-    const fill = SHEET_FILL[key] ?? SHEET_FILL._default;
-    // 여백이 유난히 넓은 시트를 과하게 키우지 않도록 위쪽을 막아 둔다
-    const boost = Phaser.Math.Clamp(SHEET_FILL.dog_idle / fill, 1, 1.35);
-    const display = DOG.displaySize * boost;
-    const prev = this.sheetDisplay ?? display;
-
+    const display = DOG.displaySize;
     this.setDisplaySize(display, display);
     this.sheetDisplay = display;
 
@@ -88,10 +86,14 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
     this.body.setSize(bw, bh);
     this.body.setOffset((frameSize - bw) / 2, frameSize - bh - DOG.footPadding * toFrame - drop);
 
-    // 발끝(body 아랫면)은 중심에서 display/2 - footPadding 만큼 아래다.
-    // 크기가 바뀌면 그만큼 중심을 옮겨야 발이 제자리에 남는다.
-    // 몸을 올린 만큼도 같이 내려 줘야 서 있던 자리에서 튀지 않는다
-    this.y += (prev - display) / 2 + drop / toFrame;
+    // 몸을 올린 만큼 중심을 내려야 **서 있던 자리에서 튀지 않는다.**
+    //
+    // 옮기는 값은 **직전 시트와의 차이**여야 한다. `drop` 은 idle 기준의 절대량이라,
+    // 매번 그대로 더하면 걷기↔달리기를 오갈 때마다 조금씩 쌓여 강아지가 스멀스멀
+    // 가라앉는다 — 크기 변화와 겹쳐 화면이 흔들리던 원인이다 (플레이 리뷰 4차 2)
+    const dropPx = drop / toFrame;
+    this.y += dropPx - (this.sheetDropPx ?? 0);
+    this.sheetDropPx = dropPx;
   }
 
   update(time, delta, input) {
