@@ -10,7 +10,7 @@
  */
 
 import Phaser from 'phaser';
-import { PALETTE } from '../config.js';
+import { PALETTE, HAZARD } from '../config.js';
 import { ACTOR, ACTOR_SLOTS, ACTOR_BOX, actorAnim, actorFrame } from '../systems/AssetManifest.js';
 import { sizeToActor } from '../systems/Layout.js';
 
@@ -23,13 +23,19 @@ import { sizeToActor } from '../systems/Layout.js';
  *
  * **예고하는 동안에만** 나타난다. 늘 켜 두면 지형 위에 도형이 계속 얹혀 있게 된다.
  * 모든 위험이 같은 색·같은 깜빡임을 쓴다 — 표시가 종류마다 다르면 배울 것이 늘어난다.
+ *
+ * 두르는 것은 **위험이 미칠 범위 전체**다. 자동차는 달릴 차선 전부, 낙석은 떨어져
+ * 내릴 기둥 전부, 멧돼지는 돌진해 갈 거리 전부. 일부만 그리면 표시 밖에 서 있다가
+ * 맞는 일이 생겨서, 표시를 믿을 수 없게 된다.
  */
 class WarnZone {
   constructor(scene, { x, y, w, h, depth = 30 }) {
     this.scene = scene;
+    // 배경 그림이 빼곡한 도시 위에 얹히므로 **테두리만으로는 읽히지 않는다.**
+    // 옅게나마 안쪽을 물들여야 "이 띠 전체가 위험한 자리"로 보인다
     this.box = scene.add
-      .rectangle(x, y, Math.max(2, w), Math.max(2, h), PALETTE.hazard, 0.1)
-      .setStrokeStyle(2, PALETTE.hazard, 0.9)
+      .rectangle(x, y, Math.max(2, w), Math.max(2, h), PALETTE.warn, 0.28)
+      .setStrokeStyle(4, PALETTE.warn, 1)
       .setDepth(depth)
       .setVisible(false);
   }
@@ -42,11 +48,11 @@ class WarnZone {
 
   show() {
     if (this.blink) return;
-    this.box.setVisible(true).setAlpha(0.3);
+    this.box.setVisible(true).setAlpha(0.45);
     this.blink = this.scene.tweens.add({
       targets: this.box,
-      alpha: 0.9,
-      duration: 170,
+      alpha: 1,
+      duration: HAZARD.blink,
       yoyo: true,
       repeat: -1,
     });
@@ -147,11 +153,10 @@ const CAR_HEIGHT = 150;
 /**
  * 차선 밖에서 나타나고 사라지는 데 쓰는 거리 (갓길 350 안에 든다).
  *
- * 갓길은 강아지가 **서서 기다리는 자리**다. 거기를 반투명한 차가 느릿하게
- * 통과하면 팔통통 지나가는 유령이 된다. 짧게 잡고 끝으로 갈수록 가파르게 빠져
- * 차선 밖 70px 이면 거의 안 보이게 한다.
+ * 끝으로 갈수록 가파르게 빠져 차선 밖 70px 이면 거의 안 보이게 한다.
+ * 생성기도 이 거리를 알아야 차선 주기를 맞출 수 있어 `config.HAZARD` 에 둔다.
  */
-const CAR_FADE = 190;
+const CAR_FADE = HAZARD.carFade;
 
 /**
  * 주기적으로 화면을 가로지르는 자동차.
@@ -176,7 +181,7 @@ export class Car extends HazardBase {
     this.laneTo = def.toX ?? def.x - 900;
     this.fadeRun = def.fadeRun ?? CAR_FADE;
     this.interval = def.interval ?? 3200;
-    this.warnTime = def.warnTime ?? 900;
+    this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 0;
     this.warned = false;
     this.active_ = false;
@@ -264,13 +269,21 @@ export class Car extends HazardBase {
   }
 }
 
-/** 위에서 떨어지는 돌 / 화분 — 그림자로 0.5초 예고 */
+/**
+ * 위에서 떨어지는 돌 / 화분.
+ *
+ * **떨어져 내릴 기둥 전체를 두른다.** 예전에는 바닥에 그림자만 그렸는데, 그러면
+ * 떨어지는 길목을 지나가다 맞아도 어디가 위험했는지 알 수 없다. 돌은 바닥에 닿기
+ * 전부터 위험하므로 **위험한 것은 기둥 전체**다 (플레이 리뷰 5차 2).
+ * 바닥 그림자는 남겨 둔다 — 기둥이 어디로 내려앉는지를 짚어 주기 때문이다.
+ */
 export class FallingRock extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 82, ...def }, ACTOR.FALLER); // 떨어지는 것 0.45m
     this.startY = def.y;
     this.groundY = def.groundY ?? def.y + 300;
     this.interval = def.interval ?? 2600;
+    this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 0;
     this.phase = 'wait';
     this.setVisible(false);
@@ -280,10 +293,20 @@ export class FallingRock extends HazardBase {
     // 떨어질 자리를 미리 두른다. 그림자를 **실제 몸 너비만큼** 벌려 두면 그 자체가
     // 범위 표시가 된다 — 다른 위험과 같은 색을 써서 "위험한 자리"로 읽히게 한다
     this.shadow = scene.add
-      .ellipse(def.x, this.groundY, this.body.width, 14, PALETTE.hazard, 0.25)
-      .setStrokeStyle(2, PALETTE.hazard, 0.9)
+      .ellipse(def.x, this.groundY, this.body.width, 14, PALETTE.warn, 0.25)
+      .setStrokeStyle(2, PALETTE.warn, 0.9)
       .setDepth(6)
       .setVisible(false);
+
+    // 떨어져 내릴 기둥 — 돌이 나타나는 자리부터 바닥까지
+    const top = Math.min(this.startY - this.body.height, this.groundY);
+    this.warn = new WarnZone(scene, {
+      x: def.x,
+      y: (top + this.groundY) / 2,
+      w: this.body.width,
+      h: this.groundY - top,
+      depth: (def.depth ?? 18) + 1,
+    });
   }
 
   tick(time, delta) {
@@ -292,15 +315,17 @@ export class FallingRock extends HazardBase {
     if (this.phase === 'wait') {
       if (this.timer > 0) return;
       this.phase = 'telegraph';
-      this.timer = 500;
+      this.timer = this.warnTime;
+      this.warn.show();
       this.shadow.setVisible(true).setScale(0.5);
-      this.scene.tweens.add({ targets: this.shadow, scaleX: 1, scaleY: 1, duration: 500 });
+      this.scene.tweens.add({ targets: this.shadow, scaleX: 1, scaleY: 1, duration: this.warnTime });
       return;
     }
 
     if (this.phase === 'telegraph') {
       if (this.timer > 0) return;
       this.phase = 'fall';
+      this.warn.hide();
       this.setPosition(this.def.x, this.startY);
       this.setAngle(0);
       this.setVisible(true);
@@ -342,6 +367,7 @@ export class Boar extends HazardBase {
     this.range = def.range ?? 420;
     this.speed = def.speed ?? 420;
     this.phase = 'idle';
+    this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 1200;
     // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다.
     // 서서 뛰면 96px, 달리며 뛰면 112px 오르므로 84px 이면 넘어간다
@@ -362,7 +388,7 @@ export class Boar extends HazardBase {
     if (this.phase === 'idle') {
       if (this.timer > 0) return;
       this.phase = 'telegraph';
-      this.timer = 700;
+      this.timer = this.warnTime;
       // 어디로 달릴지 정하고 그쪽을 본다 — MOVER 그림은 **오른쪽**을 보고 있으므로
       // 왼쪽으로 달릴 때만 뒤집는다 (플레이 리뷰 4차 7)
       const dog = this.scene.dog;
@@ -376,13 +402,13 @@ export class Boar extends HazardBase {
         this.body.height
       );
       this.warn.show();
-      // 예고 — 앞발로 땅을 긁듯 좌우로 잘게 떤다
+      // 예고 — 앞발로 땅을 긁듯 좌우로 잘게 떤다. **예고가 끝날 때까지** 긁는다
       this.scene.tweens.add({
         targets: this,
         x: this.homeX + 8,
         duration: 90,
         yoyo: true,
-        repeat: 3,
+        repeat: Math.max(1, Math.round(this.warnTime / 180) - 1),
         onComplete: () => this.setX(this.homeX),
       });
       this.scene.audio?.play('sfx_boar_snort', { volume: 0.5 });
@@ -428,7 +454,7 @@ export class Wave extends HazardBase {
     this.restX = def.x;
     this.reachX = def.reachX ?? def.x + 420;
     this.interval = def.interval ?? 3600;
-    this.warnTime = def.warnTime ?? 700;
+    this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 0;
     this.phase = 'idle';
     this.fitBody(0.9, 0.8);
@@ -494,7 +520,7 @@ export class SteamVent extends HazardBase {
 
     this.liftPower = def.power ?? -430;
     this.interval = def.interval ?? 2400;
-    this.warnTime = def.warnTime ?? 700;
+    this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.activeTime = def.activeTime ?? 1200;
     this.timer = def.delay ?? 0;
     this.phase = 'idle';
