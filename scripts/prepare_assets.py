@@ -427,8 +427,12 @@ SOLO_PROPS = {
     'prop_owner_car': 560,
     'prop_sandbox': 520,
     'prop_sign_jump': 300,
+    'prop_sign_jumpdown': 300,
+    'prop_sign_lookdown': 300,
     'prop_sign_move': 300,
     'prop_sign_run': 300,
+    'prop_sign_sniff': 300,
+    'prop_sign_interact': 300,
     'prop_valley_pond': 700,
 }
 
