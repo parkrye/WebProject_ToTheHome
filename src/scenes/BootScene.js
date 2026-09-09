@@ -15,9 +15,14 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create() {
+    const save = new SaveSystem();
+    const audio = new AudioSystem(this.game);
+    // 지난번에 맞춰 둔 소리 크기로 시작한다
+    audio.setVolume(save.data.volume ?? 1);
+
     this.registry.set('input', new InputSystem());
-    this.registry.set('save', new SaveSystem());
-    this.registry.set('audio', new AudioSystem(this.game));
+    this.registry.set('save', save);
+    this.registry.set('audio', audio);
 
     // 로딩 중 표시 — 문자 없이 맥동하는 점 하나
     const pulse = this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 10, PALETTE.scent, 0.9);

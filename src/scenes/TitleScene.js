@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DOG, FADE } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, DOG, FADE } from '../config.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
+import { VolumeSlider, volumeIcon } from '../objects/VolumeSlider.js';
 
 /**
  * 타이틀. 문자를 쓰지 않으므로 메뉴는 픽토그램 세 개다.
@@ -36,6 +37,7 @@ export default class TitleScene extends Phaser.Scene {
     this.locked = false;
     this.selectedOnce = false;
     this.marker = null;
+    this.optionsOpen = false;
 
     this.buildBackdrop();
 
@@ -86,6 +88,8 @@ export default class TitleScene extends Phaser.Scene {
     this.index = 0;
     this.select(0);
 
+    this.buildOptions();
+
     this.cursors = this.input.keyboard.createCursorKeys();
     this.confirmKeys = this.input.keyboard.addKeys('SPACE,ENTER,E');
 
@@ -127,6 +131,51 @@ export default class TitleScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 오른윗에 소리 크기 단추 하나.
+   *
+   * 일시정지는 스테이지 안에만 있어서, 타이틀에서는 소리를 줄일 길이 없었다
+   * (플레이 리뷰 4차 8). 단추는 조절기를 그대로 줄인 그림이라,
+   * 누르면 무엇이 나오는지 누르기 전에 알 수 있다.
+   */
+  buildOptions() {
+    const save = this.registry.get('save');
+
+    const button = volumeIcon(this, GAME_WIDTH - 52, 44).setDepth(20).setAlpha(0.55);
+    button.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.toggleOptions(true));
+
+    this.optionsPanel = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(30).setVisible(false);
+
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0d0b12, 0.72);
+    // 바탕을 누르면 닫힌다 — 닫기 단추를 따로 그리지 않아도 된다
+    shade.setInteractive().on('pointerdown', () => this.toggleOptions(false));
+
+    const panel = this.textures.exists('ui_pause_panel')
+      ? sizeTo(this.add.image(0, 0, 'ui_pause_panel'), { height: UI_SIZE.pausePanel * 0.62 })
+      : null;
+
+    const slider = new VolumeSlider(this, 0, 0, {
+      value: this.audio.volume,
+      onChange: (value) => {
+        this.audio.setVolume(value);
+        save.set({ volume: value });
+      },
+    });
+
+    this.optionsPanel.add([shade, panel, slider].filter(Boolean));
+    this.input.keyboard.on('keydown-ESC', () => this.toggleOptions(false));
+  }
+
+  /** 열려 있는 동안에는 메뉴를 잠그어 둔다 — 스페이스가 게임을 시작하면 안 된다 */
+  toggleOptions(open) {
+    if (open === this.optionsOpen) return;
+    if (this.locked && !this.optionsOpen) return;
+    this.optionsOpen = open;
+    this.optionsPanel.setVisible(open);
+    this.locked = open;
+    this.audio.play('sfx_ui_select', { volume: 0.4 });
+  }
+
   select(index) {
     if (this.index === index && this.selectedOnce) return;
     this.selectedOnce = true;
@@ -149,8 +198,8 @@ export default class TitleScene extends Phaser.Scene {
    * **이전 위치 기준으로** 가는 쪽을 보게 뒤집어야 "저 아이콘까지 걸어갔다"로 읽힌다.
    * 도착하면 다시 앉고, 보던 방향은 그대로 남는다.
    *
-   * dog_idle 과 dog_walk 은 칸 안 여백이 같아서(SHEET_FILL 0.96) 시트를 바꿔도
-   * 크기가 튀지 않는다.
+   * 강아지 시트는 전부 같은 크기로 그리므로 시트를 바꿔도 크기가 튀지 않는다
+   * (Dog.applySheetSize).
    */
   walkMarkerTo(x) {
     const dog = this.marker;

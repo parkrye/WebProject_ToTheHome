@@ -14,6 +14,7 @@ const DEFAULT_SAVE = {
   keepsakes: [], // 주운 기억 조각의 id
   customSprites: false,
   muted: false,
+  volume: 1, // 전체 볼륨 0~1
 };
 
 export class SaveSystem {
@@ -92,7 +93,8 @@ export class SaveSystem {
   }
 
   reset() {
-    this.data = { ...DEFAULT_SAVE, muted: this.data.muted };
+    // 볼륨과 음소거는 진행이 아니라 **그 사람의 설정**이다. 새로 시작해도 남긴다
+    this.data = { ...DEFAULT_SAVE, muted: this.data.muted, volume: this.data.volume };
     this.persist();
   }
 }

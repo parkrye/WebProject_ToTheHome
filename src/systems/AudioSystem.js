@@ -39,6 +39,9 @@ export class AudioSystem {
   constructor(game) {
     this.game = game;
     this.muted = false;
+    // 전체 볼륨 0~1. 합성 폴백은 Phaser 를 거치지 않고 WebAudio 로 바로 내보내므로
+    // sound.volume 이 닿지 않는다. 그래서 값을 여기에도 들고 있다가 직접 곱한다
+    this.master = 1;
     this.bgm = null;
     this.bgmKey = null;
     this.ambience = null;
@@ -57,6 +60,16 @@ export class AudioSystem {
   setMuted(muted) {
     this.muted = muted;
     this.sound.mute = muted;
+  }
+
+  get volume() {
+    return this.master;
+  }
+
+  /** 전체 볼륨. BGM · 앱비언스 · SFX · 합성음에 함께 걸린다 */
+  setVolume(value) {
+    this.master = Math.min(1, Math.max(0, value));
+    this.sound.volume = this.master;
   }
 
   /** 브라우저 자동재생 정책 — 첫 입력에서 호출 */
@@ -171,10 +184,12 @@ export class AudioSystem {
     const profile = SYNTH[key];
     const ctx = this.ctx;
     if (!profile || !ctx || ctx.state !== 'running') return;
+    // 음량이 0 이면 exponentialRamp 가 터진다. 아예 소리를 내지 않는다
+    if (this.master <= 0) return;
 
     const now = ctx.currentTime;
     const master = ctx.createGain();
-    master.gain.value = (profile.gain || 0.15) * volume;
+    master.gain.value = (profile.gain || 0.15) * volume * this.master;
     master.connect(ctx.destination);
 
     if (profile.type === 'noise') {
@@ -200,7 +215,10 @@ export class AudioSystem {
         osc.type = profile.wave || 'sine';
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, now + i * step);
-        gain.gain.exponentialRampToValueAtTime((profile.gain || 0.15) * volume, now + i * step + 0.02);
+        gain.gain.exponentialRampToValueAtTime(
+          Math.max(0.0001, (profile.gain || 0.15) * volume * this.master),
+          now + i * step + 0.02
+        );
         gain.gain.exponentialRampToValueAtTime(0.0001, now + i * step + step * 1.6);
         osc.connect(gain);
         gain.connect(ctx.destination);

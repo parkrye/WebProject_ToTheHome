@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { sizeTo, UI_SIZE } from '../systems/Layout.js';
+import { VolumeSlider } from '../objects/VolumeSlider.js';
 
 /**
  * 화면 위 UI — 터치 컨트롤, 일시정지, 세로 화면 회전 안내.
@@ -95,7 +96,24 @@ export default class HudScene extends Phaser.Scene {
     resume.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.togglePause());
     const home = sizeTo(this.add.image(96, 6, 'ui_icon_house'), { height: UI_SIZE.menuIcon * 0.72 });
     home.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.quitToTitle());
-    this.pausePanel.add([shade, panel, resume, home].filter(Boolean));
+    this.pausePanel.add([shade, panel, resume, home, this.buildVolume(0, 96)].filter(Boolean));
+  }
+
+  /**
+   * 소리 크기 — 일시정지하면 그자리에서 맞춘다.
+   *
+   * 잠깐 사람을 깨우지 않고 듣는 게임이라 소리를 줄일 자리가 필요하다
+   * (플레이 리뷰 4차 8). 고른 크기는 저장되어 다음에 켜도 그대로다.
+   */
+  buildVolume(x, y) {
+    const save = this.registry.get('save');
+    return new VolumeSlider(this, x, y, {
+      value: this.audio.volume,
+      onChange: (value) => {
+        this.audio.setVolume(value);
+        save.set({ volume: value });
+      },
+    });
   }
 
   togglePause() {
