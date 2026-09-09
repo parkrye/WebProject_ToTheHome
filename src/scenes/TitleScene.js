@@ -4,8 +4,18 @@ import { sizeTo, UI_SIZE } from '../systems/Layout.js';
 import { VolumeSlider, volumeIcon } from '../objects/VolumeSlider.js';
 
 /**
- * 타이틀. 문자를 쓰지 않으므로 메뉴는 픽토그램 세 개다.
- *   발자국 = 그냥 시작 / 뼈다귀 = 스프라이트 추가해서 시작 / 집 = 이어하기(저장이 있을 때만)
+ * 타이틀. 문자를 쓰지 않으므로 메뉴는 픽토그램이다.
+ *
+ * **가운데 줄에는 "게임을 어떻게 시작할까"만 놓는다.**
+ *   발자국 = 처음부터 / 집 = 이어하기 (저장이 있을 때만 나온다)
+ *
+ * 스프라이트 넣기는 게임을 시작하는 방법이 아니라 **그림을 갈아 끼우는 도구**다.
+ * 시작 선택지와 나란히 두었더니 셋 중 무엇을 골라야 하는지 알 수 없었다 (플레이
+ * 리뷰 5차 4). 소리 크기와 같은 줄, 오른윗 구석의 도구 자리로 내린다 — 거기 있는
+ * 것은 "게임 밖의 설정"이라는 뜻이 자리만으로 전해진다.
+ *
+ * 발자국과 집을 가르는 것도 그림 하나로는 모자라서, 이어하기에는 **집으로 이어지는
+ * 냄새 자취**를 붙인다. 이 게임에서 냄새는 처음부터 끝까지 "가던 길"을 뜻한다.
  */
 
 /**
@@ -45,13 +55,10 @@ export default class TitleScene extends Phaser.Scene {
       height: UI_SIZE.titleLogo,
     });
 
-    // 메뉴 구성
-    this.items = [
-      { key: 'ui_icon_paw', action: () => this.startNewGame() },
-      { key: 'ui_icon_bone', action: () => this.startWithSprites() },
-    ];
+    // 메뉴 구성 — 시작하는 방법만 놓는다
+    this.items = [{ key: 'ui_icon_paw', action: () => this.startNewGame() }];
     if (save.hasProgress) {
-      this.items.push({ key: 'ui_icon_house', action: () => this.continueGame() });
+      this.items.push({ key: 'ui_icon_house', trail: true, action: () => this.continueGame() });
     }
 
     const spacing = 150;
@@ -68,6 +75,7 @@ export default class TitleScene extends Phaser.Scene {
         this.confirm();
       });
       item.icon = icon;
+      if (item.trail) this.buildScentTrail(icon);
 
       this.tweens.add({
         targets: icon,
@@ -98,6 +106,48 @@ export default class TitleScene extends Phaser.Scene {
 
     this.cameras.main.fadeIn(FADE.in, 0, 0, 0);
     this.time.delayedCall(300, () => this.audio.playBgm(this, 'bgm_title'));
+  }
+
+  /**
+   * 집 아이콘으로 **이어지는 냄새 자취.**
+   *
+   * 발자국(처음부터)과 집(이어하기)은 둘 다 "시작"이라 그림만으로는 구별되지 않는다.
+   * 스테이지에서 길을 알려 주던 그 냄새 입자가 집 쪽으로 흘러 들어가면, 배운 적
+   * 있는 뜻 그대로 "가던 길을 마저 간다"로 읽힌다.
+   */
+  buildScentTrail(icon) {
+    const MOTES = 4;
+    const step = 1200; // 한 알이 다음 알에 이어 붙는 간격
+
+    for (let i = 0; i < MOTES; i += 1) {
+      const from = icon.x - 112;
+      const mote = this.add
+        .image(from, icon.y + 8, 'ui_scent_mote')
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(9)
+        .setAlpha(0);
+      sizeTo(mote, { height: 26 });
+
+      // 집 쪽으로 흘러 들어가며 밝아졌다 스러진다. 넷이 시차를 두고 도므로 끊기지 않는다
+      this.tweens.add({
+        targets: mote,
+        x: from + 84,
+        duration: step * MOTES * 0.55,
+        delay: i * step,
+        repeat: -1,
+        repeatDelay: step * (MOTES - 1) * 0.55,
+        ease: 'Sine.easeInOut',
+      });
+      this.tweens.add({
+        targets: mote,
+        alpha: 0.8,
+        duration: step * MOTES * 0.275,
+        delay: i * step,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: step * (MOTES - 1) * 0.55,
+      });
+    }
   }
 
   buildBackdrop() {
@@ -132,17 +182,34 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   /**
-   * 오른윗에 소리 크기 단추 하나.
+   * 오른윗 **도구 줄** — 소리 크기와 스프라이트 넣기.
    *
    * 일시정지는 스테이지 안에만 있어서, 타이틀에서는 소리를 줄일 길이 없었다
    * (플레이 리뷰 4차 8). 단추는 조절기를 그대로 줄인 그림이라,
    * 누르면 무엇이 나오는지 누르기 전에 알 수 있다.
+   *
+   * 스프라이트 넣기(뼈다귀)도 여기에 둔다. 게임을 시작하는 방법이 아니라 도구이므로
+   * 시작 선택지와 나란히 놓으면 무엇을 골라야 하는지 흐려진다 (플레이 리뷰 5차 4).
    */
   buildOptions() {
     const save = this.registry.get('save');
 
     const button = volumeIcon(this, GAME_WIDTH - 52, 44).setDepth(20).setAlpha(0.55);
     button.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.toggleOptions(true));
+
+    const bone = sizeTo(this.add.image(GAME_WIDTH - 116, 44, 'ui_icon_bone'), { height: 34 })
+      .setDepth(20)
+      .setAlpha(0.55);
+    bone.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.locked) return;
+      this.audio.play('sfx_ui_select', { volume: 0.4 });
+      this.scene.start('SpriteImport');
+    });
+    // 도구 줄이라는 것이 자리로 읽히도록 소리 단추와 같은 밝기로 두고, 가리키면 밝아진다
+    [bone, button].forEach((tool) => {
+      tool.on('pointerover', () => tool.setAlpha(0.9));
+      tool.on('pointerout', () => tool.setAlpha(0.55));
+    });
 
     this.optionsPanel = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(30).setVisible(false);
 
@@ -238,10 +305,6 @@ export default class TitleScene extends Phaser.Scene {
     save.reset();
     this.audio.stopBgm(this, 400);
     this.scene.start('Prologue');
-  }
-
-  startWithSprites() {
-    this.scene.start('SpriteImport');
   }
 
   continueGame() {
