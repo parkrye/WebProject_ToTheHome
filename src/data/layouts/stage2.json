@@ -3308,12 +3308,12 @@
     ],
     "saves": [
       {
-        "x": 7360,
-        "y": -296
+        "x": 7570,
+        "y": 373
       },
       {
-        "x": 11316,
-        "y": -29
+        "x": 11188,
+        "y": -934
       }
     ],
     "props": [
@@ -4486,33 +4486,30 @@
     ],
     "hazards": [
       {
-        "type": "car",
-        "x": 7888,
+        "type": "steam",
+        "x": 7238,
         "y": 5620,
-        "fromX": 7888,
-        "toX": 6588,
-        "dir": -1,
-        "speed": 293,
-        "interval": 3900,
-        "warnTime": 900,
-        "delay": 0
+        "interval": 3226,
+        "warnTime": 2000,
+        "activeTime": 1569,
+        "power": -430
       },
       {
         "type": "steam",
         "x": 7879,
         "y": 4430,
-        "interval": 2940,
-        "warnTime": 700,
-        "activeTime": 1440,
+        "interval": 2697,
+        "warnTime": 2000,
+        "activeTime": 1416,
         "power": -430
       },
       {
         "type": "steam",
         "x": 2067,
         "y": -3086,
-        "interval": 2414,
-        "warnTime": 700,
-        "activeTime": 1211,
+        "interval": 3148,
+        "warnTime": 2000,
+        "activeTime": 1206,
         "power": -430
       },
       {
@@ -4520,141 +4517,141 @@
         "x": 1875,
         "y": 5740,
         "reachX": 1535,
-        "interval": 4511,
-        "delay": 2517,
+        "interval": 4949,
+        "delay": 835,
         "effect": "push"
       },
       {
-        "type": "steam",
-        "x": 11265,
-        "y": -934,
-        "interval": 2953,
-        "warnTime": 700,
-        "activeTime": 1267,
-        "power": -430
-      },
-      {
-        "type": "steam",
-        "x": 11189,
-        "y": 5620,
-        "interval": 2625,
-        "warnTime": 700,
-        "activeTime": 1286,
-        "power": -430
-      },
-      {
         "type": "car",
-        "x": 4502,
+        "x": 11639,
         "y": 5620,
-        "fromX": 4502,
-        "toX": 3202,
+        "fromX": 11639,
+        "toX": 10739,
         "dir": -1,
-        "speed": 327,
-        "interval": 12676,
-        "warnTime": 900,
+        "speed": 332,
+        "interval": 4255,
+        "warnTime": 2000,
         "delay": 0
+      },
+      {
+        "type": "steam",
+        "x": 3852,
+        "y": 5620,
+        "interval": 3033,
+        "warnTime": 2000,
+        "activeTime": 1200,
+        "power": -430
       },
       {
         "type": "steam",
         "x": 3239,
         "y": -2671,
-        "interval": 2696,
-        "warnTime": 700,
-        "activeTime": 1354,
+        "interval": 3091,
+        "warnTime": 2000,
+        "activeTime": 1356,
         "power": -430
       },
       {
         "type": "steam",
         "x": 10513,
         "y": 1741,
-        "interval": 2728,
-        "warnTime": 700,
-        "activeTime": 1209,
+        "interval": 3128,
+        "warnTime": 2000,
+        "activeTime": 1319,
         "power": -430
       },
       {
         "type": "steam",
-        "x": 13199,
-        "y": -1740,
-        "interval": 2746,
-        "warnTime": 700,
-        "activeTime": 1557,
+        "x": 4981,
+        "y": 5620,
+        "interval": 2678,
+        "warnTime": 2000,
+        "activeTime": 1331,
         "power": -430
-      },
-      {
-        "type": "car",
-        "x": 4502,
-        "y": 5620,
-        "fromX": 4502,
-        "toX": 3202,
-        "dir": -1,
-        "speed": 327,
-        "interval": 12676,
-        "warnTime": 900,
-        "delay": 8776
-      },
-      {
-        "type": "steam",
-        "x": 11753,
-        "y": 5620,
-        "interval": 2714,
-        "warnTime": 700,
-        "activeTime": 1537,
-        "power": -430
-      },
-      {
-        "type": "car",
-        "x": 15071,
-        "y": 5620,
-        "fromX": 15071,
-        "toX": 13771,
-        "dir": -1,
-        "speed": 332,
-        "interval": 3900,
-        "warnTime": 900,
-        "delay": 0
       },
       {
         "type": "wave",
-        "x": 6954,
+        "x": 12033,
         "y": 5740,
-        "reachX": 6614,
-        "interval": 4502,
-        "delay": 1784,
+        "reachX": 11693,
+        "interval": 3849,
+        "delay": 2302,
         "effect": "push"
       },
       {
+        "type": "wave",
+        "x": 15419,
+        "y": 5740,
+        "reachX": 15079,
+        "interval": 4689,
+        "delay": 2318,
+        "effect": "push"
+      },
+      {
+        "type": "steam",
+        "x": 8027,
+        "y": 4027,
+        "interval": 2870,
+        "warnTime": 2000,
+        "activeTime": 1326,
+        "power": -430
+      },
+      {
         "type": "car",
-        "x": 1270,
+        "x": 7124,
         "y": 5620,
-        "fromX": 1270,
-        "toX": -30,
+        "fromX": 7124,
+        "toX": 6224,
         "dir": -1,
-        "speed": 318,
-        "interval": 12788,
-        "warnTime": 900,
+        "speed": 280,
+        "interval": 14657,
+        "warnTime": 2000,
         "delay": 0
       },
       {
+        "type": "car",
+        "x": 916,
+        "y": 5620,
+        "fromX": 916,
+        "toX": 16,
+        "dir": -1,
+        "speed": 315,
+        "interval": 14451,
+        "warnTime": 2000,
+        "delay": 0
+      },
+      {
+        "type": "car",
+        "x": 916,
+        "y": 5620,
+        "fromX": 916,
+        "toX": 16,
+        "dir": -1,
+        "speed": 315,
+        "interval": 14451,
+        "warnTime": 2000,
+        "delay": 10257
+      },
+      {
         "type": "wave",
-        "x": 182,
+        "x": 3568,
         "y": 5740,
-        "reachX": -158,
+        "reachX": 3228,
         "interval": 3991,
         "delay": 925,
         "effect": "push"
       },
       {
         "type": "car",
-        "x": 1270,
+        "x": 7124,
         "y": 5620,
-        "fromX": 1270,
-        "toX": -30,
+        "fromX": 7124,
+        "toX": 6224,
         "dir": -1,
-        "speed": 318,
-        "interval": 12788,
-        "warnTime": 900,
-        "delay": 8888
+        "speed": 280,
+        "interval": 14657,
+        "warnTime": 2000,
+        "delay": 10614
       }
     ],
     "start": {
