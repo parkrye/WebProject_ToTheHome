@@ -310,8 +310,29 @@ export default class StageScene extends Phaser.Scene {
 
   buildCamera() {
     const cam = this.cameras.main;
+
+    /**
+     * 카메라는 강아지가 아니라 **시트 보정을 뺀 자리**를 따라간다.
+     *
+     * `Dog.applySheetSize()` 는 시트마다 다른 칸 여백을 메우려고 스프라이트 중심을
+     * 몇 px 올렸다 내린다. 그림은 제자리에 남지만 **중심 좌표는 튄다** — 그걸 그대로
+     * 따라가면 걷다 뛸 때마다 화면이 까딱거린다 (플레이 리뷰 4차 2).
+     * 보정분을 되돌린 값을 읽어 오면 어떤 모션에서도 한 점으로 이어진다.
+     *
+     * 읽는 시점의 최신 좌표라야 하므로 값을 복사하지 않고 getter 로 넘긴다.
+     */
+    const dog = this.dog;
+    this.camFocus = {
+      get x() {
+        return dog.x;
+      },
+      get y() {
+        return dog.y - (dog.sheetDropPx ?? 0);
+      },
+    };
+
     // 정수 자리로 반올림하지 않는다 — 소수 단위 추적을 반올림하면 덜컥거린다 (main.js)
-    cam.startFollow(this.dog, false, CAMERA.lerp, CAMERA.lerp, 0, CAMERA.followOffsetY);
+    cam.startFollow(this.camFocus, false, CAMERA.lerp, CAMERA.lerp, 0, CAMERA.followOffsetY);
     cam.setDeadzone(CAMERA.deadzoneWidth, CAMERA.deadzoneHeight);
   }
 
@@ -557,6 +578,11 @@ export default class StageScene extends Phaser.Scene {
    *
    * 낙하 속도가 빠를수록 추적을 빠르게, 세로 여유를 좁게 만든다. 평소 값 그대로 두면
    * 강아지가 화면 아래 끝에 걸린 채 덜컥거린다 (config.CAMERA 주석 참고).
+   *
+   * **여유 칸은 만들어 둔 것을 고쳐 쓴다.** `setDeadzone()` 은 추종 대상이 있으면
+   * 스크롤을 그 자리로 **즉시 옮겨 놓는다**(Phaser Camera.setDeadzone). 매 프레임
+   * 부르면 lerp 도 여유 칸도 통째로 무효가 되어, 강아지 좌표의 잔떨림이 1:1 로
+   * 화면에 실린다 — 이동 중 카메라가 버벅이던 진짜 원인이다 (플레이 리뷰 4차 5).
    */
   updateCamera(delta) {
     if (!this.dog) return;
@@ -570,10 +596,13 @@ export default class StageScene extends Phaser.Scene {
     );
 
     cam.setLerp(CAMERA.lerp, Phaser.Math.Linear(CAMERA.lerp, CAMERA.fallLerp, t));
-    cam.setDeadzone(
-      CAMERA.deadzoneWidth,
-      Phaser.Math.Linear(CAMERA.deadzoneHeight, CAMERA.fallDeadzoneHeight, t)
-    );
+    if (cam.deadzone) {
+      cam.deadzone.height = Phaser.Math.Linear(
+        CAMERA.deadzoneHeight,
+        CAMERA.fallDeadzoneHeight,
+        t
+      );
+    }
 
     // 아래쪽 보기 — 서서 ↓ 를 쥐고 있으면 카메라가 스르륵 내려가 발밑을 비춘다.
     // 떨어지는 중에는 낙하 추적이 우선이므로 원래 자리로 돌아온다
