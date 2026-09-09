@@ -32,7 +32,7 @@
  * 나오게 한다. 같은 씨앗이면 언제나 같은 지형이다.
  */
 
-import { TERRAIN } from '../config.js';
+import { TERRAIN, DOG, HAZARD } from '../config.js';
 import { TILE, PROP, ACTOR } from './AssetManifest.js';
 
 /** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
@@ -44,12 +44,25 @@ export const REACH = {
 const PAD_W = {
   start: 240,
   goal: 240,
-  save: 220,
+  // 세이브는 소품이 넓으므로 그 소품이 온전히 올라앉을 만큼은 되어야 한다 (SAVE_PROP_W)
+  save: 280,
   pad: 170,
   keep: 130,
   link: 120,
   shelf: 150,
 };
+
+/**
+ * 세이브 포인트 소품이 차지하는 너비 — **소형 발판 둘을 붙인 만큼.**
+ *
+ * 쉬는 자리는 지나가는 길과 생김새가 달라야 눈에 띈다. 예전에는 높이만 100px 로
+ * 잡아 두어서, 폭이 좁은 그림(공·연못)은 길 위의 작은 소품과 구별되지 않았다
+ * (플레이 리뷰 5차 5). 소형 발판 하나가 120px 이므로 둘을 붙인 240px 을 자로 삼는다.
+ *
+ * 그리고 **이 너비가 다 올라앉는 발판 위에만** 놓는다. 발판보다 넓은 소품은
+ * 허공에 걸쳐 있는 것으로 보이고, 되살아난 자리가 곧 낭떠러지가 된다.
+ */
+export const SAVE_PROP_W = PAD_W.link * 2;
 
 /** 수집 요소는 발판 위 이만큼 떠 있다 (서 있는 채로 닿는 높이) */
 const KEEP_LIFT = 52;
@@ -706,20 +719,25 @@ const HAZARD_STEP = 560;
  *
  * 예전에는 바닥 조각을 통째로 달리게 해서, 폭 2256px 짜리 바닥을 한 대가 7~9초에
  * 걸쳐 지나갔다. 세 대가 주기 4~6초로 돌면 **길이 비는 순간이 없다.** 자동차는
- * 뛰어넘을 수도(몸높이 154 > 점프 96) 따돌릴 수도(240~344 vs 달리기 300) 없으므로
- * 유일한 대처가 "지금은 들어가지 않는다"인데, 들어갈 틈이 아예 없었던 것이다
- * (방해 요소 기준 2).
+ * 뛰어넘을 수도(몸높이 117 > 점프 96) 따돌릴 수도(260~340 vs 달리기 300) 없으므로
+ * 유일한 대처가 "지금은 들어가지 않는 것"이다.
  *
- * 그래서 길을 **정해진 구간**으로 자른다. 1300px 을 260~350 으로 지나가면 4~5초,
- * 주기 4~6초와 맞물려 확실히 비는 때가 생긴다. 구간 양옆은 안전한 땅으로 남는다.
+ * 그래서 길을 **정해진 구간**으로 자른다. 그런데 1300px 은 여전히 길었다 —
+ * 달려서 건너는 데만 4.3초가 걸리는데 비는 시간이 4.8초라, **한 번도 안 멈추고
+ * 딱 맞게 출발해야만** 건널 수 있었다. 실제로 1스테이지에서는 차선 위에 뛰어오를
+ * 발판이 하나도 없어서(가장 낮은 것이 120px 위, 점프는 96px) 중간에 피할 데도 없고,
+ * 그나마 오를 수 있는 자리는 차가 나오는 끝이었다 (플레이 리뷰 5차 1).
+ *
+ * 900px 이면 달려서 3초다. 길은 여전히 "기다렸다 건너는" 곳이지만, 건너기로 마음을
+ * 먹은 뒤에 실수할 여유가 생긴다.
  */
-const CAR_RUN = 1300;
+const CAR_RUN = 900;
 
 /**
  * 자동차 구간 양옆에 남겨 둘 안전한 땅.
  *
  * 차는 차선 끝에서 뚝 사라지지 않고 이 갓길을 계속 달려 나가며 옅어진다
- * (`Hazards.CAR_FADE` 190). 그 거리가 갓길 안에 들어와야 다음 발판까지 넘어가지 않는다.
+ * (`HAZARD.carFade`). 그 거리가 갓길 안에 들어와야 다음 발판까지 넘어가지 않는다.
  */
 const CAR_SHOULDER = 350;
 
@@ -727,12 +745,32 @@ const CAR_SHOULDER = 350;
 const CAR_PER_LANE = 2;
 
 /**
+ * 강아지가 길 한 구간을 **달려서 건너는 데 걸리는 시간.**
+ *
+ * 비는 시간을 고정된 숫자로 적어 두면 차선 길이를 고칠 때마다 어긋난다.
+ * 건너는 시간에서 재면 둘이 늘 같이 움직인다.
+ */
+const CAR_CROSS = (CAR_RUN / DOG.runSpeed) * 1000;
+
+/**
  * 자동차가 다 지나간 뒤 **길이 비어 있는 시간.**
  *
- * 강아지 달리기(300px/s)로 길 한 구간(1300px)을 지나는 데 4.3초가 걸린다.
- * 그보다 넉넉해야 "지금 건넌다"는 판단이 성립한다.
+ * 건너는 시간의 갑절에 예고 시간을 더한다. 갑절이어야 "출발이 조금 늦었다"거나
+ * "가다 한 번 멈췄다"가 곧바로 죽음이 되지 않고, 예고 시간을 더해야 **깜빡임이
+ * 시작되기 전에** 건널 수 있는 시간이 온전히 남는다.
+ *
+ *   900px 기준 — 건너기 3.0초 · 비는 시간 7.4초 · 그중 예고 없이 조용한 때 5.4초
  */
-const CAR_CLEAR = 4800;
+const CAR_CLEAR = Math.round(CAR_CROSS * 1.8 + HAZARD.warnTime);
+
+/**
+ * 출발 지점에서 자동차 길까지 떼어 놓을 거리.
+ *
+ * 자동차는 이 게임에서 유일하게 **피할 수 없고 기다려야만 하는** 위험이다. 조작을
+ * 아직 다 배우지 않은 자리에 놓으면 배우기 전에 죽는다. 안내판을 다 지나고 한
+ * 구간쯤 걸은 뒤에 처음 만나게 한다 (플레이 리뷰 5차 1).
+ */
+const CAR_START_CLEAR = 2600;
 
 /** 나란히 이어 붙은 바닥 조각을 한 덩어리로 본다 */
 function mergeFloors(ground) {
@@ -755,10 +793,16 @@ function openSky(pads, pad, x, height = 380) {
 }
 
 /** 이 자리에 놓을 수 있는 위험인가 */
-function hazardFits(kind, slot, pads, baseY) {
+function hazardFits(kind, slot, pads, baseY, start) {
   const pad = slot.pad;
-  // 길 구간과 갓길이 다 들어가는 바닥에만 — 피해 설 땅이 양옆에 남아야 한다
-  if (kind === 'car') return pad.floor && pad.w >= CAR_RUN + CAR_SHOULDER * 2;
+  if (kind === 'car') {
+    // 길 구간과 갓길이 다 들어가는 바닥에만 — 피해 설 땅이 양옆에 남아야 한다
+    if (!pad.floor || pad.w < CAR_RUN + CAR_SHOULDER * 2) return false;
+    // 출발 지점 둘레에는 놓지 않는다. 차선의 **가까운 끝**으로 잰다
+    if (!start) return true;
+    const near = Math.abs(slot.x - start.x) - CAR_RUN / 2;
+    return near >= CAR_START_CLEAR || Math.abs(pad.y - start.y) > 400;
+  }
   // 파도는 바다가 있는 **가장 낮은 바닥**에만 밀려온다
   if (kind === 'wave') return pad.floor && pad.y >= baseY - 8;
   // 멧돼지는 돌진 거리(최대 520)가 발판 안에 들어가야 한다. 허공으로 달려 나가면
@@ -808,11 +852,21 @@ function timeLanes(lanes) {
   lanes.forEach((lane) => {
     const n = lane.cars.length;
     if (!n) return;
+    // 차선 안에 있는 시간 — 길이 막혀 있는 시간이다
     const transit = (CAR_RUN / lane.speed) * 1000;
+    /**
+     * **차가 완전히 사라질 때까지의 시간.**
+     *
+     * 차는 차선 끝에서 뚝 사라지지 않고 갓길을 더 달려 나간다. 그런데 다음 차례를
+     * 세는 시계(`interval`)는 차가 **달리는 동안에는 멈춰 있다가** 사라진 뒤부터
+     * 도므로, 갓길을 달리는 시간까지 빼 두지 않으면 실제 주기가 그만큼 길어진다.
+     * 그러면 대수만큼 고르게 나눠 둔 위상이 한 바퀴 돌 때마다 어긋난다.
+     */
+    const travel = ((CAR_RUN + HAZARD.carFade * 2) / lane.speed) * 1000;
     const period = n * (transit + CAR_CLEAR); // 한 대가 다시 오기까지
     lane.cars.forEach((car, i) => {
       car.speed = lane.speed;
-      car.interval = round(period - transit - car.warnTime);
+      car.interval = round(Math.max(600, period - travel - car.warnTime));
       car.delay = round((period * i) / n);
     });
   });
@@ -839,7 +893,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
       dir,
       speed: lane.speed,
       interval: 5000,
-      warnTime: 900,
+      warnTime: HAZARD.warnTime,
       delay,
     };
     lane.cars.push(car);
@@ -885,7 +939,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
     x,
     y: pad.y,
     interval: round(2400 + rand() * 1000),
-    warnTime: 700,
+    warnTime: HAZARD.warnTime,
     activeTime: round(1200 + rand() * 400),
     power: -430,
   };
@@ -958,7 +1012,7 @@ function hazardize(out, rand, seed, safe, area) {
     if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
 
     const kinds = kit.kinds.filter(
-      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY)
+      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY, safe[0])
     );
     if (!kinds.length) return;
 
@@ -996,8 +1050,9 @@ export function pathNodes(pads) {
     const w = p.w / parts;
     for (let i = 0; i < parts; i += 1) {
       const x = p.x + w * i;
-      // 두께도 같이 들고 간다 — 중간 세이브는 두꺼운 자리에만 놓기 때문이다
-      nodes.push({ x, y: p.y, w, cx: x + w / 2, h: p.h ?? 18 });
+      // 두께와 **원래 발판의 자리·폭**도 같이 들고 간다 — 중간 세이브는 두껍고
+      // 넓은 자리에만 놓는데, 쪼개 놓은 칸만 보면 그 발판이 얼마나 넓은지 알 수 없다
+      nodes.push({ x, y: p.y, w, cx: x + w / 2, h: p.h ?? 18, px: p.x, pw: p.w });
     }
   });
   return nodes;
@@ -1084,21 +1139,24 @@ const SAVE_MIN_GAP = 700;
 const SAVE_MIN_H = 40;
 
 /**
- * 그 지점에서 가장 가까운 **두꺼운 자리**를 경로에서 찾는다.
+ * 그 지점에서 가장 가까운 **두껍고 넓은 자리**를 경로에서 찾는다.
  *
  * 쉬는 자리는 발밑이 든든해야 한다. 공중에 뜬 18px 판자 위에 놀이터를 놓으면
  * 소품이 허공에 걸린 것처럼 보이고, 되살아나자마자 떨어지기도 한다
- * (플레이 리뷰 3차 4). 앞뒤로 훑어 먼저 걸리는 두꺼운 칸을 쓴다.
+ * (플레이 리뷰 3차 4).
+ *
+ * 넓이도 같이 본다. 세이브 소품은 소형 발판 둘을 붙인 너비(SAVE_PROP_W)를 차지하므로
+ * 그만 한 발판이 아니면 소품이 발판 밖으로 삐져나온다 (플레이 리뷰 5차 5).
+ * 앞뒤로 훑어 먼저 걸리는 자리를 쓴다.
  */
 function thickNear(route, at) {
   if (at < 0) return null;
+  const ok = (n) => n && n.h >= SAVE_MIN_H && n.pw >= SAVE_PROP_W;
   for (let d = 0; d < route.length; d += 1) {
-    const back = route[at - d];
-    if (back && back.h >= SAVE_MIN_H) return back;
-    const ahead = route[at + d];
-    if (ahead && ahead.h >= SAVE_MIN_H) return ahead;
+    if (ok(route[at - d])) return route[at - d];
+    if (ok(route[at + d])) return route[at + d];
   }
-  return route[at] || null;
+  return null;
 }
 
 /**
@@ -1127,8 +1185,11 @@ function midSaves(out, startPad, goalPad) {
   MID_SAVE_AT.forEach((t) => {
     const at = thickNear(route, acc.findIndex((d) => d >= total * t));
     if (!at) return;
-    if (out.saves.some((s) => Math.hypot(s.x - at.cx, s.y - at.y) < SAVE_MIN_GAP)) return;
-    out.saves.push({ x: round(at.cx), y: round(at.y) });
+    // 소품이 발판 밖으로 삐져나오지 않도록 발판 안쪽으로 당긴다
+    const half = SAVE_PROP_W / 2;
+    const x = clamp(at.cx, at.px + half, at.px + at.pw - half);
+    if (out.saves.some((s) => Math.hypot(s.x - x, s.y - at.y) < SAVE_MIN_GAP)) return;
+    out.saves.push({ x: round(x), y: round(at.y) });
   });
 }
 
