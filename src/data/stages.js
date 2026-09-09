@@ -2,6 +2,7 @@ import stage1 from './stage1.js';
 import stage2 from './stage2.js';
 import stage3 from './stage3.js';
 import stage4 from './stage4.js';
+import { SAVE_PROP_W } from '../systems/StageBuilder.js';
 
 /**
  * 관리 툴(`editor.html`)이 확정한 배치.
@@ -115,9 +116,6 @@ function sealEdges(ground, width) {
 /** 안내판을 세울 때 서로 겹치지 않는 간격 */
 const SIGN_STEP = 300;
 
-/** 생성기가 놓은 세이브 소품의 높이. 손으로 짠 것(110~190)보다 작다 */
-const MID_SAVE_HEIGHT = 100;
-
 /**
  * 튜토리얼 안내판을 새 지형의 **출발 지점 앞에** 다시 세운다.
  *
@@ -160,14 +158,18 @@ function applyLayout(base, saved) {
   const L = normalize(saved.layout);
 
   // 생성기가 세이브 자리의 높이까지 정해서 준다. 없으면 그 x 의 지면 위에 놓는다.
-  // 소품은 손으로 짠 것보다 **작게** 세운다 — 길 한복판에 놓이므로 원래 크기로는
-  // 지형을 가리고 혼자 튄다 (플레이 리뷰 3차 4)
+  //
+  // 소품은 **소형 발판 둘을 붙인 너비**로 세운다. 생성기가 그만 한 발판 위에만
+  // 자리를 잡아 주므로(StageBuilder.thickNear) 발판 밖으로 삐져나오지 않는다.
+  // 예전에는 높이 100px 로만 잡아서, 폭이 좁은 그림은 길가 소품과 구별되지 않았다
+  // (플레이 리뷰 5차 5)
   const savePoints = (L.saves || []).map((s, i) => ({
     ...(base.savePoint || {}),
     id: `s${base.id}_gen${i + 1}`,
     x: s.x,
     y: s.y ?? groundTopAt(L.ground, s.x) ?? base.savePoint?.y,
-    propHeight: Math.min(base.savePoint?.propHeight ?? MID_SAVE_HEIGHT, MID_SAVE_HEIGHT),
+    propWidth: SAVE_PROP_W,
+    propHeight: null,
   }));
 
   // 위로 한참 올라가는 지도는 스테이지 높이와 낙사선도 같이 넓혀야 한다.

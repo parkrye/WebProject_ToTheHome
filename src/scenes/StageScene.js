@@ -31,6 +31,17 @@ export default class StageScene extends Phaser.Scene {
     this.def = getStage(this.stageId);
     this.cleared = false;
     this.dying = false;
+
+    /**
+     * **씬 인스턴스는 스테이지가 바뀌어도 그대로 재사용된다.**
+     *
+     * 도착 구역은 움직이지 않으므로 한 번만 재 두는데, 그 값을 여기서 지우지 않아서
+     * 2스테이지부터는 **1스테이지의 도착 사각형**과 겹치는지를 보고 있었다. 그래서
+     * 2·3·4스테이지에서는 도착 지점에 서 있어도 안내가 뜨지 않고 E 도 먹지 않았다
+     * (플레이 리뷰 5차 3). 씬을 다시 쓸 때마다 계산도 다시 한다.
+     */
+    this.goalBounds = null;
+    this.atGoal = false;
   }
 
   create() {
@@ -622,8 +633,10 @@ export default class StageScene extends Phaser.Scene {
     // 여러 개 중 **지금 닿을 수 있는 것**을 활성으로 삼는다
     this.savePoint = null;
     this.savePoints.forEach((point) => {
+      // 닿는 범위는 소품 크기에서 잰다 (SavePoint.reachX)
       const near =
-        Math.abs(this.dog.x - point.x) < 110 && Math.abs(this.dog.y - point.y) < 160;
+        Math.abs(this.dog.x - point.x) < (point.reachX ?? 110) &&
+        Math.abs(this.dog.y - point.y) < (point.reachY ?? 160);
       point.showPrompt(near && this.dog.isControllable);
       if (near) this.savePoint = point;
     });
