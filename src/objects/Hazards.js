@@ -10,8 +10,54 @@
  */
 
 import Phaser from 'phaser';
+import { PALETTE } from '../config.js';
 import { ACTOR, ACTOR_SLOTS, ACTOR_BOX, actorAnim, actorFrame } from '../systems/AssetManifest.js';
-import { sizeTo, sizeToActor, GROUND_SINK } from '../systems/Layout.js';
+import { sizeToActor } from '../systems/Layout.js';
+
+/**
+ * 위험이 **어디까지 미치는지** 예고하는 표시.
+ *
+ * 예고 소리와 몸짓만으로는 "무언가 온다"까지만 알 수 있고 "어디로 피해야 하는지"는
+ * 알 수 없다. 차가 달릴 구간, 멧돼지가 돌진할 거리, 파도가 닿는 자리를 미리 두르면
+ * 외워서가 아니라 **보고** 비켜설 수 있다 (플레이 리뷰 4차 9).
+ *
+ * **예고하는 동안에만** 나타난다. 늘 켜 두면 지형 위에 도형이 계속 얹혀 있게 된다.
+ * 모든 위험이 같은 색·같은 깜빡임을 쓴다 — 표시가 종류마다 다르면 배울 것이 늘어난다.
+ */
+class WarnZone {
+  constructor(scene, { x, y, w, h, depth = 30 }) {
+    this.scene = scene;
+    this.box = scene.add
+      .rectangle(x, y, Math.max(2, w), Math.max(2, h), PALETTE.hazard, 0.1)
+      .setStrokeStyle(2, PALETTE.hazard, 0.9)
+      .setDepth(depth)
+      .setVisible(false);
+  }
+
+  /** 돌진 방향처럼 예고할 때가 되어야 정해지는 범위 */
+  cover(x, y, w, h) {
+    this.box.setPosition(x, y);
+    this.box.setSize(Math.max(2, w), Math.max(2, h));
+  }
+
+  show() {
+    if (this.blink) return;
+    this.box.setVisible(true).setAlpha(0.3);
+    this.blink = this.scene.tweens.add({
+      targets: this.box,
+      alpha: 0.9,
+      duration: 170,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  hide() {
+    this.blink?.remove();
+    this.blink = null;
+    this.box.setVisible(false);
+  }
+}
 
 /** 그 시트·역할 칸에서 그림이 실제로 차지하는 상자 (`actors_city` → city) */
 function boxOf(sheetKey, slot) {
@@ -89,31 +135,90 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
 }
 
 /**
+ * 자동차가 화면에서 차지할 높이.
+ *
+ * 자로 재면 승용차는 1.4m 라 250px 이 맞지만, 그러면 화면 세로의 절반과 가로의 반
+ * 가까이를 한 대가 덮는다. 길이 통째로 막힌 것처럼 보여 **피할 데가 없다**는 인상만
+ * 남았다 (플레이 리뷰 4차 4). 작은 경차 크기로 낮춘다 — 뛰어넘지 못하는 것(몸높이
+ * 117 > 점프 96)은 그대로라 "기다렸다 건넌다"는 규칙은 변하지 않는다.
+ */
+const CAR_HEIGHT = 150;
+
+/**
+ * 차선 밖에서 나타나고 사라지는 데 쓰는 거리 (갓길 350 안에 든다).
+ *
+ * 갓길은 강아지가 **서서 기다리는 자리**다. 거기를 반투명한 차가 느릿하게
+ * 통과하면 팔통통 지나가는 유령이 된다. 짧게 잡고 끝으로 갈수록 가파르게 빠져
+ * 차선 밖 70px 이면 거의 안 보이게 한다.
+ */
+const CAR_FADE = 190;
+
+/**
  * 주기적으로 화면을 가로지르는 자동차.
  *
- * **오기 전에 소리가 먼저 온다.** 자동차는 몸이 커서 점프로 못 넘고 달리기로도 못
- * 따돌린다 — 유일한 대처가 "길에 들어가지 않는 것"이므로, 들어갈지 말지를 정할
- * 시간이 먼저 있어야 한다 (플레이 리뷰 3차 · 방해 요소 기준 1).
+ * **오기 전에 소리가 먼저 온다.** 자동차는 점프로 못 넘고 달리기로도 못 따돌린다 —
+ * 유일한 대처가 "길에 들어가지 않는 것"이므로, 들어갈지 말지를 정할 시간이 먼저
+ * 있어야 한다 (플레이 리뷰 3차 · 방해 요소 기준 1). 그 시간 동안 **달릴 구간을
+ * 네모로 둘러** 보여 준다.
  *
- *   조용함 → 엔진 소리(예고) → 화면 밖에서 들어와 지나감 → 조용함
+ * **뚝 멈춰 사라지지 않는다.** 차선 양끝을 넘어가면 갓길을 계속 달려 나가면서
+ * 서서히 옅어진다 — 안개 낀 새벽 도시라 멀어지며 흐려지는 것으로 읽힌다
+ * (플레이 리뷰 4차 6). 판정은 **차선 안에서만** 켜므로 갓길은 그대로 안전하다.
+ *
+ *   조용함 → 엔진 소리 + 차선 표시(예고) → 옅게 들어와 차선을 지나 옅게 나감 → 조용함
  */
 export class Car extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 220, ...def }, ACTOR.MOVER); // 자동차 1.25m
+    super(scene, { height: CAR_HEIGHT, ...def }, ACTOR.MOVER);
     this.dir = def.dir ?? -1;
     this.speed = def.speed ?? 260;
-    this.fromX = def.fromX ?? def.x;
-    this.toX = def.toX ?? def.x - 900;
+    this.laneFrom = def.fromX ?? def.x;
+    this.laneTo = def.toX ?? def.x - 900;
+    this.fadeRun = def.fadeRun ?? CAR_FADE;
     this.interval = def.interval ?? 3200;
     this.warnTime = def.warnTime ?? 900;
     this.timer = def.delay ?? 0;
     this.warned = false;
     this.active_ = false;
-    this.setFlipX(this.dir > 0);
+    // MOVER 시트의 그림은 **오른쪽을 본다.** 왼쪽으로 갈 때만 뒤집어야 앞으로 달린다 —
+    // 반대로 걸려 있어서 차가 후진해 오는 것처럼 보였다 (플레이 리뷰 4차 3·7)
+    this.setFlipX(this.dir < 0);
     this.fitBody(0.92, 0.78, 'bottom');
     this.setVisible(false);
     this.body.setEnable(false);
     this.baseY = def.y;
+
+    // 진행 방향을 +로 삼은 좌표. 어느 쪽으로 달리든 한 줄로 놓고 잰다
+    this.laneStart = this.dir * this.laneFrom;
+    this.laneEnd = this.dir * this.laneTo;
+
+    const x0 = Math.min(this.laneFrom, this.laneTo);
+    const x1 = Math.max(this.laneFrom, this.laneTo);
+    this.warn = new WarnZone(scene, {
+      x: (x0 + x1) / 2,
+      y: this.baseY - this.body.height / 2,
+      w: x1 - x0,
+      h: this.body.height,
+      depth: (def.depth ?? 18) + 1,
+    });
+  }
+
+  /**
+   * 차선 밖에서는 서서히 나타나고 서서히 사라진다.
+   *
+   * 들어올 때는 **빨리 짙고**(멀리서부터 보여야 피할지 정한다), 나갈 때는
+   * **빨리 엷어진다**(갓길에 선 강아지 위로 지나가는 시간을 줄인다).
+   */
+  laneAlpha(s) {
+    if (s < this.laneStart) {
+      const t = Phaser.Math.Clamp((s - this.laneStart + this.fadeRun) / this.fadeRun, 0, 1);
+      return 1 - (1 - t) * (1 - t);
+    }
+    if (s > this.laneEnd) {
+      const t = Phaser.Math.Clamp((s - this.laneEnd) / this.fadeRun, 0, 1);
+      return (1 - t) ** 3;
+    }
+    return 1;
   }
 
   tick(time, delta) {
@@ -121,10 +226,11 @@ export class Car extends HazardBase {
       this.timer -= delta;
       if (this.timer > 0) return;
 
-      // 소리를 먼저 낸다. 이 동안 길에서 물러설 수 있다
+      // 소리를 내고 차선을 보여 준다. 이 동안 길에서 물러설 수 있다
       if (!this.warned) {
         this.warned = true;
         this.timer = this.warnTime;
+        this.warn.show();
         this.scene.audio?.play('sfx_car_pass', { volume: 0.35 });
         return;
       }
@@ -132,9 +238,10 @@ export class Car extends HazardBase {
       this.warned = false;
       this.timer = this.interval;
       this.active_ = true;
-      this.setPosition(this.fromX, this.baseY);
+      this.warn.hide();
+      this.setPosition(this.laneFrom - this.dir * this.fadeRun, this.baseY);
+      this.setAlpha(0);
       this.setVisible(true);
-      this.body.setEnable(true);
       return;
     }
 
@@ -142,8 +249,14 @@ export class Car extends HazardBase {
     // 노면을 달리는 느낌만 살짝 준다
     this.y = this.baseY + Math.sin(time / 90) * 1.5;
 
-    const done = this.dir < 0 ? this.x < this.toX : this.x > this.toX;
-    if (done) {
+    const s = this.dir * this.x;
+    this.setAlpha(this.laneAlpha(s));
+
+    // 차선 안에서만 위험하다. 갓길은 나타나고 사라지는 구간이라 판정을 끈다
+    const inLane = s >= this.laneStart && s <= this.laneEnd;
+    if (this.body.enable !== inLane) this.body.setEnable(inLane);
+
+    if (s > this.laneEnd + this.fadeRun) {
       this.active_ = false;
       this.setVisible(false);
       this.body.setEnable(false);
@@ -164,7 +277,13 @@ export class FallingRock extends HazardBase {
     this.body.setEnable(false);
     this.fitBody(0.7, 0.7);
 
-    this.shadow = scene.add.ellipse(def.x, this.groundY, 46, 12, 0x000000, 0.35).setDepth(6).setVisible(false);
+    // 떨어질 자리를 미리 두른다. 그림자를 **실제 몸 너비만큼** 벌려 두면 그 자체가
+    // 범위 표시가 된다 — 다른 위험과 같은 색을 써서 "위험한 자리"로 읽히게 한다
+    this.shadow = scene.add
+      .ellipse(def.x, this.groundY, this.body.width, 14, PALETTE.hazard, 0.25)
+      .setStrokeStyle(2, PALETTE.hazard, 0.9)
+      .setDepth(6)
+      .setVisible(false);
   }
 
   tick(time, delta) {
@@ -209,10 +328,10 @@ export class FallingRock extends HazardBase {
 /**
  * 멧돼지 — 땅 긁기 0.7초 후 직선 돌진, 이후 경직.
  *
- * **예고하는 동안 강아지 쪽으로 몸을 돌린다.** 늘 왼쪽으로만 달리면 오른쪽에서
- * 다가온 사람에게는 아무 일도 일어나지 않아 무엇을 하는 놈인지 알 수 없고, 왼쪽에서
- * 다가오면 이유 없이 덮치는 것이 된다. 어디로 달릴지를 먼저 보여 줘야
- * 피할 방향을 정할 수 있다 (방해 요소 기준 1·2).
+ * **예고하는 동안 강아지 쪽으로 몸을 돌리고 달릴 거리를 두른다.** 늘 한쪽으로만
+ * 달리면 반대편에서 다가온 사람에게는 아무 일도 일어나지 않아 무엇을 하는 놈인지 알
+ * 수 없고, 어디까지 오는지 모르면 얼마나 물러서야 할지도 정할 수 없다
+ * (방해 요소 기준 1·2 · 플레이 리뷰 4차 9).
  *
  * 달리기(300)보다 빠르므로 도망칠 수는 없다. 대신 몸이 낮아 **뛰어넘을 수 있다.**
  */
@@ -227,6 +346,14 @@ export class Boar extends HazardBase {
     // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다.
     // 서서 뛰면 96px, 달리며 뛰면 112px 오르므로 84px 이면 넘어간다
     this.fitBody(0.85, 0.58, 'bottom');
+
+    this.warn = new WarnZone(scene, {
+      x: def.x,
+      y: def.y - this.body.height / 2,
+      w: this.range,
+      h: this.body.height,
+      depth: (def.depth ?? 18) + 1,
+    });
   }
 
   tick(time, delta) {
@@ -236,10 +363,19 @@ export class Boar extends HazardBase {
       if (this.timer > 0) return;
       this.phase = 'telegraph';
       this.timer = 700;
-      // 어디로 달릴지 정하고 그쪽을 본다 — 그림은 왼쪽을 보고 있다
+      // 어디로 달릴지 정하고 그쪽을 본다 — MOVER 그림은 **오른쪽**을 보고 있으므로
+      // 왼쪽으로 달릴 때만 뒤집는다 (플레이 리뷰 4차 7)
       const dog = this.scene.dog;
       this.chargeDir = dog && dog.x > this.x ? 1 : -1;
-      this.setFlipX(this.chargeDir > 0);
+      this.setFlipX(this.chargeDir < 0);
+      // 달려 나갈 거리를 두른다 — 얼마나 물러서야 하는지 눈으로 잰다
+      this.warn.cover(
+        this.homeX + (this.chargeDir * this.range) / 2,
+        this.def.y - this.body.height / 2,
+        this.range,
+        this.body.height
+      );
+      this.warn.show();
       // 예고 — 앞발로 땅을 긁듯 좌우로 잘게 떤다
       this.scene.tweens.add({
         targets: this,
@@ -257,6 +393,7 @@ export class Boar extends HazardBase {
       if (this.timer > 0) return;
       this.phase = 'charge';
       this.timer = (this.range / this.speed) * 1000;
+      this.warn.hide();
       this.body.setVelocityX((this.chargeDir ?? -1) * this.speed);
       return;
     }
@@ -279,23 +416,50 @@ export class Boar extends HazardBase {
   }
 }
 
-/** 밀려왔다 빠지는 파도 — 닿으면 뒤로 밀려난다 */
+/**
+ * 밀려왔다 빠지는 파도 — 닿으면 뒤로 밀려난다.
+ *
+ * **어디까지 닿는지를 먼저 두른다.** 파도는 죽이지 않지만 밀려나면 왔던 길로
+ * 되돌아가야 하므로, 물러설 자리를 미리 알 수 있어야 한다 (플레이 리뷰 4차 9).
+ */
 export class Wave extends HazardBase {
   constructor(scene, def) {
     super(scene, { height: 190, ...def, effect: 'push' }, ACTOR.FALLER); // 파도 1.05m
     this.restX = def.x;
     this.reachX = def.reachX ?? def.x + 420;
     this.interval = def.interval ?? 3600;
+    this.warnTime = def.warnTime ?? 700;
     this.timer = def.delay ?? 0;
+    this.phase = 'idle';
     this.fitBody(0.9, 0.8);
     this.setAlpha(0.85);
     this.setDepth(def.depth ?? 22);
+
+    const x0 = Math.min(this.restX, this.reachX);
+    const x1 = Math.max(this.restX, this.reachX);
+    this.warn = new WarnZone(scene, {
+      x: (x0 + x1) / 2,
+      y: def.y - this.body.height / 2,
+      w: x1 - x0 + this.body.width,
+      h: this.body.height,
+      depth: (def.depth ?? 22) + 1,
+    });
   }
 
   tick(time, delta) {
     this.timer -= delta;
     if (this.timer > 0) return;
+
+    if (this.phase === 'idle') {
+      this.phase = 'warn';
+      this.timer = this.warnTime;
+      this.warn.show();
+      return;
+    }
+
+    this.phase = 'idle';
     this.timer = this.interval;
+    this.warn.hide();
 
     this.scene.audio?.play('sfx_wave_rush', { volume: 0.4 });
     this.scene.tweens.add({
@@ -312,10 +476,10 @@ export class Wave extends HazardBase {
 /**
  * 하수구 증기 — 위로 밀어 올린다.
  *
- * **나오기 전에 빨간 네모로 자리를 알려 준다.** 예고 없이 뿜으면 외워서 피하는 수밖에
+ * **나오기 전에 네모로 자리를 알려 준다.** 예고 없이 뿜으면 외워서 피하는 수밖에
  * 없지만, 자리를 먼저 보여 주면 보고 판단할 수 있다.
  *
- *   조용함  →  빨간 네모 깜빡임(예고)  →  뿜는 동안만 판정  →  다시 조용함
+ *   조용함  →  네모 깜빡임(예고)  →  뿜는 동안만 판정  →  다시 조용함
  *
  * 판정은 **뿜는 동안에만** 켠다. 예전에는 보이지 않는 동안에도 몸이 살아 있어서,
  * 아무것도 없는 자리에서 갑자기 떠올랐다.
@@ -336,17 +500,20 @@ export class SteamVent extends HazardBase {
     this.phase = 'idle';
     this.baseScaleY = this.scaleY;
 
-    // 예고용 빨간 네모 — 뿜어 나올 자리를 그대로 두른다
-    this.warning = scene.add
-      .rectangle(this.x, this.y - this.displayHeight / 2, 74, this.displayHeight, 0xff4d4d, 0)
-      .setStrokeStyle(2, 0xff4d4d, 0.9)
-      .setDepth((def.depth ?? 12) + 1)
-      .setVisible(false);
+    // 예고 표시 — 뿜어 나올 자리를 **몸 그대로** 두른다. 다른 위험과 같은 색·같은 깜빡임
+    this.warn = new WarnZone(scene, {
+      x: this.x,
+      y: this.y - this.body.height / 2,
+      w: this.body.width,
+      h: this.body.height,
+      depth: (def.depth ?? 12) + 1,
+    });
   }
 
   setPhase(phase) {
     this.phase = phase;
-    this.warning.setVisible(phase === 'warn');
+    if (phase === 'warn') this.warn.show();
+    else this.warn.hide();
     this.body.setEnable(phase === 'blow');
   }
 
@@ -357,19 +524,10 @@ export class SteamVent extends HazardBase {
     if (this.phase === 'idle') {
       this.setPhase('warn');
       this.timer = this.warnTime;
-      this.warnTween = this.scene.tweens.add({
-        targets: this.warning,
-        alpha: 0.35,
-        duration: 160,
-        yoyo: true,
-        repeat: -1,
-      });
       return;
     }
 
     if (this.phase === 'warn') {
-      this.warnTween?.remove();
-      this.warning.setAlpha(1);
       this.setPhase('blow');
       this.timer = this.activeTime;
       this.scene.audio?.play('sfx_steam', { volume: 0.35 });

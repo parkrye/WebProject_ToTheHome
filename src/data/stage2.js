@@ -89,9 +89,9 @@ export default {
    * 동시에 봐야 한다. 파도는 죽이지 않고 밀어내기만 하므로 겁 없이 시험해 볼 수 있다.
    */
   hazards: [
-    // 좁은 해안 도로의 양방향 차량 — 갓길이 좁아 한쪽으로 붙어 피해야 한다
+    // 좁은 해안 도로 — 전부 가는 쪽에서 마주 온다. 갓길이 좁아 한쪽으로 붙어 피해야 한다
     { type: 'car', x: 3400, y: GY, fromX: 3400, toX: 1850, dir: -1, speed: 330, interval: 3800, delay: 800 },
-    { type: 'car', x: 1850, y: GY, fromX: 1850, toX: 3400, dir: 1, speed: 290, interval: 4600, delay: 2400 },
+    { type: 'car', x: 3400, y: GY, fromX: 3400, toX: 1850, dir: -1, speed: 290, interval: 4600, delay: 2400 },
     { type: 'car', x: 3400, y: GY, fromX: 3400, toX: 1850, dir: -1, speed: 260, interval: 6200, delay: 4200 },
     { type: 'car', x: 4460, y: GY, fromX: 4460, toX: 3520, dir: -1, speed: 310, interval: 4400, delay: 1600 },
 

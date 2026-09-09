@@ -180,6 +180,19 @@ export function placeProp(scene, def) {
   }
 
   if (def.drift) {
+    /**
+     * 오가는 것은 **가는 쪽을 본다.**
+     *
+     * 왕복 트윈만 걸어 두면 새가 절반은 뒤로 날아간다 (플레이 리뷰 4차 7).
+     * 액터 시트의 그림은 오른쪽을 보고 있으므로 왼쪽으로 갈 때만 뒤집는다.
+     * `def.flip` 으로 처음부터 뒤집어 둔 것은 그 방향이 곧 기준이라 건드리지 않는다.
+     */
+    const face = (goingRight) => {
+      if (!def.flip) prop.setFlipX(!goingRight);
+    };
+    const outward = def.drift > 0;
+    face(outward);
+
     scene.tweens.add({
       targets: prop,
       x: def.x + def.drift,
@@ -187,6 +200,8 @@ export function placeProp(scene, def) {
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
+      onYoyo: () => face(!outward),
+      onRepeat: () => face(outward),
     });
   }
 
