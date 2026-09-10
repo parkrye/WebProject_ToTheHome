@@ -33,7 +33,7 @@
  */
 
 import { TERRAIN, DOG, HAZARD } from '../config.js';
-import { TILE, PROP, ACTOR } from './AssetManifest.js';
+import { TILE, PROP, ACTOR, curbFrame, PERCHED_FLYER } from './AssetManifest.js';
 
 /** 점프로 닿는 거리. 실제 한계(96 / 240)에서 여유를 뺀 값이다 */
 export const REACH = {
@@ -478,6 +478,15 @@ function hopDistances(pads) {
 
 /* ------------------------------------------------------------------ 두께 */
 
+/**
+ * 이 씨앗이 어느 테마인가 (`actors_mountain` → mountain).
+ *
+ * 타일도 소품도 위험도 테마마다 고르는 것이 다르므로, 한 군데서 꺼내 쓴다.
+ */
+function themeOf(seed) {
+  return seed.actors ? String(seed.actors).replace('actors_', '') : null;
+}
+
 /** 지면 윗면 타일 네 종류. 자리마다 다른 것을 써서 같은 무늬가 반복되지 않게 한다 */
 const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
 
@@ -488,7 +497,7 @@ const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
  * 잔뜩 떠 있는 것처럼 보인다.
  *
  *   2개 이상 지면 윗면 (0~3번, 74px) — **높은 데 있는 땅.** 윗면 아래로 속(4번)이 채워진다
- *   그 밖    연석·계단 (7번, 40px) — 낮은 턱
+ *   그 밖    연석·계단 (40px) — 낮은 턱. 어느 칸을 쓸지는 테마마다 다르다 (`curbFrame`)
  *   마지막   얇은 발판 (6번, 18px) — 연석조차 못 놓을 만큼 아래가 가까운 자리
  *
  * **자리가 허락하는 한 두껍게 깐다.** 예전에는 셋이 모여야 땅이었는데, 그러면 지도의
@@ -498,7 +507,7 @@ const TOP_VARIANTS = [TILE.TOP, TILE.TOP_A, TILE.TOP_B, TILE.TOP_C];
  * 두께는 바로 아래 발판을 덮지 않는 선까지만 준다. 땅으로 깔 만큼 자리가 없으면
  * 연석으로 낮춰 쓴다 — 아래를 가리는 것보다 낫다.
  */
-function thicken(out) {
+function thicken(out, theme) {
   const rows = new Map();
   out.ledges.forEach((l) => {
     const key = Math.round(l.y / 12);
@@ -562,7 +571,7 @@ function thicken(out) {
       return { x: m.x, y: m.y, w: m.w, h: Math.min(solid, 120), frame: pick };
     }
     // 연석은 위에서만 밟히는 두께(oneWayMaxH) 안에 머물러야 한다
-    if (curb) return { x: m.x, y: m.y, w: m.w, h: Math.min(skin, 40), frame: TILE.WALL };
+    if (curb) return { x: m.x, y: m.y, w: m.w, h: Math.min(skin, 40), frame: curbFrame(theme) };
     return { x: m.x, y: m.y, w: m.w, h: 18, frame: TILE.LEDGE };
   });
 }
@@ -593,6 +602,14 @@ const KIT_TOTAL = PROP_KIT.reduce((n, p) => n + p.weight, 0);
 
 /** 좁은 자리에는 이보다 낮은 것만 세운다 — 큰 것은 길을 가린다 */
 const SMALL_PROP = 120;
+
+/**
+ * 땅에 앉은 것이 화면에서 차지할 높이.
+ *
+ * 하늘에 띄울 때는 멀리 있는 것이라 44px 이었다. 발밑에 앉히면 강아지(96px) 옆에
+ * 나란히 서므로 그 자로 재야 한다 — 부엉이는 0.37m 쯤이다.
+ */
+const PERCHED_HEIGHT = 66;
 
 /** 무게를 반영해 소품 하나를 뽑는다. maxHeight 를 주면 그보다 낮은 것 중에서 고른다 */
 function pickProp(rand, maxHeight) {
@@ -642,9 +659,14 @@ function decorate(out, rand, seed, area) {
     }
   });
 
-  // 하늘을 나는 것.
+  // 나는 것.
   // drift 가 있으면 placeProp 이 지면에 앉히지 않고 그대로 둔다
   if (seed.actors) {
+    // 그림이 앉아 있는 테마는 **땅에 앉힌다.** 산의 부엉이가 그렇다 — 8프레임이
+    // 그루터기에서 눈을 깜빡이는 대기 동작인데 하늘에 띄워 흘려 보내니, 날갯짓
+    // 없이 미끄러지는 새가 되었다 (플레이 리뷰 6차 2). 띄우지 않고 발판 위에
+    // 세우면 그림 그대로 "능선에 앉아 지켜보는 부엉이"가 된다
+    const perched = PERCHED_FLYER[themeOf(seed)];
     // **지나가는 길 바로 위**에 띄운다. 지도 꼭대기에 몰아 두면 위로 한참 올라가는
     // 지도에서는 전부 화면 밖이라 한 마리도 못 보고 지나간다 (플레이 리뷰 3차 2·3).
     // 그래서 x 로만 나누지 않고 **발판을 골라** 그 위에 띄운다 — 세로로 긴 지도에는
@@ -658,6 +680,20 @@ function decorate(out, rand, seed, area) {
       const bucket = pads.slice(lo, hi);
       const pad = bucket[Math.floor(rand() * bucket.length)] || pads[0];
       if (!pad) break;
+      if (perched) {
+        // 앉은 것은 지나다니는 길을 막지 않도록 발판 가장자리로 물린다
+        props.push({
+          x: round(pad.x + pad.w * (rand() < 0.5 ? 0.16 : 0.84)),
+          y: round(pad.y),
+          atlas: seed.actors,
+          frame: ACTOR.FLYER,
+          height: PERCHED_HEIGHT,
+          depth: 7,
+          flip: rand() < 0.5,
+        });
+        continue;
+      }
+
       props.push({
         x: round(pad.x + pad.w / 2),
         y: round(pad.y - 170 - rand() * 240),
@@ -710,6 +746,44 @@ const HAZARD_CLEAR = 460;
 
 /** 위험끼리도 이만큼은 벌린다 — 하나씩 보고 판단할 시간이 있어야 한다 */
 const HAZARD_GAP = 520;
+
+/** 멧돼지가 한 번에 달려 나가는 거리 (makeHazard 가 이 안에서 뽑는다) */
+const BOAR_RANGE = { min: 380, span: 140 };
+
+/**
+ * 그 위험이 **실제로 미치는 반경.**
+ *
+ * 고정 간격(520)만으로 벌리면 제자리에 서 있는 것끼리는 충분하지만, **자리를 옮겨
+ * 다니는 것**은 남의 자리까지 쳐들어간다. 멧돼지는 강아지 쪽으로 최대 520px 를
+ * 달려 나가므로, 딱 520px 떨어진 곳에 낙석 기둥이 서 있으면 **물러선 자리가 곧 돌이
+ * 떨어지는 자리**가 된다 — 뛰어넘지 않는 한 피할 데가 없다 (플레이 리뷰 6차 3).
+ *
+ * 그래서 간격을 종류마다 다르게 잰다. 적지 않은 것은 0 이라 예전 그대로 520 이다.
+ * 자동차는 0 으로 둔다 — 한 길에 여러 대를 일부러 함께 놓으므로(carLane) 여기서
+ * 벌리면 길이 하나에 차가 한 대씩만 다니게 된다.
+ */
+const HAZARD_REACH = {
+  // 돌진 거리는 몸 가운데로 재므로 몸 반쪽을 더해야 실제로 닿는 끝이다
+  boar: BOAR_RANGE.min + BOAR_RANGE.span + HAZARD.boarBody / 2,
+  rock: 60,
+};
+
+/** 위험의 범위와 범위 사이에 남겨 둘 **딛고 설 자리** */
+const HAZARD_BREATH = 260;
+
+/**
+ * 이 자리에 이 종류를 놓아도 이미 놓인 것과 범위가 겹치지 않는가.
+ *
+ * 높이가 다른 발판 위의 것은 서로 상관하지 않는다 — 낙석은 자기가 선 발판까지만
+ * 떨어지고(openSky), 멧돼지는 자기 발판 위만 달린다.
+ */
+function hazardClear(kind, x, y, taken) {
+  const reach = HAZARD_REACH[kind] ?? 0;
+  return !taken.some((t) => {
+    const need = Math.max(HAZARD_GAP, reach + t.reach + HAZARD_BREATH);
+    return Math.abs(t.x - x) < need && Math.abs(t.y - y) < 220;
+  });
+}
 
 /** 자리 후보를 발판 위 몇 px 마다 잡을지 */
 const HAZARD_STEP = 560;
@@ -916,7 +990,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
       type: 'boar',
       x,
       y: pad.y,
-      range: round(380 + rand() * 140),
+      range: round(BOAR_RANGE.min + rand() * BOAR_RANGE.span),
       speed: round(380 + rand() * 90),
       delay,
     };
@@ -957,8 +1031,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
  * @param safe 비워 둘 자리들 {x, y}
  */
 function hazardize(out, rand, seed, safe, area) {
-  const theme = seed.actors ? String(seed.actors).replace('actors_', '') : null;
-  const kit = HAZARD_KIT[theme];
+  const kit = HAZARD_KIT[themeOf(seed)];
   if (!kit || !kit.per1000) return [];
 
   const pads = [
@@ -1009,10 +1082,12 @@ function hazardize(out, rand, seed, safe, area) {
 
   slots.forEach((slot) => {
     if (hazards.length >= budget) return;
-    if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
 
     const kinds = kit.kinds.filter(
-      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY, safe[0])
+      (k) =>
+        (used[k] ?? 0) < perKind &&
+        hazardFits(k, slot, pads, baseY, safe[0]) &&
+        hazardClear(k, slot.x, slot.pad.y, taken)
     );
     if (!kinds.length) return;
 
@@ -1022,7 +1097,7 @@ function hazardize(out, rand, seed, safe, area) {
 
     hazards.push(hazard);
     used[kind] = (used[kind] ?? 0) + 1;
-    taken.push({ x: slot.x, y: slot.pad.y });
+    taken.push({ x: slot.x, y: slot.pad.y, reach: HAZARD_REACH[kind] ?? 0 });
   });
 
   timeLanes(lanes);
@@ -1247,6 +1322,7 @@ function scentPath(out, startPad, goalPad) {
  */
 export function build(seed) {
   const rand = rng(seed.seedNumber ?? 1);
+  const theme = themeOf(seed);
   const groundH = seed.groundH ?? 90;
   const richness = seed.richness ?? 1; // 살을 얼마나 붙일지 (0 = 점만 잇는다)
   const out = { ground: [], ledges: [], scent: [], keepsakes: [], saves: [], props: [], hazards: [] };
@@ -1329,7 +1405,7 @@ export function build(seed) {
   }
 
   // 6. 몇 개가 모였는지에 따라 두께를 정하고, 이어진 것은 하나로 합친다
-  thicken(out);
+  thicken(out, theme);
 
   // 6-1. 지형이 확정된 뒤에 소품을 세운다. 두께를 알아야 넓은 자리를 고를 수 있다
   out.props = decorate(out, rand, seed, { x0: minX, x1: maxX, top: topY, base: baseY });

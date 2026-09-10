@@ -111,18 +111,22 @@ export default {
    * 종류가 다른 위험을 겹치지 않게 구간을 나눠 둔다.
    *   도입(0~1900)   험로 — 무너지는 발판 하나로 맛만 보인다
    *   전개(1900~3800) 냇가 — 물살과 덫
-   *   절정(3800~7100) 낙석 + 멧돼지 + 무너지는 발판이 한꺼번에
+   *   절정(3800~7100) 낙석·무너지는 발판 → 멧돼지 → 낙석 → 능선의 멧돼지
+   *
+   * 절정에서도 **종류를 겹쳐 놓지는 않는다.** 낙석 지대와 멧돼지의 돌진 통로는
+   * 서로 들어가지 않는다 (플레이 리뷰 6차 3).
    */
   hazards: [
     // 냇물 — 빠지면 하류로 떠내려간다
     { type: 'static', x: 2660, y: 600, w: 900, h: 120, effect: 'kill' },
 
-    // 멧돼지 — 땅을 긁고 나서 돌진
-    { type: 'boar', x: 4180, y: 470, range: 420, speed: 400, delay: 700 },
-    { type: 'boar', x: 4560, y: 470, range: 480, speed: 430, delay: 1900 },
-    { type: 'boar', x: 5380, y: 430, range: 440, speed: 470, delay: 2600 },
-
-    // 낙석 — 절정 구간 내내 떨어진다
+    /**
+     * 낙석 — 무너지는 발판 위를 지나는 동안 떨어진다.
+     *
+     * **낙석이 지나는 자리에는 멧돼지를 두지 않는다.** 멧돼지에 쫓겨 물러선 자리가
+     * 곧 돌이 떨어지는 자리이면, 뛰어넘는 것 말고는 피할 길이 없다
+     * (플레이 리뷰 6차 3).
+     */
     { type: 'rock', x: 4060, y: 120, groundY: 480, interval: 2600, delay: 300 },
     { type: 'rock', x: 4300, y: 120, groundY: 480, interval: 3000, delay: 1400 },
     { type: 'rock', x: 4540, y: 120, groundY: 480, interval: 2800, delay: 2300 },
@@ -130,10 +134,15 @@ export default {
     { type: 'rock', x: 5960, y: 100, groundY: 380, interval: 3000, delay: 1700 },
     { type: 'rock', x: 6160, y: 100, groundY: 360, interval: 3400, delay: 2600 },
 
+    // 멧돼지 — 땅을 긁고 나서 돌진. **돌진해 갈 거리(±range) 안에 낙석 기둥도 덫도
+    // 들어오지 않는 자리**에만 선다. 물러설 곳이 남아야 예고가 뜻을 가진다
+    { type: 'boar', x: 5150, y: 460, range: 400, speed: 400, delay: 900 }, // 4750~5550
+    { type: 'boar', x: 6560, y: 380, range: 280, speed: 430, delay: 2400 }, // 6280~6840
+
     // 덫
+    { type: 'static', x: 2200, y: 500, w: 90, h: 26, effect: 'kill' },
     { type: 'static', x: 3600, y: 500, w: 90, h: 26, effect: 'kill' },
-    { type: 'static', x: 5060, y: 440, w: 90, h: 26, effect: 'kill' },
-    { type: 'static', x: 6420, y: 360, w: 90, h: 26, effect: 'kill' },
+    { type: 'static', x: 6900, y: 360, w: 90, h: 26, effect: 'kill' },
   ],
 
   savePoint: {
@@ -152,7 +161,9 @@ export default {
     { x: 480, y: 700, atlas: 'props_mountain', frame: PROP.B, height: 70, depth: 7 },
     { x: 900, y: 640, atlas: 'props_mountain', frame: PROP.TREE, height: 220, depth: 6, flip: true },
     { x: 1260, y: 580, atlas: 'props_mountain', frame: PROP.A, height: 80, depth: 7 },
-    { x: 1700, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 70, depth: 7 },
+    // 부엉이는 **앉아서 눈을 깜빡이는** 그림이다. 공중에 띄우면 날갯짓 없이
+    // 미끄러지는 새가 되므로 땅에 세운다 (플레이 리뷰 6차 2)
+    { x: 1700, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 66, depth: 7 },
     { x: 2100, y: 520, atlas: 'props_mountain', frame: PROP.TREE, height: 250, depth: 6 },
     { x: 2260, y: 520, atlas: 'props_mountain', frame: PROP.C, height: 60, depth: 7 },
     { x: 3040, y: 520, atlas: 'props_mountain', frame: PROP.H, height: 90, depth: 7 },
@@ -160,7 +171,7 @@ export default {
     { x: 3900, y: 500, atlas: 'props_mountain', frame: PROP.TREE, height: 230, depth: 6, flip: true },
     { x: 4880, y: 460, atlas: 'props_mountain', frame: PROP.G, height: 90, depth: 7 },
     { x: 5700, y: 420, atlas: 'props_mountain', frame: PROP.J, height: 80, depth: 7 },
-    { x: 4900, y: 300, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 54, depth: 7, alpha: 0.9 },
+    { x: 2160, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 66, depth: 7, flip: true },
     { x: 6400, y: 380, atlas: 'props_mountain', frame: PROP.TREE, height: 260, depth: 6 },
     // 능선의 부엉이 — 여기까지 온 것을 지켜본다
     { x: 6720, y: 380, atlas: 'props_mountain', frame: PROP.LANDMARK, height: 240, depth: 6 },

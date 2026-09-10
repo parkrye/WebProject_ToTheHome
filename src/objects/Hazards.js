@@ -136,6 +136,16 @@ class HazardBase extends Phaser.Physics.Arcade.Sprite {
     this.body.offset.y += centerY - fh / 2;
   }
 
+  /**
+   * 지금 이 놈이 **닿으면 무슨 일이 일어나는 상태인가**를 맞춘다.
+   *
+   * 물리 그룹에 넣을 때 Arcade 가 몸을 다시 켜므로(`Group.add` → `world.enable`),
+   * 생성자에서 꺼 둔 것만 믿으면 첫 판에 보이지도 않는 몸이 살아 있다.
+   */
+  live(on) {
+    if (this.body.enable !== on) this.body.setEnable(on);
+  }
+
   /** 서브클래스에서 구현 */
   tick() {}
 }
@@ -199,10 +209,12 @@ export class Car extends HazardBase {
 
     const x0 = Math.min(this.laneFrom, this.laneTo);
     const x1 = Math.max(this.laneFrom, this.laneTo);
+    // 차선 끝에 선 차도 몸 반쪽은 차선 밖으로 나가 있다. 두르는 것은 차선이 아니라
+    // **차가 닿는 자리 전부**여야 한다
     this.warn = new WarnZone(scene, {
       x: (x0 + x1) / 2,
       y: this.baseY - this.body.height / 2,
-      w: x1 - x0,
+      w: x1 - x0 + this.body.width,
       h: this.body.height,
       depth: (def.depth ?? 18) + 1,
     });
@@ -311,6 +323,9 @@ export class FallingRock extends HazardBase {
 
   tick(time, delta) {
     this.timer -= delta;
+    // 떨어지는 동안에만 위험하다. 기다리는 동안의 몸은 **하늘에 떠 있는 보이지 않는
+    // 죽음**이다 — 그룹에 들어갈 때 몸이 다시 켜지는 것을 놓치지 않도록 매 번 맞춘다
+    this.live(this.phase === 'fall');
 
     if (this.phase === 'wait') {
       if (this.timer > 0) return;
@@ -329,7 +344,7 @@ export class FallingRock extends HazardBase {
       this.setPosition(this.def.x, this.startY);
       this.setAngle(0);
       this.setVisible(true);
-      this.body.setEnable(true);
+      this.live(true);
       this.body.setAllowGravity(true);
       this.body.setVelocityY(0);
       this.scene.audio?.play('sfx_rock_fall', { volume: 0.5 });
@@ -343,7 +358,7 @@ export class FallingRock extends HazardBase {
       this.phase = 'wait';
       this.timer = this.interval;
       this.setVisible(false);
-      this.body.setEnable(false);
+      this.live(false);
       this.body.setAllowGravity(false);
       this.shadow.setVisible(false);
     }
@@ -351,7 +366,15 @@ export class FallingRock extends HazardBase {
 }
 
 /**
- * 멧돼지 — 땅 긁기 0.7초 후 직선 돌진, 이후 경직.
+ * 멧돼지 — 예고하는 동안 스르륵 나타나 직선으로 돌진하고, 도착하면 스르륵 사라진다.
+ *
+ * **돌진하는 동안에만 있는 놈이다.** 예전에는 늘 그 자리에 서서 판정을 켜 두었다.
+ * 그러면 예고 중에도, 돌진을 마치고 1.4초 헐떡이는 동안에도 몸이 닿으면 죽어서,
+ * **길목 한가운데에 죽는 자리가 상주한다.** 자동차는 차선 밖에서 옅게 들어왔다 옅게
+ * 나가는데(Car.laneAlpha) 멧돼지만 붙박이였다.
+ *
+ *   없음 → 예고(통로를 두르고 스르륵 나타나 땅을 긁는다 · **판정 없음**)
+ *        → 돌진(판정 켬) → 도착하는 즉시 판정 끄고 스르륵 사라짐 → 없음
  *
  * **예고하는 동안 강아지 쪽으로 몸을 돌리고 달릴 거리를 두른다.** 늘 한쪽으로만
  * 달리면 반대편에서 다가온 사람에게는 아무 일도 일어나지 않아 무엇을 하는 놈인지 알
@@ -360,23 +383,52 @@ export class FallingRock extends HazardBase {
  *
  * 달리기(300)보다 빠르므로 도망칠 수는 없다. 대신 몸이 낮아 **뛰어넘을 수 있다.**
  */
+/**
+ * 멧돼지가 화면에서 차지할 높이.
+ *
+ * 0.8m(145px)이었다. 몸 판정은 그림의 58% 인 84px 이라 **서서 뛰면 96px** 로 계산상
+ * 넘어가긴 했지만, 여유가 12px 뿐이라 실제로는 등에 걸렸다. 게다가 넘는 동안 놈은
+ * 400px/s 로 달려오고 있어서, 뛸지 물러설지 고민할 틈이 없었다 (플레이 리뷰 6차 3).
+ *
+ * 0.7m 로 낮춘다 — 판정 71px 대 점프 96px 이라 **넘기로 마음먹으면 넘어간다.**
+ * 새끼 멧돼지 크기지만, 밤산에서 정면으로 달려드는 것은 그 크기로도 충분히 무섭다.
+ */
+const BOAR_HEIGHT = 122;
+
+/** 그림 높이 대비 몸 판정 높이 — 등 위 여백은 넘어가는 자리다 */
+const BOAR_BODY = 0.58;
+
+/** 예고와 함께 스르륵 나타나는 데 걸리는 시간. 예고(2초)가 끝나기 전에 다 나타난다 */
+const BOAR_FADE_IN = 700;
+
+/** 도착한 뒤 스르륵 사라지는 시간. 판정은 **사라지기 전에 이미 꺼진다** */
+const BOAR_FADE_OUT = 320;
+
+/** 사라진 뒤 다음 예고까지 쉬는 시간 */
+const BOAR_REST = 2400;
+
 export class Boar extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 145, ...def }, ACTOR.MOVER); // 멧돼지 0.8m
+    super(scene, { height: BOAR_HEIGHT, ...def }, ACTOR.MOVER);
     this.homeX = def.x;
     this.range = def.range ?? 420;
     this.speed = def.speed ?? 420;
     this.phase = 'idle';
     this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 1200;
-    // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다.
-    // 서서 뛰면 96px, 달리며 뛰면 112px 오르므로 84px 이면 넘어간다
-    this.fitBody(0.85, 0.58, 'bottom');
+    // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다
+    this.fitBody(0.85, BOAR_BODY, 'bottom');
 
+    // 돌진할 때만 있는 놈이므로 처음에는 없다
+    this.setVisible(false).setAlpha(0);
+    this.body.setEnable(false);
+
+    // 두르는 것은 **몸이 지나갈 자리 전부**다. 돌진 거리는 몸 가운데로 재므로
+    // 몸 폭을 더해야 끝자락이 표시 안에 든다 (파도가 이미 그렇게 두른다)
     this.warn = new WarnZone(scene, {
       x: def.x,
       y: def.y - this.body.height / 2,
-      w: this.range,
+      w: this.range + this.body.width,
       h: this.body.height,
       depth: (def.depth ?? 18) + 1,
     });
@@ -384,6 +436,9 @@ export class Boar extends HazardBase {
 
   tick(time, delta) {
     this.timer -= delta;
+    // **판정은 돌진하는 동안에만.** 켜고 끄기를 전환하는 자리에서만 하면, 물리 그룹에
+    // 들어갈 때 몸이 다시 켜지는 것(Arcade Group.add)을 놓친다. 매 번 맞춰 둔다
+    this.live(this.phase === 'charge');
 
     if (this.phase === 'idle') {
       if (this.timer > 0) return;
@@ -398,12 +453,19 @@ export class Boar extends HazardBase {
       this.warn.cover(
         this.homeX + (this.chargeDir * this.range) / 2,
         this.def.y - this.body.height / 2,
-        this.range,
+        this.range + this.body.width,
         this.body.height
       );
       this.warn.show();
+      // 어디까지 달릴지 **먼저 정한다.** 시간으로만 재면 프레임 하나만큼 더 나가고,
+      // 그 한 걸음이 두른 자리 밖이라 표시를 믿고 선 자리에서 맞는다
+      this.chargeTo = this.homeX + this.chargeDir * this.range;
+      // 두른 자리에 스르륵 나타난다. **아직 판정은 없다** — 두른 것을 보고 비켜설
+      // 시간이 예고인데, 그 시간에 이미 죽는 몸이 서 있으면 예고가 아니다
+      this.setAngle(0).setPosition(this.homeX, this.def.y).setVisible(true);
+      this.fade(1, BOAR_FADE_IN);
       // 예고 — 앞발로 땅을 긁듯 좌우로 잘게 떤다. **예고가 끝날 때까지** 긁는다
-      this.scene.tweens.add({
+      this.scratch = this.scene.tweens.add({
         targets: this,
         x: this.homeX + 8,
         duration: 90,
@@ -420,25 +482,42 @@ export class Boar extends HazardBase {
       this.phase = 'charge';
       this.timer = (this.range / this.speed) * 1000;
       this.warn.hide();
+      this.scratch?.remove();
+      this.scratch = null;
+      this.setX(this.homeX).setAlpha(1);
+      this.live(true);
       this.body.setVelocityX((this.chargeDir ?? -1) * this.speed);
       return;
     }
 
     if (this.phase === 'charge') {
-      if (this.timer > 0) return;
-      this.phase = 'recover';
-      this.timer = 1400;
-      this.body.setVelocityX(0);
-      // 지친 표시 — 고개를 떨구듯 살짝 기운다
-      this.scene.tweens.add({ targets: this, angle: 6, duration: 300 });
+      const dir = this.chargeDir ?? -1;
+      const arrived = dir > 0 ? this.x >= this.chargeTo : this.x <= this.chargeTo;
+      if (!arrived && this.timer > 0) return;
+      // 두른 자리 끝에 **정확히** 세운다
+      this.body.reset(this.chargeTo, this.def.y);
+      this.phase = 'leave';
+      this.timer = BOAR_FADE_OUT;
+      // **도착하는 즉시** 판정을 끈다. 사라지는 동안 몸이 남아 있으면, 다 끝난 줄
+      // 알고 지나가다 죽는다
+      this.live(false);
+      // 지친 표시 — 고개를 떨구듯 살짝 기울며 옅어진다
+      this.scene.tweens.add({ targets: this, angle: 6, duration: BOAR_FADE_OUT });
+      this.fade(0, BOAR_FADE_OUT);
       return;
     }
 
     if (this.timer > 0) return;
     this.phase = 'idle';
-    this.timer = 1600;
-    this.setAngle(0);
+    this.timer = BOAR_REST;
+    this.setVisible(false).setAlpha(0).setAngle(0);
     this.setPosition(this.homeX, this.def.y);
+  }
+
+  /** 스르륵 나타나거나 사라진다. 앞의 트윈은 지우고 하나만 돈다 */
+  fade(alpha, duration) {
+    this.fading?.remove();
+    this.fading = this.scene.tweens.add({ targets: this, alpha, duration, ease: 'Sine.easeOut' });
   }
 }
 
