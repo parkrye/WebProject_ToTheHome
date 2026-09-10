@@ -77,6 +77,18 @@ if (import.meta.env.DEV) {
     game.scene.scenes.filter((s) => s.scene.isActive()).forEach((s) => game.scene.stop(s.scene.key));
     game.scene.start(scene, data);
   });
+  // 확인하고 싶은 자리가 늘 출발 지점은 아니다. 걸어서 거기까지 가려면 몇 분이 걸리므로
+  // **그 자리로 바로 옮기는** 통로도 같이 열어 둔다.
+  //
+  //   document.dispatchEvent(new CustomEvent('tothehome:teleport', { detail: { x: 4383, y: 14520 } }))
+  document.addEventListener('tothehome:teleport', (e) => {
+    const { x, y } = e.detail || {};
+    const stage = game.scene.getScene('Stage');
+    if (!stage?.dog || x == null || y == null) return;
+    stage.dog.setPosition(x, y);
+    stage.dog.body?.reset(x, y);
+  });
+
   setInterval(() => {
     const active = game.scene.scenes.filter((s) => s.scene.isActive()).map((s) => s.scene.key);
     document.body.dataset.scenes = active.join(',');
