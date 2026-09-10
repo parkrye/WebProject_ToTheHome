@@ -160,7 +160,7 @@ Soft hand-painted pixel art game asset sheet, warm pastel palette with muted sat
 | 4 | 땅속 채움 — 기본 |
 | 5 | 땅속 채움 — 변형 |
 | 6 | **얇은 발판** (칸 높이의 1/3) |
-| 7 | 벽 · 연석 · 계단 |
+| 7 | 벽 · 연석 · 계단 (**산은 쓰지 않는다** — 구름다리라 밤산 분위기를 깬다. 산의 연석은 2번) |
 
 ---
 

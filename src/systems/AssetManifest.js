@@ -278,6 +278,36 @@ export const TILE = {
   WALL: 7,
 };
 
+/**
+ * 그 테마에서 **연석(낮은 턱, 40px)으로 쓸 칸.**
+ *
+ * 원래는 어느 테마든 7번이었다. 그런데 7번은 테마마다 그린 것이 다르고, 산의 7번은
+ * **밧줄과 판자로 엮은 구름다리**다. 연석은 지도에서 가장 많이 깔리는 두께라
+ * (확정 배치 3스테이지 발판 645개 중 599개), 밤산 능선이 통째로 구름다리밭이 되어
+ * 분위기를 깼다 (플레이 리뷰 6차 1).
+ *
+ * 산만 바위 윗면(2번)으로 돌린다 — 낮은 바위 턱으로 읽히고 산의 다른 지형과 이어진다.
+ * 적지 않은 테마는 7번을 그대로 쓴다.
+ */
+export const CURB_FRAME = {
+  mountain: TILE.TOP_B,
+};
+
+/** 이 테마에서 연석으로 쓸 칸 */
+export function curbFrame(theme) {
+  return CURB_FRAME[theme] ?? TILE.WALL;
+}
+
+/**
+ * 나는 것(FLYER)을 **하늘에 띄우지 않고 땅에 앉히는** 테마.
+ *
+ * 시트의 그림과 코드가 따로 놀면 안 된다. 산의 FLYER 는 부엉이인데, 8프레임이
+ * **그루터기에 앉아 눈을 깜빡이는** 대기 동작이다 (.docs/assets-actors.md 4절).
+ * 그것을 공중에 띄우고 좌우로 흘려 보내면 날갯짓 없이 미끄러지는 새가 된다
+ * (플레이 리뷰 6차 2).
+ */
+export const PERCHED_FLYER = { mountain: true };
+
 /** 단일 이미지 소품 / UI */
 export const IMAGES = [
   { key: 'prop_sign_move', file: PROP_DIR + 'prop_sign_move.png', placeholder: 'signMove', w: 128, h: 160 },

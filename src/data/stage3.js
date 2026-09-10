@@ -152,7 +152,9 @@ export default {
     { x: 480, y: 700, atlas: 'props_mountain', frame: PROP.B, height: 70, depth: 7 },
     { x: 900, y: 640, atlas: 'props_mountain', frame: PROP.TREE, height: 220, depth: 6, flip: true },
     { x: 1260, y: 580, atlas: 'props_mountain', frame: PROP.A, height: 80, depth: 7 },
-    { x: 1700, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 70, depth: 7 },
+    // 부엉이는 **앉아서 눈을 깜빡이는** 그림이다. 공중에 띄우면 날갯짓 없이
+    // 미끄러지는 새가 되므로 땅에 세운다 (플레이 리뷰 6차 2)
+    { x: 1700, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 66, depth: 7 },
     { x: 2100, y: 520, atlas: 'props_mountain', frame: PROP.TREE, height: 250, depth: 6 },
     { x: 2260, y: 520, atlas: 'props_mountain', frame: PROP.C, height: 60, depth: 7 },
     { x: 3040, y: 520, atlas: 'props_mountain', frame: PROP.H, height: 90, depth: 7 },
@@ -160,7 +162,7 @@ export default {
     { x: 3900, y: 500, atlas: 'props_mountain', frame: PROP.TREE, height: 230, depth: 6, flip: true },
     { x: 4880, y: 460, atlas: 'props_mountain', frame: PROP.G, height: 90, depth: 7 },
     { x: 5700, y: 420, atlas: 'props_mountain', frame: PROP.J, height: 80, depth: 7 },
-    { x: 4900, y: 300, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 54, depth: 7, alpha: 0.9 },
+    { x: 2160, y: 520, atlas: 'actors_mountain', frame: ACTOR.FLYER, height: 66, depth: 7, flip: true },
     { x: 6400, y: 380, atlas: 'props_mountain', frame: PROP.TREE, height: 260, depth: 6 },
     // 능선의 부엉이 — 여기까지 온 것을 지켜본다
     { x: 6720, y: 380, atlas: 'props_mountain', frame: PROP.LANDMARK, height: 240, depth: 6 },
