@@ -87,6 +87,10 @@ if (import.meta.env.DEV) {
     if (!stage?.dog || x == null || y == null) return;
     stage.dog.setPosition(x, y);
     stage.dog.body?.reset(x, y);
+    // 옮긴 거리를 **떨어진 거리로 세면** 착지하자마자 죽는다 (Dog.fallFromY)
+    stage.dog.fallFromY = y;
+    stage.dog.fallHeight = 0;
+    stage.dog.landFallHeight = 0;
   });
 
   setInterval(() => {
@@ -103,13 +107,15 @@ if (import.meta.env.DEV) {
       document.body.dataset.checkpoint = stage.save.data.checkpoint ?? '';
 
       // **보이는 그림과 판정이 어긋나면** "왜 죽었는지 모르겠다"가 된다.
-      // 위험 요소마다 그림 크기와 몸 크기를 나란히 적어 둔다
+      // 위험 요소마다 그림 크기와 몸 크기를, 그리고 **지금 판정이 켜져 있는지**를
+      // 나란히 적어 둔다 — 잠깐만 나타나는 것은 켜고 끄는 때가 곧 규칙이다
       document.body.dataset.hazards = (stage.hazards ?? [])
         .filter((h) => h.body && h.box)
         .map(
           (h) =>
             `${h.def.type} art ${Math.round(h.displayWidth * h.box.w)}x${Math.round(h.displayHeight * h.box.h)}` +
-            ` body ${Math.round(h.body.width)}x${Math.round(h.body.height)}`
+            ` body ${Math.round(h.body.width)}x${Math.round(h.body.height)}` +
+            `${h.phase ? ` ${h.phase}` : ''} ${h.body.enable ? 'on' : 'off'}`
         )
         .join(' | ');
     }
