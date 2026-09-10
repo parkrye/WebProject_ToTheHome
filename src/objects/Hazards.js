@@ -360,18 +360,32 @@ export class FallingRock extends HazardBase {
  *
  * 달리기(300)보다 빠르므로 도망칠 수는 없다. 대신 몸이 낮아 **뛰어넘을 수 있다.**
  */
+/**
+ * 멧돼지가 화면에서 차지할 높이.
+ *
+ * 0.8m(145px)이었다. 몸 판정은 그림의 58% 인 84px 이라 **서서 뛰면 96px** 로 계산상
+ * 넘어가긴 했지만, 여유가 12px 뿐이라 실제로는 등에 걸렸다. 게다가 넘는 동안 놈은
+ * 400px/s 로 달려오고 있어서, 뛸지 물러설지 고민할 틈이 없었다 (플레이 리뷰 6차 3).
+ *
+ * 0.7m 로 낮춘다 — 판정 71px 대 점프 96px 이라 **넘기로 마음먹으면 넘어간다.**
+ * 새끼 멧돼지 크기지만, 밤산에서 정면으로 달려드는 것은 그 크기로도 충분히 무섭다.
+ */
+const BOAR_HEIGHT = 122;
+
+/** 그림 높이 대비 몸 판정 높이 — 등 위 여백은 넘어가는 자리다 */
+const BOAR_BODY = 0.58;
+
 export class Boar extends HazardBase {
   constructor(scene, def) {
-    super(scene, { height: 145, ...def }, ACTOR.MOVER); // 멧돼지 0.8m
+    super(scene, { height: BOAR_HEIGHT, ...def }, ACTOR.MOVER);
     this.homeX = def.x;
     this.range = def.range ?? 420;
     this.speed = def.speed ?? 420;
     this.phase = 'idle';
     this.warnTime = def.warnTime ?? HAZARD.warnTime;
     this.timer = def.delay ?? 1200;
-    // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다.
-    // 서서 뛰면 96px, 달리며 뛰면 112px 오르므로 84px 이면 넘어간다
-    this.fitBody(0.85, 0.58, 'bottom');
+    // 몸을 그림보다 낮게 잡는다 — 등 위로 **뛰어넘을 수 있어야** 피할 길이 생긴다
+    this.fitBody(0.85, BOAR_BODY, 'bottom');
 
     this.warn = new WarnZone(scene, {
       x: def.x,

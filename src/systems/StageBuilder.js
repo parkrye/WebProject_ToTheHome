@@ -747,6 +747,43 @@ const HAZARD_CLEAR = 460;
 /** 위험끼리도 이만큼은 벌린다 — 하나씩 보고 판단할 시간이 있어야 한다 */
 const HAZARD_GAP = 520;
 
+/** 멧돼지가 한 번에 달려 나가는 거리 (makeHazard 가 이 안에서 뽑는다) */
+const BOAR_RANGE = { min: 380, span: 140 };
+
+/**
+ * 그 위험이 **실제로 미치는 반경.**
+ *
+ * 고정 간격(520)만으로 벌리면 제자리에 서 있는 것끼리는 충분하지만, **자리를 옮겨
+ * 다니는 것**은 남의 자리까지 쳐들어간다. 멧돼지는 강아지 쪽으로 최대 520px 를
+ * 달려 나가므로, 딱 520px 떨어진 곳에 낙석 기둥이 서 있으면 **물러선 자리가 곧 돌이
+ * 떨어지는 자리**가 된다 — 뛰어넘지 않는 한 피할 데가 없다 (플레이 리뷰 6차 3).
+ *
+ * 그래서 간격을 종류마다 다르게 잰다. 적지 않은 것은 0 이라 예전 그대로 520 이다.
+ * 자동차는 0 으로 둔다 — 한 길에 여러 대를 일부러 함께 놓으므로(carLane) 여기서
+ * 벌리면 길이 하나에 차가 한 대씩만 다니게 된다.
+ */
+const HAZARD_REACH = {
+  boar: BOAR_RANGE.min + BOAR_RANGE.span,
+  rock: 60,
+};
+
+/** 위험의 범위와 범위 사이에 남겨 둘 **딛고 설 자리** */
+const HAZARD_BREATH = 260;
+
+/**
+ * 이 자리에 이 종류를 놓아도 이미 놓인 것과 범위가 겹치지 않는가.
+ *
+ * 높이가 다른 발판 위의 것은 서로 상관하지 않는다 — 낙석은 자기가 선 발판까지만
+ * 떨어지고(openSky), 멧돼지는 자기 발판 위만 달린다.
+ */
+function hazardClear(kind, x, y, taken) {
+  const reach = HAZARD_REACH[kind] ?? 0;
+  return !taken.some((t) => {
+    const need = Math.max(HAZARD_GAP, reach + t.reach + HAZARD_BREATH);
+    return Math.abs(t.x - x) < need && Math.abs(t.y - y) < 220;
+  });
+}
+
 /** 자리 후보를 발판 위 몇 px 마다 잡을지 */
 const HAZARD_STEP = 560;
 
@@ -952,7 +989,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
       type: 'boar',
       x,
       y: pad.y,
-      range: round(380 + rand() * 140),
+      range: round(BOAR_RANGE.min + rand() * BOAR_RANGE.span),
       speed: round(380 + rand() * 90),
       delay,
     };
@@ -993,8 +1030,7 @@ function makeHazard(kind, slot, rand, lanes, carDir) {
  * @param safe 비워 둘 자리들 {x, y}
  */
 function hazardize(out, rand, seed, safe, area) {
-  const theme = seed.actors ? String(seed.actors).replace('actors_', '') : null;
-  const kit = HAZARD_KIT[theme];
+  const kit = HAZARD_KIT[themeOf(seed)];
   if (!kit || !kit.per1000) return [];
 
   const pads = [
@@ -1045,10 +1081,12 @@ function hazardize(out, rand, seed, safe, area) {
 
   slots.forEach((slot) => {
     if (hazards.length >= budget) return;
-    if (taken.some((t) => Math.abs(t.x - slot.x) < HAZARD_GAP && Math.abs(t.y - slot.pad.y) < 220)) return;
 
     const kinds = kit.kinds.filter(
-      (k) => (used[k] ?? 0) < perKind && hazardFits(k, slot, pads, baseY, safe[0])
+      (k) =>
+        (used[k] ?? 0) < perKind &&
+        hazardFits(k, slot, pads, baseY, safe[0]) &&
+        hazardClear(k, slot.x, slot.pad.y, taken)
     );
     if (!kinds.length) return;
 
@@ -1058,7 +1096,7 @@ function hazardize(out, rand, seed, safe, area) {
 
     hazards.push(hazard);
     used[kind] = (used[kind] ?? 0) + 1;
-    taken.push({ x: slot.x, y: slot.pad.y });
+    taken.push({ x: slot.x, y: slot.pad.y, reach: HAZARD_REACH[kind] ?? 0 });
   });
 
   timeLanes(lanes);
