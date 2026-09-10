@@ -763,7 +763,8 @@ const BOAR_RANGE = { min: 380, span: 140 };
  * 벌리면 길이 하나에 차가 한 대씩만 다니게 된다.
  */
 const HAZARD_REACH = {
-  boar: BOAR_RANGE.min + BOAR_RANGE.span,
+  // 돌진 거리는 몸 가운데로 재므로 몸 반쪽을 더해야 실제로 닿는 끝이다
+  boar: BOAR_RANGE.min + BOAR_RANGE.span + HAZARD.boarBody / 2,
   rock: 60,
 };
 
